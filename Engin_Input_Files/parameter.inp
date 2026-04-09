@@ -1,0 +1,9 @@
+*PARAMETER
+THICKNESS  = 0.65
+DTIME      = 1.E-5
+DISPL      = 50.
+FR_PUNCH   = 0.1
+FR_CLAMP   = 0.15
+**-----------------------
+DIE_POS    = 44.+THICKNESS
+STEP_TIME  = DISPL/5.
