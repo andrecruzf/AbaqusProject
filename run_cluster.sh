@@ -62,3 +62,27 @@ abaqus job="$JOB_NAME"   \
 echo ""
 echo "Done: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "Results: $WORK_DIR/${JOB_NAME}.odb"
+
+# ── Step 3: Extract strain path ───────────────────────────────────────────────
+echo "=============================================="
+echo "  Post-processing — strain path"
+echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
+echo "=============================================="
+
+cd "$SLURM_SUBMIT_DIR"
+abaqus python postproc.py -- "$WORK_DIR/${JOB_NAME}.odb"
+
+echo "  strain_path.csv written."
+
+# ── Step 4: Render SDV1 animation ────────────────────────────────────────────
+echo "=============================================="
+echo "  Post-processing — EQPS movie"
+echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
+echo "=============================================="
+
+ODB_PATH="$WORK_DIR/${JOB_NAME}.odb" xvfb-run -a abaqus cae noGUI="$SLURM_SUBMIT_DIR/postproc_movie.py" || echo "  WARNING: movie step failed, continuing."
+
+echo "  Movie written."
+echo "=============================================="
+echo "  All done: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "=============================================="
