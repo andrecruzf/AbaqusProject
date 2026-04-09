@@ -1,0 +1,41 @@
+\chapter{Results}\label{chap:results}
+
+\section{Simulation Results}
+
+% TODO: Fill in once all widths have been run successfully.
+
+Table~\ref{tab:flc_points} summarises the critical major and minor principal strains extracted at failure for each specimen width.
+
+\begin{table}[ht]
+\begin{center}
+\caption{FLC data points — critical strains at failure per specimen width.}
+\label{tab:flc_points}
+\begin{tabular}{@{}cccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain path & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] \\ \midrule
+20  & Uniaxial tension    & -- & -- \\
+50  &                     & -- & -- \\
+80  &                     & -- & -- \\
+90  & Near plane strain   & -- & -- \\
+100 &                     & -- & -- \\
+120 &                     & -- & -- \\
+200 & Equibiaxial         & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Forming Limit Curve}
+
+% TODO: Include flc_plot.png once generated.
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.75\textwidth]{../flc_plot.png}
+%   \caption{Numerically determined Forming Limit Curve (FLC) from Nakazima simulations.}
+%   \label{fig:flc}
+% \end{figure}
+
+\section{EQPS Animation}
+
+% TODO: Reference or include frames from postproc_movie output.
+
+The SDV1 (EQPS) field evolution during the forming process was visualised using \texttt{postproc\_movie.py}. The animation confirms that plastic strain localises at the apex of the punch contact zone prior to element deletion.

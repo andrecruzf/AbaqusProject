@@ -1,12 +1,45 @@
-\chapter{Something}\label{sec:something}
+\chapter{Simulation Pipeline}\label{app:pipeline}
 
-Blah, blah \dots
+\section{Repository Structure}
 
- \cleardoublepage
+The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). The key files are:
 
+\begin{tabbing}
+ \hspace*{4.5cm} \= \kill
+ \texttt{config.py}             \> Central configuration — all model parameters \\[0.5ex]
+ \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules \\[0.5ex]
+ \texttt{modules/}              \> parts, assembly, material, step, contact, boundary, output, job \\[0.5ex]
+ \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran) \\[0.5ex]
+ \texttt{geometries/}           \> Supervisor-provided geometry files (W20--W200) \\[0.5ex]
+ \texttt{postproc.py}           \> Strain path extraction from ODB \\[0.5ex]
+ \texttt{postproc\_movie.py}    \> SDV1 animation renderer \\[0.5ex]
+ \texttt{plot\_flc.py}          \> FLC aggregation and plotting \\[0.5ex]
+ \texttt{deploy\_all.sh}        \> Push config, build all widths, submit SLURM jobs \\[0.5ex]
+ \texttt{collect\_results.sh}   \> Download results from Euler, plot FLC
+\end{tabbing}
 
-\chapter{Again Something}\label{sec:again_something}
+\section{Running a Simulation}
 
-Blah, blah \dots
+To launch a single simulation for width $W = 50$\,mm:
+\lstset{language=bash,numbers=none}
+\begin{lstlisting}[frame=lines]
+# 1. Edit config.py: set SPECIMEN_WIDTH = 50
+# 2. Deploy and run on Euler:
+./deploy.sh
+\end{lstlisting}
 
- \cleardoublepage
+To run all widths sequentially:
+\begin{lstlisting}[frame=lines]
+./deploy_all.sh
+\end{lstlisting}
+
+To collect results and generate the FLC:
+\begin{lstlisting}[frame=lines]
+./collect_results.sh
+\end{lstlisting}
+
+\section{Cluster Configuration}
+
+Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. The Abaqus module is loaded via \texttt{module load abaqus}. Post-processing uses \texttt{xvfb-run} for headless rendering of the animation.
+
+\cleardoublepage

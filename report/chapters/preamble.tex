@@ -3,63 +3,73 @@
 
 \chapter*{Preface}
 
-Blah blah \dots
+This report presents the results of a semester project conducted at the Institute for Dynamic Systems and Control (IDSC), ETH Zürich. The project focuses on the numerical generation of Forming Limit Diagrams (FLDs) using finite element simulations of the Nakazima test in Abaqus/Explicit.
 
- \cleardoublepage
+\cleardoublepage
 
 %---------------------------------------------------------------------------
 % Table of contents
 
- \setcounter{tocdepth}{2}
- \tableofcontents
+\setcounter{tocdepth}{2}
+\tableofcontents
 
- \cleardoublepage
+\cleardoublepage
 
 %---------------------------------------------------------------------------
-% Abstract
+% Abstract (German)
 
 \chapter*{Zusammenfassung}
- \addcontentsline{toc}{chapter}{Zusammenfassung}
+\addcontentsline{toc}{chapter}{Zusammenfassung}
 
-Bla bla \dots
+In dieser Arbeit wird die numerische Bestimmung von Grenzformänderungsdiagrammen (FLD) mittels Finiter-Elemente-Simulationen des Nakazima-Tests untersucht. Das FE-Modell wird mit Abaqus/Explicit aufgebaut und verwendet eine VUMAT-Benutzermaterialroutine, die auf dem Hosford-Coulomb-Versagenskriterium basiert. Verschiedene Probengeometrien (Breiten W20 bis W200\,mm) werden simuliert, um unterschiedliche Dehnungspfade vom ebenen Zug bis zur biaxialen Streckung abzudecken. Die kritischen Hauptdehnungen beim Versagen werden extrahiert und zur Konstruktion der Grenzformänderungskurve (FLC) verwendet.
 
- \cleardoublepage
-
-\chapter*{Abstract}
- \addcontentsline{toc}{chapter}{Abstract}
-
-Blah blah \dots
-
- \cleardoublepage
+\cleardoublepage
 
 %---------------------------------------------------------------------------
-% Symbols
+% Abstract (English)
 
-\chapter*{Nomenclature}\label{chap:symbole}
- \addcontentsline{toc}{chapter}{Nomenclature}
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This work investigates the numerical determination of Forming Limit Diagrams (FLDs) using finite element simulations of the Nakazima test. The FE model is built in Abaqus/Explicit and uses a VUMAT user material subroutine implementing the Hosford-Coulomb failure criterion. Several specimen geometries (widths W20 to W200\,mm) are simulated to cover strain paths ranging from uniaxial tension to equibiaxial stretching. The critical major and minor strains at failure are extracted and assembled into a Forming Limit Curve (FLC).
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% Nomenclature
+
+\chapter*{Nomenclature}\label{chap:nomenclature}
+\addcontentsline{toc}{chapter}{Nomenclature}
 
 \section*{Symbols}
 \begin{tabbing}
- \hspace*{1.6cm} \= \hspace*{8cm} \= \kill
- $\mathrm{EHC}$ \> Conditional equation \> [$-$] \\[0.5ex]
- $e$ \> Willans coefficient \> [$-$] \\[0.5ex]
- $F,G$ \> Parts of the system equation \> [\unitfrac[]{K}{s}]
-\end{tabbing}
-
-\section*{Indicies}
-\begin{tabbing}
- \hspace*{1.6cm}  \= \kill
- a \> Ambient \\[0.5ex]
- air \> Air
+ \hspace*{2.0cm} \= \hspace*{8cm} \= \kill
+ $\varepsilon_1$ \> Major principal strain \> [$-$] \\[0.5ex]
+ $\varepsilon_2$ \> Minor principal strain \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p$ \> Equivalent plastic strain (EQPS) \> [$-$] \\[0.5ex]
+ $\sigma$ \> Cauchy stress tensor \> [MPa] \\[0.5ex]
+ $\eta$ \> Stress triaxiality \> [$-$] \\[0.5ex]
+ $\theta$ \> Lode angle parameter \> [$-$] \\[0.5ex]
+ $t$ \> Blank thickness \> [mm] \\[0.5ex]
+ $W$ \> Specimen width \> [mm]
 \end{tabbing}
 
 \section*{Acronyms and Abbreviations}
 \begin{tabbing}
- \hspace*{1.6cm}  \= \kill
- NEDC \> New European Driving Cycle \\[0.5ex]
- ETH \> Eidgen\"{o}ssische Technische Hochschule
+ \hspace*{2.0cm} \= \kill
+ BC \> Boundary condition \\[0.5ex]
+ CAE \> Complete Abaqus Environment \\[0.5ex]
+ EQPS \> Equivalent Plastic Strain \\[0.5ex]
+ FE \> Finite Element \\[0.5ex]
+ FEA \> Finite Element Analysis \\[0.5ex]
+ FLC \> Forming Limit Curve \\[0.5ex]
+ FLD \> Forming Limit Diagram \\[0.5ex]
+ HC \> Hosford-Coulomb (failure criterion) \\[0.5ex]
+ HPC \> High-Performance Computing \\[0.5ex]
+ ODB \> Output Database (Abaqus result file) \\[0.5ex]
+ SDV \> Solution-Dependent Variable \\[0.5ex]
+ SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
+ VUMAT \> Vectorized User MATerial subroutine (Abaqus/Explicit)
 \end{tabbing}
 
- \cleardoublepage
-
-%---------------------------------------------------------------------------
+\cleardoublepage

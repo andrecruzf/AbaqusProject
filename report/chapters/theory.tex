@@ -1,0 +1,33 @@
+\chapter{Theoretical Background}\label{chap:theory}
+
+\section{The Nakazima Test}
+
+The Nakazima test is a standardised experimental method for determining the FLC of sheet metal. A circular blank is clamped between a die and a blank holder, and a hemispherical punch is pushed through the centre until the blank fractures. By varying the width of the specimen — from a narrow strip (approaching uniaxial tension) to a full-width disc (approaching equibiaxial stretching) — different strain paths are induced, and the major/minor strains at failure are recorded to construct the FLC.
+
+In this work, seven specimen widths are considered: $W = 20, 50, 80, 90, 100, 120, 200$\,mm. Due to symmetry, only a quarter model is simulated.
+
+\section{Forming Limit Diagram}
+
+The Forming Limit Diagram (FLD) plots the major principal strain $\varepsilon_1$ against the minor principal strain $\varepsilon_2$ at the onset of localised necking. The Forming Limit Curve (FLC) is the boundary in this diagram separating safe deformation from failure. Points below the FLC are safe; points above indicate necking or fracture.
+
+The shape of the FLC depends on the material, thickness, strain rate, and temperature. Key regions are:
+\begin{itemize}
+  \item $\varepsilon_2 < 0$: uniaxial to plane-strain tension (left side of FLC)
+  \item $\varepsilon_2 = 0$: plane-strain condition (minimum of FLC, most critical)
+  \item $\varepsilon_2 > 0$: biaxial stretching (right side of FLC)
+\end{itemize}
+
+\section{Hosford-Coulomb Failure Criterion}
+
+The VUMAT implemented in this project uses the Hosford-Coulomb (HC) failure criterion. This criterion couples a pressure-dependent fracture locus with the Hosford equivalent stress, making it well suited for sheet metal forming under combined tension and shear states.
+
+The HC criterion is expressed as a function of the stress triaxiality $\eta$ and the Lode angle parameter $\theta$. Fracture is predicted when the equivalent plastic strain $\bar{\varepsilon}^p$ reaches the critical strain $\bar{\varepsilon}^p_f(\eta, \theta)$ defined by the HC surface.
+
+The VUMAT tracks 17 solution-dependent variables (SDVs) per integration point, including:
+\begin{itemize}
+  \item SDV1: Equivalent plastic strain (EQPS), used as the primary failure indicator and for FLC extraction.
+  \item SDV8 ($\beta$): Stress state variable initialised to 1.0.
+  \item SDV17 ($\bar{\varepsilon}^p_f$): Critical fracture strain computed from the HC surface.
+\end{itemize}
+
+Element deletion occurs when the fracture criterion is met, which is detected in post-processing via the STATUS field variable.

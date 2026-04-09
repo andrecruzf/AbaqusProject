@@ -1,0 +1,48 @@
+\chapter{Numerical Model}\label{chap:numerical_model}
+
+\section{Model Overview}
+
+The FE model replicates the Nakazima test in Abaqus/Explicit. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost. The model consists of four parts:
+\begin{itemize}
+  \item \textbf{Blank}: deformable shell/solid, meshed with the specimen geometry.
+  \item \textbf{Punch}: hemispherical rigid body, displaces vertically at a controlled velocity.
+  \item \textbf{Die}: rigid ring, fixed in space.
+  \item \textbf{Blank holder}: rigid plate, applies a clamping force to the blank edge.
+\end{itemize}
+
+The geometry files (`.cae` and `.inp`) are provided by the supervisor and imported for each specimen width.
+
+\section{Material Model}
+
+The blank material is defined via a VUMAT Fortran subroutine (\texttt{VUMAT\_explicit.f}), which implements the Hosford-Coulomb criterion with 46 material constants. The subroutine computes the stress update using a radial return algorithm and evaluates the fracture criterion at each increment. Initial conditions for SDV8 ($\beta = 1.0$) and SDV17 ($\bar{\varepsilon}^p_f$) are injected programmatically at the start of the step to work around an Abaqus 2023 CAE limitation with VUMAT predefined fields.
+
+\section{Boundary Conditions and Interactions}
+
+Symmetry boundary conditions are applied on the two cut planes of the quarter model. The blank holder is fixed in the vertical direction. The punch is prescribed a smooth-step velocity amplitude to avoid dynamic effects at the start of the simulation. Surface-to-surface kinematic contact is defined between the blank and each rigid tool, with a Coulomb friction coefficient set in \texttt{config.py}.
+
+\section{Step and Output}
+
+A single Dynamic Explicit step is used. Mass scaling is applied to reduce computation time while keeping the ratio of kinetic to internal energy below 5\%. Field outputs are requested at regular intervals and include:
+\begin{itemize}
+  \item \texttt{LE}: Logarithmic strain tensor (used to compute principal strains $\varepsilon_1$, $\varepsilon_2$).
+  \item \texttt{SDV1--17}: All solution-dependent variables (EQPS, stress state, fracture strain).
+  \item \texttt{STATUS}: Element status (0 = deleted, used to detect failure frame).
+  \item \texttt{S}, \texttt{U}, \texttt{RF}, \texttt{TRIAX}: Stress, displacement, reaction forces, triaxiality.
+\end{itemize}
+
+\section{Simulation Pipeline}
+
+The entire workflow is automated via a set of Python and shell scripts. The pipeline is summarised in Figure~\ref{fig:pipeline} and runs end-to-end with a single \texttt{sbatch run\_cluster.sh} command on the ETH Euler cluster.
+
+\begin{enumerate}
+  \item \texttt{config.py} — Sets all parameters (width, thickness, friction, VUMAT constants, output directory).
+  \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model and write the \texttt{.inp} file.
+  \item Abaqus/Explicit solver — Runs the simulation on the compute node.
+  \item \texttt{postproc.py} — Extracts principal strains and EQPS at failure → \texttt{strain\_path.csv}.
+  \item \texttt{postproc\_movie.py} — Renders a SDV1 (EQPS) animation → \texttt{.webm}.
+  \item \texttt{plot\_flc.py} — Aggregates all \texttt{strain\_path.csv} files and plots the FLC.
+\end{enumerate}
+
+\section{Failure Detection}
+
+The failure frame is defined as the last output frame before the first element deletion, detected by a drop in STATUS below 0.5. At that frame, the element with the maximum SDV1 (EQPS) is identified as the critical element. Its major and minor principal strains, computed analytically from the LE tensor eigenvalues, define one point on the FLC.
