@@ -1,33 +1,74 @@
 \chapter{Theoretical Background}\label{chap:theory}
 
-\section{The Nakazima Test}
-
-The Nakazima test is a standardised experimental method for determining the FLC of sheet metal. A circular blank is clamped between a die and a blank holder, and a hemispherical punch is pushed through the centre until the blank fractures. By varying the width of the specimen — from a narrow strip (approaching uniaxial tension) to a full-width disc (approaching equibiaxial stretching) — different strain paths are induced, and the major/minor strains at failure are recorded to construct the FLC.
-
-In this work, seven specimen widths are considered: $W = 20, 50, 80, 90, 100, 120, 200$\,mm. Due to symmetry, only a quarter model is simulated.
-
 \section{Forming Limit Diagram}
 
-The Forming Limit Diagram (FLD) plots the major principal strain $\varepsilon_1$ against the minor principal strain $\varepsilon_2$ at the onset of localised necking. The Forming Limit Curve (FLC) is the boundary in this diagram separating safe deformation from failure. Points below the FLC are safe; points above indicate necking or fracture.
+The Forming Limit Diagram (FLD) plots the major principal strain $\varepsilon_1$ against the minor principal strain $\varepsilon_2$ at the onset of localised necking. The Forming Limit Curve (FLC) is the boundary in this diagram separating safe deformation from failure. Points below the FLC are considered safe; points above indicate necking or fracture.
 
-The shape of the FLC depends on the material, thickness, strain rate, and temperature. Key regions are:
+The shape of the FLC depends on the material, sheet thickness, strain rate, and temperature. Three characteristic regions are distinguished:
 \begin{itemize}
   \item $\varepsilon_2 < 0$: uniaxial to plane-strain tension (left side of FLC)
-  \item $\varepsilon_2 = 0$: plane-strain condition (minimum of FLC, most critical)
+  \item $\varepsilon_2 = 0$: plane-strain condition (minimum of FLC, most critical point)
   \item $\varepsilon_2 > 0$: biaxial stretching (right side of FLC)
+\end{itemize}
+
+\section{Experimental Test Methods}
+
+Two standardised experimental methods are used to determine FLCs, both described in ISO~12004-2~\cite{ISO120042}. They share the same die and blank holder geometry but differ in punch shape and, consequently, in the linearity of the induced strain paths.
+
+\subsection{Nakazima Test}
+
+In the Nakazima test, a hemispherical punch of diameter 100\,mm is pushed through a clamped blank until fracture. By varying the width of the specimen — from a narrow strip (approaching uniaxial tension) to a full-width disc (approaching equibiaxial stretching) — different strain paths are induced along the FLC. The method is widely used due to its simplicity, but the strain path at the specimen apex is known to be slightly non-linear due to bending and contact pressure effects~\cite{ISO120042}.
+
+In this work, specimen widths $W \in \{20, 50, 80, 100, 120, 200\}$\,mm are considered. Due to symmetry, only a quarter model is simulated.
+
+\subsection{Marciniak Test}
+
+In the Marciniak test, a flat-bottomed cylindrical punch (diameter 100\,mm, edge fillet 10\,mm per ISO~12004-2) is used instead of a hemisphere. A carrier blank with a central hole is placed between the punch and the specimen to avoid direct punch--specimen contact and to ensure that failure occurs in a region of more homogeneous strain. The Marciniak configuration produces more linear strain paths than Nakazima, improving the accuracy of FLC determination~\cite{ISO120042, Min2017}.
+
+Key tool dimensions per ISO~12004-2~\cite{ISO120042}:
+\begin{itemize}
+  \item Punch diameter: $(100 \pm 25)$\,mm; edge fillet: 10\% of diameter ($= 10$\,mm)
+  \item Die inner diameter: 120\% of punch diameter ($= 120$\,mm)
+  \item Die fillet: 10--20\% of punch diameter ($= 10$--20\,mm)
 \end{itemize}
 
 \section{Hosford-Coulomb Failure Criterion}
 
-The VUMAT implemented in this project uses the Hosford-Coulomb (HC) failure criterion. This criterion couples a pressure-dependent fracture locus with the Hosford equivalent stress, making it well suited for sheet metal forming under combined tension and shear states.
+The VUMAT implemented in this project uses the Hosford-Coulomb (HC) failure criterion. This criterion couples a pressure-dependent fracture locus with the Hosford equivalent stress, making it well suited for sheet metal forming under combined tension and shear stress states.
 
-The HC criterion is expressed as a function of the stress triaxiality $\eta$ and the Lode angle parameter $\theta$. Fracture is predicted when the equivalent plastic strain $\bar{\varepsilon}^p$ reaches the critical strain $\bar{\varepsilon}^p_f(\eta, \theta)$ defined by the HC surface.
+The HC criterion predicts fracture when the equivalent plastic strain $\bar{\varepsilon}^p$ reaches a critical value $\bar{\varepsilon}^p_f(\eta, \bar{\theta})$ that depends on the stress triaxiality $\eta$ and the Lode angle parameter $\bar{\theta}$. The fracture locus is calibrated from a set of 46 material constants identified from mechanical characterisation tests.
 
 The VUMAT tracks 17 solution-dependent variables (SDVs) per integration point, including:
 \begin{itemize}
-  \item SDV1: Equivalent plastic strain (EQPS), used as the primary failure indicator and for FLC extraction.
-  \item SDV8 ($\beta$): Stress state variable initialised to 1.0.
+  \item SDV1: Equivalent plastic strain (EQPS) — primary field variable for failure detection and FLC extraction.
+  \item SDV6: Damage variable $D$.
+  \item SDV7: Failure switch — triggers element deletion when the HC criterion is met.
+  \item SDV8 ($\beta$): Softening function, initialised to 1.0.
   \item SDV17 ($\bar{\varepsilon}^p_f$): Critical fracture strain computed from the HC surface.
 \end{itemize}
 
-Element deletion occurs when the fracture criterion is met, which is detected in post-processing via the STATUS field variable.
+Element deletion occurs when SDV7 is set, detected in post-processing via the STATUS field variable (STATUS\,$< 0.5$ indicates a deleted element).
+
+\section{FLC Identification Criteria}
+
+Determining the onset of localised necking from strain field data is non-trivial. Several criteria have been proposed in the literature, each based on different physical assumptions. These are relevant to Task~II of the project; they are summarised here for context.
+
+\subsection{ISO 12004-2 Position-Dependent Method}
+
+The standard method in ISO~12004-2~\cite{ISO120042} fits an inverse parabola to the cross-sectional strain profile perpendicular to the crack at the last frame before fracture. The FLC point is extrapolated from the fit at the section centre. The method requires spatial strain data (DIC or printed grid) and is position-dependent.
+
+\subsection{Volk-Hora Time-Dependent Method}
+
+Volk and Hora~\cite{VolkHora2011} proposed a fully automatic, time-dependent algorithm that identifies necking onset from the evolution of the strain distribution and its time derivatives. Necking is detected from a 2D analysis of strain localisation without relying on a single cross-section, making the method more robust and user-independent than the ISO procedure.
+
+\subsection{Merklein Time-Dependent Method}
+
+Merklein et al.~\cite{Merklein2010} introduced a time-dependent regression method that detects necking by fitting a polynomial to the time evolution of the major strain at the critical point. The onset is identified when the strain rate deviates significantly from the pre-necking trend, independently of the strain state.
+
+\subsection{Pham-Sigvant Method}
+
+Pham et al.~\cite{Pham2023} proposed a method based on the coefficient of variation of the DIC strain field over a local neighbourhood. Necking onset is defined by a threshold on this quantity. The method was validated on DP800 steel and AA6016 aluminium and yields consistently lower FLC values than ISO and time-dependent methods.
+
+\subsection{Min-Stoughton Curvature Method}
+
+Min et al.~\cite{Min2017} developed a curvature-based criterion that detects necking from the second derivative of the major strain in time or space. Originally designed for Marciniak tests, it was extended to Nakazima tests with corrections for the non-linear strain path effects introduced by the hemispherical punch.

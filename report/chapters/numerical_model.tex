@@ -2,15 +2,15 @@
 
 \section{Model Overview}
 
-The FE model replicates the Nakazima test in Abaqus/Explicit. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost. The model consists of four parts:
+The FE model replicates the Nakazima or Marciniak test in Abaqus/Explicit, selected via the \texttt{TEST\_TYPE} flag in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost. The model consists of four parts:
 \begin{itemize}
-  \item \textbf{Blank}: deformable shell/solid, meshed with the specimen geometry.
-  \item \textbf{Punch}: hemispherical rigid body, displaces vertically at a controlled velocity.
-  \item \textbf{Die}: rigid ring, fixed in space.
+  \item \textbf{Blank}: deformable solid, meshed with the supervisor-provided specimen geometry.
+  \item \textbf{Punch}: rigid body — hemispherical (Nakazima) or flat cylindrical with 10\,mm edge fillet (Marciniak, ISO~12004-2~\cite{ISO120042}).
+  \item \textbf{Die}: rigid ring, fixed in space. Inner radius 52.5\,mm (Nakazima) or 60\,mm (Marciniak).
   \item \textbf{Blank holder}: rigid plate, applies a clamping force to the blank edge.
 \end{itemize}
 
-The geometry files (`.cae` and `.inp`) are provided by the supervisor and imported for each specimen width.
+The specimen geometry files (\texttt{.cae}) are provided by the supervisor for specimen widths W20 to W200 and are shared between both test configurations.
 
 \section{Material Model}
 

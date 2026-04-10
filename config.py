@@ -16,7 +16,7 @@ MODEL_NAME = 'Model-1'
 import os as _os
 # 'nakazima' → hemispherical punch
 # 'marciniak' → flat punch (ISO 12004-2 §6.3.4)
-TEST_TYPE = _os.environ.get('TEST_TYPE', 'nakazima').lower()
+TEST_TYPE = _os.environ.get('TEST_TYPE', 'marciniak').lower()
 
 # ── Specimen selection ────────────────────────────────────────
 # Width in mm — selects geometry file W{width}.inp from INP_DIR.

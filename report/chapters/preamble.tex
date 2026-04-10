@@ -3,7 +3,7 @@
 
 \chapter*{Preface}
 
-This report presents the results of a semester project conducted at the Institute for Dynamic Systems and Control (IDSC), ETH Zürich. The project focuses on the numerical generation of Forming Limit Diagrams (FLDs) using finite element simulations of the Nakazima test in Abaqus/Explicit.
+This report presents the results of a semester project conducted at the Chair of Artificial Intelligence in Mechanics and Manufacturing, ETH Zürich. The project is part of a broader research initiative on robust Forming Limit Curve identification, combining experimental testing and numerical simulation. This work focuses specifically on Task III of the project outline: the development of a fully automated numerical simulation framework for the generation of Forming Limit Curves using Nakazima and Marciniak test geometries in Abaqus/Explicit.
 
 \cleardoublepage
 
@@ -21,7 +21,7 @@ This report presents the results of a semester project conducted at the Institut
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-This work investigates the numerical determination of Forming Limit Diagrams (FLDs) using finite element simulations of the Nakazima test. The FE model is built in Abaqus/Explicit and uses a VUMAT user material subroutine implementing the Hosford-Coulomb failure criterion. Several specimen geometries (widths W20 to W200\,mm) are simulated to cover strain paths ranging from uniaxial tension to equibiaxial stretching. The critical major and minor strains at failure are extracted and assembled into a Forming Limit Curve (FLC).
+This work presents an automated finite element simulation framework for the numerical determination of Forming Limit Curves (FLCs) from Nakazima and Marciniak tests. The FE models are built in Abaqus/Explicit using a VUMAT user material subroutine implementing the Hosford-Coulomb fracture criterion. A range of specimen geometries (widths W20 to W200\,mm) are simulated for both test configurations to cover the full spectrum of strain paths from uniaxial tension to equibiaxial stretching. The critical major and minor principal strains at the onset of failure are extracted automatically from the output database and assembled into the FLC. The pipeline runs end-to-end on the ETH Euler HPC cluster with a single submission command, enabling systematic parametric studies of the influence of specimen geometry, sheet thickness, and test configuration on the forming limit.
 
 \cleardoublepage
 
@@ -37,11 +37,14 @@ This work investigates the numerical determination of Forming Limit Diagrams (FL
  $\varepsilon_1$ \> Major principal strain \> [$-$] \\[0.5ex]
  $\varepsilon_2$ \> Minor principal strain \> [$-$] \\[0.5ex]
  $\bar{\varepsilon}^p$ \> Equivalent plastic strain (EQPS) \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p_f$ \> Fracture strain (HC criterion) \> [$-$] \\[0.5ex]
  $\sigma$ \> Cauchy stress tensor \> [MPa] \\[0.5ex]
  $\eta$ \> Stress triaxiality \> [$-$] \\[0.5ex]
- $\theta$ \> Lode angle parameter \> [$-$] \\[0.5ex]
+ $\bar{\theta}$ \> Lode angle parameter \> [$-$] \\[0.5ex]
  $t$ \> Blank thickness \> [mm] \\[0.5ex]
- $W$ \> Specimen width \> [mm]
+ $W$ \> Specimen width identifier \> [mm] \\[0.5ex]
+ $R$ \> Punch radius \> [mm] \\[0.5ex]
+ $f$ \> Punch edge fillet radius (Marciniak) \> [mm]
 \end{tabbing}
 
 \section*{Acronyms and Abbreviations}
@@ -49,6 +52,7 @@ This work investigates the numerical determination of Forming Limit Diagrams (FL
  \hspace*{2.0cm} \= \kill
  BC \> Boundary condition \\[0.5ex]
  CAE \> Complete Abaqus Environment \\[0.5ex]
+ DIC \> Digital Image Correlation \\[0.5ex]
  EQPS \> Equivalent Plastic Strain \\[0.5ex]
  FE \> Finite Element \\[0.5ex]
  FEA \> Finite Element Analysis \\[0.5ex]
