@@ -87,8 +87,20 @@ echo "=============================================="
 ODB_PATH="$SCRATCH_DIR/${JOB_NAME}.odb" xvfb-run -a abaqus cae noGUI="$SLURM_SUBMIT_DIR/postproc_movie.py" || echo "  WARNING: movie step failed, continuing."
 
 echo "  Movie written."
+
+# ── Step 5: Copy results from scratch back to home ────────────────────────────
+echo "=============================================="
+echo "  Copying results to home ..."
+echo "=============================================="
+cp "$SCRATCH_DIR/strain_path.csv"             "$WORK_DIR/" 2>/dev/null \
+    && echo "  strain_path.csv ✓" \
+    || echo "  WARNING: strain_path.csv not found in scratch"
+cp "$SCRATCH_DIR/${JOB_NAME}_movie.webm"      "$WORK_DIR/" 2>/dev/null \
+    && echo "  ${JOB_NAME}_movie.webm ✓" \
+    || echo "  WARNING: movie not found in scratch (ffmpeg may have failed)"
+
 echo "=============================================="
 echo "  All done: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  ODB in scratch (auto-deleted in 2 weeks): $SCRATCH_DIR/${JOB_NAME}.odb"
-echo "  Results in home: strain_path.csv + movie"
+echo "  Results in home: $WORK_DIR/"
 echo "=============================================="
