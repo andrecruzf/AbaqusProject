@@ -54,7 +54,7 @@ for W in "${WIDTHS[@]}"; do
     _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
     JOB_NAME="${_test_cap}_W${W}_t${_t}"
     OUTPUT_SUBDIR="$JOB_NAME"
-    JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && sbatch --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR} --parsable run_cluster.sh")
+    JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && sbatch --job-name=${JOB_NAME} --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR} --parsable run_cluster.sh")
     echo "  W${W}_t${THICKNESS} → job ${JOB_ID}"
     echo ""
 done

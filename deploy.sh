@@ -34,7 +34,7 @@ echo "  Build done."
 
 # ── 3. Submit solver job ──────────────────────────────────────
 echo "  Submitting solver job ..."
-JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && source last_build.env && sbatch --export=ALL,JOB_NAME=\$JOB_NAME,OUTPUT_SUBDIR=\$OUTPUT_SUBDIR --parsable run_cluster.sh")
+JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && source last_build.env && sbatch --job-name=\$JOB_NAME --export=ALL,JOB_NAME=\$JOB_NAME,OUTPUT_SUBDIR=\$OUTPUT_SUBDIR --parsable run_cluster.sh")
 echo "=============================================="
 echo "  Job submitted: $JOB_ID"
 echo "  Monitor with:"
