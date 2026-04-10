@@ -26,42 +26,46 @@ module load intel-oneapi-compilers/2023.2.0 intel-oneapi-mpi/2021.10.0
 
 NCPUS=${SLURM_CPUS_PER_TASK:-4}
 
-# ── Step 1: Build model (generates .inp and writes last_build.env) ────────────
-echo "=============================================="
-echo "  Build — $(date '+%Y-%m-%d %H:%M:%S')"
-echo "=============================================="
-
+# ── Step 1: Load env written by build step on login node ─────────────────────
 cd "$SLURM_SUBMIT_DIR"
-abaqus cae noGUI="$SLURM_SUBMIT_DIR/build_model.py"
 
-# Source the env written by job.py to get the correct JOB_NAME / OUTPUT_SUBDIR
-# shellcheck source=last_build.env
-source "$SLURM_SUBMIT_DIR/last_build.env"
+# Accept JOB_NAME / OUTPUT_SUBDIR from SLURM --export or last_build.env
+if [ -z "$JOB_NAME" ] || [ -z "$OUTPUT_SUBDIR" ]; then
+    source "$SLURM_SUBMIT_DIR/last_build.env"
+fi
 
 WORK_DIR="$SLURM_SUBMIT_DIR/$OUTPUT_SUBDIR"
+SCRATCH_DIR="/cluster/scratch/acruzfaria/$OUTPUT_SUBDIR"
 VUMAT="$WORK_DIR/VUMAT_explicit.f"
 
-# ── Step 2: Run solver ────────────────────────────────────────────────────────
+# ── Step 2: Run solver in scratch ─────────────────────────────────────────────
+# Solver output (ODB, dat, fil, ...) goes to scratch to avoid filling home (50 GB limit).
+# Scratch is auto-deleted after 2 weeks — results are extracted before that in steps 3-4.
+mkdir -p "$SCRATCH_DIR"
+cp "$WORK_DIR/${JOB_NAME}.inp" "$SCRATCH_DIR/"
+cp "$VUMAT" "$SCRATCH_DIR/"
+
 echo "=============================================="
 echo "  Abaqus Explicit — Nakazima"
-echo "  Job     : $JOB_NAME"
-echo "  CPUs    : $NCPUS"
-echo "  WORK_DIR: $WORK_DIR"
-echo "  Start   : $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  Job      : $JOB_NAME"
+echo "  CPUs     : $NCPUS"
+echo "  HOME_DIR : $WORK_DIR"
+echo "  SCRATCH  : $SCRATCH_DIR"
+echo "  Start    : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
-cd "$WORK_DIR"
+cd "$SCRATCH_DIR"
 
-abaqus job="$JOB_NAME"   \
-       user="$VUMAT"      \
-       cpus="$NCPUS"      \
-       mp_mode=threads    \
-       double=explicit    \
+abaqus job="$JOB_NAME"                    \
+       user="VUMAT_explicit.f"            \
+       cpus="$NCPUS"                      \
+       mp_mode=threads                    \
+       double=explicit                    \
        interactive
 
 echo ""
 echo "Done: $(date '+%Y-%m-%d %H:%M:%S')"
-echo "Results: $WORK_DIR/${JOB_NAME}.odb"
+echo "Results: $SCRATCH_DIR/${JOB_NAME}.odb"
 
 # ── Step 3: Extract strain path ───────────────────────────────────────────────
 echo "=============================================="
@@ -70,7 +74,7 @@ echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
 cd "$SLURM_SUBMIT_DIR"
-abaqus python postproc.py -- "$WORK_DIR/${JOB_NAME}.odb"
+abaqus python postproc.py -- "$SCRATCH_DIR/${JOB_NAME}.odb"
 
 echo "  strain_path.csv written."
 
@@ -80,9 +84,11 @@ echo "  Post-processing — EQPS movie"
 echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
-ODB_PATH="$WORK_DIR/${JOB_NAME}.odb" xvfb-run -a abaqus cae noGUI="$SLURM_SUBMIT_DIR/postproc_movie.py" || echo "  WARNING: movie step failed, continuing."
+ODB_PATH="$SCRATCH_DIR/${JOB_NAME}.odb" xvfb-run -a abaqus cae noGUI="$SLURM_SUBMIT_DIR/postproc_movie.py" || echo "  WARNING: movie step failed, continuing."
 
 echo "  Movie written."
 echo "=============================================="
 echo "  All done: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  ODB in scratch (auto-deleted in 2 weeks): $SCRATCH_DIR/${JOB_NAME}.odb"
+echo "  Results in home: strain_path.csv + movie"
 echo "=============================================="

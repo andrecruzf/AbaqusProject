@@ -85,6 +85,49 @@ def create_punch(cfg):
     print('  Punch  : tip at local y=0  (→ global z=0 after rotation)  OK')
 
 
+def create_flat_punch(cfg):
+    """
+    Flat Marciniak punch — analytic rigid surface (ISO 12004-2 §6.3.4).
+
+    Profile (local Y = revolution axis, X = radial):
+      • Flat face at y=0 from r=0 to r=R
+      • PUNCH_EDGE_FILLET arc at the outer edge (convex, connects flat to cylinder)
+      • Cylindrical body below
+
+    The punch moves in +Z (global) after the assembly rotation.
+    """
+    R = cfg.PUNCH_RADIUS
+    f = cfg.PUNCH_EDGE_FILLET
+    h = cfg.PUNCH_HEIGHT
+
+    m = mdb.models[cfg.MODEL_NAME]
+    s = m.ConstrainedSketch(name='__profile__', sheetSize=400.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -200.0), point2=(0.0, 200.0))
+    s.FixedConstraint(entity=g[2])
+
+    # Flat face at y=0
+    s.Line(point1=(0.0, 0.0), point2=(R, 0.0))
+    # Cylindrical wall
+    s.Line(point1=(R, 0.0), point2=(R, -h))
+    # Edge fillet at outer corner (flat face meets cylindrical wall)
+    s.FilletByRadius(
+        radius=f,
+        curve1=g[3], nearPoint1=(R - f, 0.0),
+        curve2=g[4], nearPoint2=(R, -f))
+    # Bottom close back to axis
+    s.Line(point1=(R, -h), point2=(0.0, -h))
+
+    p = m.Part(name='Punch', dimensionality=THREE_D,
+               type=ANALYTIC_RIGID_SURFACE)
+    p = m.parts['Punch']
+    p.AnalyticRigidSurfRevolve(sketch=s)
+    s.unsetPrimaryObject()
+    del m.sketches['__profile__']
+    print('  Punch (Marciniak flat): R=%.1f mm, edge fillet=%.1f mm  OK' % (R, f))
+
+
 def create_die(cfg):
     """
     Die (draw ring) — analytic rigid surface.
@@ -234,6 +277,10 @@ def import_specimen_cae(cfg):
             print('  .cae version mismatch — upgrading via upgradeMdb...')
             _upgrade_cae(abs_path)
             mdb.openAuxMdb(pathName=abs_path)
+        elif 'corrupt' in str(e).lower():
+            print('  WARNING: .cae corrupt, falling back to .inp ...')
+            import_specimen(cfg)
+            return
         else:
             raise
 
@@ -609,9 +656,15 @@ def create_tool_rp_and_surfaces(cfg):
 # ─────────────────────────────────────────────────────────────
 
 def create_parts(cfg):
-    """Create all parts according to GEOMETRY_SOURCE."""
+    """Create all parts according to GEOMETRY_SOURCE and TEST_TYPE."""
     print('--- Part creation ---')
-    create_punch(cfg)
+    test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
+    if test_type == 'nakazima':
+        create_punch(cfg)
+    elif test_type == 'marciniak':
+        create_flat_punch(cfg)
+    else:
+        raise ValueError("Unknown TEST_TYPE: '%s'." % test_type)
     create_die(cfg)
     create_matrix(cfg)
 

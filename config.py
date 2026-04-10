@@ -12,10 +12,16 @@
 # ── Abaqus names ──────────────────────────────────────────────
 MODEL_NAME = 'Model-1'
 
+# ── Test type ─────────────────────────────────────────────────
+import os as _os
+# 'nakazima' → hemispherical punch
+# 'marciniak' → flat punch (ISO 12004-2 §6.3.4)
+TEST_TYPE = _os.environ.get('TEST_TYPE', 'nakazima').lower()
+
 # ── Specimen selection ────────────────────────────────────────
 # Width in mm — selects geometry file W{width}.inp from INP_DIR.
 # Available in Engin_Input_Files/geometries: 20, 50, 80, 100, 120, 200
-SPECIMEN_WIDTH = 50
+SPECIMEN_WIDTH = int(_os.environ.get('SPECIMEN_WIDTH', 20))
 
 # Path to geometry .inp files (relative to AbaqusProject/ working directory)
 INP_DIR = 'geometries'
@@ -27,26 +33,35 @@ SPECIMEN_PART_NAME = None
 NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)
 
 # ── Sheet thickness ───────────────────────────────────────────
-BLANK_THICKNESS = 1   # mm — varies per sheet batch
-JOB_NAME        = 'Nakazima_W{}_t{}'.format(SPECIMEN_WIDTH, BLANK_THICKNESS)
-CAE_NAME        = 'nakazima_W{}_t{}.cae'.format(SPECIMEN_WIDTH, BLANK_THICKNESS)
-INP_NAME        = 'nakazima_W{}_t{}'.format(SPECIMEN_WIDTH, BLANK_THICKNESS)
-OUTPUT_DIR      = JOB_NAME   # subdirectory created per simulation run
+BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1.5))  # mm — varies per sheet batch
+_t        = str(BLANK_THICKNESS).replace('.', 'p')
+_test_cap = TEST_TYPE.capitalize()   # 'Nakazima' or 'Marciniak'
+JOB_NAME  = '{}_W{}_t{}'.format(_test_cap, SPECIMEN_WIDTH, _t)
+CAE_NAME  = '{}_W{}_t{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t)
+INP_NAME  = '{}_W{}_t{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t)
+OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
 # ── Die geometry ──────────────────────────────────────────────
-DIE_INNER_RADIUS = 52.5  # mm — die throat / punch clearance radius
-DIE_OUTER_RADIUS = 73.0  # mm — outer radius (die and blank holder)
-DIE_FILLET       = 8.0   # mm — die throat fillet radius
+DIE_OUTER_RADIUS = 73.0  # mm — outer radius (die and blank holder), same for both tests
 DIE_HEIGHT       = 40.0  # mm — die wall height above blank
-
-# ── Blank holder (Matrix) geometry ───────────────────────────
-BH_INNER_RADIUS  = 54.5  # mm — blank holder inner contact radius
 BH_HEIGHT        = 44.0  # mm — blank holder height below blank
-BH_FILLET        = 4.0   # mm — fillet radius at inner contact edge
+BH_FILLET        = 4.0   # mm — blank holder inner fillet radius
+
+if TEST_TYPE == 'nakazima':
+    DIE_INNER_RADIUS = 52.5  # mm — die throat radius
+    DIE_FILLET       = 8.0   # mm — die throat fillet
+    BH_INNER_RADIUS  = 54.5  # mm — blank holder inner radius (2 mm clearance over die)
+elif TEST_TYPE == 'marciniak':  # ISO 12004-2 §6.3.4.2
+    DIE_INNER_RADIUS = 60.0  # mm — 120% of punch diameter (Ø120 mm die)
+    DIE_FILLET       = 12.0  # mm — 12% of punch diameter (mid of 10–20% range)
+    BH_INNER_RADIUS  = 62.0  # mm — 2 mm clearance over die inner radius
+else:
+    raise ValueError("Unknown TEST_TYPE: '%s'. Expected 'nakazima' or 'marciniak'." % TEST_TYPE)
 
 # ── Punch geometry ────────────────────────────────────────────
-PUNCH_RADIUS = 50.0      # mm — hemispherical punch radius
-PUNCH_HEIGHT = 60.0      # mm — punch cylindrical body height
+PUNCH_RADIUS      = 50.0   # mm — punch radius (hemi for Nakazima, flat for Marciniak)
+PUNCH_HEIGHT      = 60.0   # mm — punch cylindrical body height
+PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of diameter per ISO 12004-2)
 
 # ── Forming parameters ────────────────────────────────────────
 PUNCH_DISPLACEMENT = 50.0                        # mm — total punch travel
