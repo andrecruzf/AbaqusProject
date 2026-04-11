@@ -10,12 +10,12 @@
 # =============================================================
 
 #SBATCH --job-name=nakazima
-#SBATCH --output=nakazima_%j.out
-#SBATCH --error=nakazima_%j.err
+#SBATCH --output=%x_%j.out
+#SBATCH --error=%x_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem-per-cpu=4G
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 
 # =============================================================
 set -e

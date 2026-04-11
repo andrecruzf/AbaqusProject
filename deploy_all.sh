@@ -17,12 +17,14 @@ EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TEST_TYPE=${1:-nakazima}
-THICKNESS=${2:-1.5}
+DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
+DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
+TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
+THICKNESS=${2:-$DEFAULT_THICKNESS}
 shift 2 || true
 WIDTHS=("${@}")
 if [ ${#WIDTHS[@]} -eq 0 ]; then
-    WIDTHS=(20 50 80 100 120 200)
+    WIDTHS=(20 50 80 90 100 120 200)
 fi
 
 echo "=============================================="
