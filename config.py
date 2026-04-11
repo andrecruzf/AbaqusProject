@@ -16,7 +16,7 @@ MODEL_NAME = 'Model-1'
 import os as _os
 # 'nakazima' → hemispherical punch
 # 'marciniak' → flat punch (ISO 12004-2 §6.3.4)
-TEST_TYPE = _os.environ.get('TEST_TYPE', 'marciniak').lower()
+TEST_TYPE = _os.environ.get('TEST_TYPE', 'nakazima').lower()
 
 # ── Specimen selection ────────────────────────────────────────
 # Width in mm — selects geometry file W{width}.inp from INP_DIR.
@@ -33,12 +33,14 @@ SPECIMEN_PART_NAME = None
 NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)
 
 # ── Sheet thickness ───────────────────────────────────────────
-BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1.5))  # mm — varies per sheet batch
+BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1))  # mm — varies per sheet batch
+MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', 0.0))
 _t        = str(BLANK_THICKNESS).replace('.', 'p')
 _test_cap = TEST_TYPE.capitalize()   # 'Nakazima' or 'Marciniak'
-JOB_NAME  = '{}_W{}_t{}'.format(_test_cap, SPECIMEN_WIDTH, _t)
-CAE_NAME  = '{}_W{}_t{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t)
-INP_NAME  = '{}_W{}_t{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t)
+_ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
+JOB_NAME  = '{}_W{}_t{}_ang{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang)
+CAE_NAME  = '{}_W{}_t{}_ang{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
+INP_NAME  = '{}_W{}_t{}_ang{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
 OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
 # ── Die geometry ──────────────────────────────────────────────
@@ -75,12 +77,6 @@ MASS_SCALING_DT  = 1.0e-5   # s — target stable time increment (FIXED type)
 # ── Friction ──────────────────────────────────────────────────
 FR_PUNCH = 0.10   # Coulomb coefficient — punch / blank interface
 FR_CLAMP = 0.15   # Coulomb coefficient — die / blank and blank-holder / blank
-
-# ── Material orientation ──────────────────────────────────────
-# Angle of the rolling direction (RD) from the global X-axis, in degrees.
-# 0°  → RD along X  (standard)
-# 90° → RD along Y
-MATERIAL_ORIENTATION_ANGLE = 0.0
 
 # ── VUMAT ─────────────────────────────────────────────────────
 # Path relative to the AbaqusProject/ working directory.
