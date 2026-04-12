@@ -89,10 +89,10 @@ def _add_history_elout(cfg, m, a):
         m.HistoryOutputRequest(
             name='HO_ElOut',
             createStepName='Forming',
-            variables=('S', 'LE', 'SDV', 'PEEQ'),
+            variables=('S', 'LE', 'LEP', 'SDV', 'PEEQ'),
             region=region,
             sectionPoints=DEFAULT,
             rebar=EXCLUDE)
-        print('  HO_ElOut: S, LE, SDV, SP, MISES, PEEQ on Specimen-1.ELOUT')
+        print('  HO_ElOut: S, LE, LEP, SDV, PEEQ on Specimen-1.ELOUT')
     except Exception as e:
         print('  WARNING HO_ElOut (ELOUT set not found or inaccessible): %s' % e)

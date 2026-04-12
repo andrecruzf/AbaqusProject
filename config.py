@@ -65,6 +65,13 @@ PUNCH_RADIUS      = 50.0   # mm — punch radius (hemi for Nakazima, flat for Ma
 PUNCH_HEIGHT      = 60.0   # mm — punch cylindrical body height
 PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of diameter per ISO 12004-2)
 
+# ── Dome zone radius for FLC post-processing ──────────────────
+# Observation zone used by postproc.py to find the critical element.
+# ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter
+# from the dome apex → 0.15 × 100 mm = 15 mm.
+# Overridable via R_DOME env var.
+R_DOME = float(_os.environ.get('R_DOME', 0.15 * PUNCH_RADIUS * 2.0))
+
 # ── Forming parameters ────────────────────────────────────────
 PUNCH_DISPLACEMENT = 50.0                        # mm — total punch travel
 STEP_TIME = PUNCH_DISPLACEMENT / 5.0             # s  — time-scaled (not real speed)
@@ -75,7 +82,7 @@ USE_MASS_SCALING = True
 MASS_SCALING_DT  = 1.0e-5   # s — target stable time increment (FIXED type)
 
 # ── Friction ──────────────────────────────────────────────────
-FR_PUNCH = 0.10   # Coulomb coefficient — punch / blank interface
+FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface
 FR_CLAMP = 0.15   # Coulomb coefficient — die / blank and blank-holder / blank
 
 # ── VUMAT ─────────────────────────────────────────────────────

@@ -51,25 +51,32 @@ for subdir in output_dirs:
         print('  WARNING: %s not found — skipping.' % csv_path)
         continue
 
-    eps1s, eps2s = [], []
+    eps1s, eps2s, ftype = [], [], 'dome'
     with open(csv_path, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
             eps1s.append(float(row['eps1_major']))
             eps2s.append(float(row['eps2_minor']))
+            # fracture_type is the same for every row — just keep the last
+            if 'fracture_type' in row:
+                ftype = row['fracture_type']
 
     if not eps1s:
         print('  WARNING: %s is empty — skipping.' % csv_path)
         continue
 
+    flag = '' if ftype == 'dome' else '  [%s fracture — EXCLUDED from FLC]' % ftype
+    print('  %-35s  FLC point: (%.3f, %.3f)%s'
+          % (subdir, eps2s[-1], eps1s[-1], flag))
+
     paths.append({
-        'label':    subdir,
-        'eps1s':    eps1s,
-        'eps2s':    eps2s,
-        'flc_eps1': eps1s[-1],   # last row = point at failure
-        'flc_eps2': eps2s[-1],
+        'label':        subdir,
+        'eps1s':        eps1s,
+        'eps2s':        eps2s,
+        'flc_eps1':     eps1s[-1],
+        'flc_eps2':     eps2s[-1],
+        'fracture_type': ftype,
     })
-    print('  %-35s  FLC point: (%.3f, %.3f)' % (subdir, eps2s[-1], eps1s[-1]))
 
 if not paths:
     print('ERROR: no valid strain_path.csv files found.')
@@ -78,11 +85,13 @@ if not paths:
 # ── Save FLC points CSV ───────────────────────────────────────────────────────
 flc_csv = os.path.join(flc_outdir, 'flc_points.csv')
 flc_sorted = sorted(paths, key=lambda p: p['flc_eps2'])
+# Only dome-failure points form the FLC curve
+dome_points = [p for p in flc_sorted if p['fracture_type'] == 'dome']
 with open(flc_csv, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(['subdir', 'eps2_minor', 'eps1_major'])
+    writer.writerow(['subdir', 'eps2_minor', 'eps1_major', 'fracture_type'])
     for p in flc_sorted:
-        writer.writerow([p['label'], p['flc_eps2'], p['flc_eps1']])
+        writer.writerow([p['label'], p['flc_eps2'], p['flc_eps1'], p['fracture_type']])
 print('  FLC points  → %s' % flc_csv)
 
 # ── Plot ─────────────────────────────────────────────────────────────────────
@@ -102,19 +111,30 @@ COLORS = [
 fig, ax = plt.subplots(figsize=(10, 7))
 
 for i, p in enumerate(paths):
-    color = COLORS[i % len(COLORS)]
-    # Strain path (dashed, semi-transparent)
+    color  = COLORS[i % len(COLORS)]
+    valid  = p['fracture_type'] == 'dome'
+    label  = p['label'] if valid else p['label'] + ' [base fracture]'
+    # Strain path
     ax.plot(p['eps2s'], p['eps1s'],
-            color=color, alpha=0.45, linewidth=1.2, linestyle='--')
-    # FLC point marker
+            color=color,
+            alpha=0.45 if valid else 0.25,
+            linewidth=1.2,
+            linestyle='--' if valid else ':')
+    # FLC point marker — open symbol for invalid (non-dome) fractures
+    marker     = 'o' if valid else 'x'
+    markersize = 8   if valid else 9
     ax.plot(p['flc_eps2'], p['flc_eps1'],
-            'o', color=color, markersize=8, label=p['label'])
+            marker, color=color,
+            markersize=markersize,
+            markerfacecolor=color if valid else 'none',
+            markeredgewidth=2,
+            label=label)
 
-# FLC curve — connect critical points sorted by eps2
-if len(flc_sorted) >= 2:
-    curve_e2 = [p['flc_eps2'] for p in flc_sorted]
-    curve_e1 = [p['flc_eps1'] for p in flc_sorted]
-    ax.plot(curve_e2, curve_e1, 'k-', linewidth=2, zorder=5, label='FLC')
+# FLC curve — only dome-fracture points
+if len(dome_points) >= 2:
+    curve_e2 = [p['flc_eps2'] for p in dome_points]
+    curve_e1 = [p['flc_eps1'] for p in dome_points]
+    ax.plot(curve_e2, curve_e1, 'k-', linewidth=2, zorder=5, label='FLC (dome fractures only)')
 
 ax.axvline(0, color='grey', linewidth=0.8, linestyle=':')
 ax.set_xlabel(u'Minor strain \u03b5\u2082', fontsize=13)

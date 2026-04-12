@@ -74,7 +74,8 @@ echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
 cd "$SLURM_SUBMIT_DIR"
-abaqus python postproc.py -- "$SCRATCH_DIR/${JOB_NAME}.odb"
+R_DOME=${R_DOME:-$(python3 -c "import sys; sys.path.insert(0,'$SLURM_SUBMIT_DIR'); import config; print(config.R_DOME)")}
+R_DOME=${R_DOME} abaqus python postproc.py -- "$SCRATCH_DIR/${JOB_NAME}.odb"
 
 echo "  strain_path.csv written."
 

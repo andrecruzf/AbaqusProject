@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
 DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
+DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.R_DOME)")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
@@ -85,7 +86,7 @@ for W in "${WIDTHS[@]}"; do
     JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
         "cd ${EULER_DIR} && sbatch \
          --job-name=${JOB_NAME} \
-         --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+         --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},R_DOME=${DEFAULT_R_DOME} \
          --parsable run_cluster.sh")
 
     JOB_IDS+=("$JOB_ID")

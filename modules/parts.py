@@ -38,6 +38,48 @@ def _cae_path(cfg):
     return os.path.join(cfg.INP_DIR, 'W%d.cae' % cfg.SPECIMEN_WIDTH)
 
 
+def _add_elout_set(cfg, part):
+    """
+    Create the ELOUT element set on *part* by reading the element label from
+    the geometry .inp file.
+
+    ELOUT is defined in the .inp as a single-element set at the punch apex.
+    When the specimen is imported from a .cae file this set is absent — the
+    .cae only carries the geometry/mesh, not the named sets defined in .inp.
+    Parsing the label here ensures it propagates to the ODB and is available
+    in postproc.py without any extra lookup.
+    """
+    import re
+    inp = _inp_path(cfg)
+    if not os.path.isfile(inp):
+        print('  WARNING _add_elout_set: .inp not found (%s) — ELOUT skipped.' % inp)
+        return
+
+    label = None
+    with open(inp, 'r') as f:
+        in_elout = False
+        for line in f:
+            if re.match(r'\*Elset.*elset\s*=\s*ELOUT', line, re.IGNORECASE):
+                in_elout = True
+                continue
+            if in_elout:
+                stripped = line.strip().rstrip(',')
+                if stripped.isdigit():
+                    label = int(stripped)
+                break
+
+    if label is None:
+        print('  WARNING _add_elout_set: could not parse ELOUT label from %s.' % inp)
+        return
+
+    try:
+        elems = part.elements.sequenceFromLabels([label])
+        part.Set(name='ELOUT', elements=elems)
+        print('  ELOUT set  : element %d  (from %s)' % (label, os.path.basename(inp)))
+    except Exception as e:
+        print('  WARNING _add_elout_set: %s' % e)
+
+
 # ─────────────────────────────────────────────────────────────
 # Rigid tools
 # ─────────────────────────────────────────────────────────────
@@ -328,6 +370,7 @@ def import_specimen_cae(cfg):
 
     _rebuild_contact_surfaces(cfg, spec)
     _verify_symmetry_sets(spec)
+    _add_elout_set(cfg, spec)
 
 
 def import_specimen(cfg):
@@ -381,6 +424,7 @@ def import_specimen(cfg):
     print('  Sets available: %s' % sorted(m.parts[spec_name].sets.keys()))
     _ensure_surface_elsets(path, m.parts[spec_name])
     _scale_specimen_thickness(cfg, m.parts[spec_name])
+    _add_elout_set(cfg, m.parts[spec_name])
 
 
 def _ensure_surface_elsets(inp_path, part):

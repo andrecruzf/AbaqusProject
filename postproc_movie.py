@@ -16,8 +16,9 @@ The quarter model is mirrored about both symmetry planes.
 """
 from __future__ import print_function
 from abaqus import session
-from abaqusConstants import (CONTOURS_ON_DEF, PARALLEL, INTEGRATION_POINT, PNG,
-                              ON, OFF, ENGINEERING, SCIENTIFIC, FREE)
+from abaqusConstants import (CONTOURS_ON_DEF, UNDEFORMED, PARALLEL,
+                              INTEGRATION_POINT, PNG, ON, OFF,
+                              ENGINEERING, SCIENTIFIC, FREE, FEATURE, WIREFRAME)
 import visualization
 import os
 import sys
@@ -104,10 +105,37 @@ def make_movie(odb_path, out_dir=None):
         variableLabel='SDV1',
         outputPosition=INTEGRATION_POINT)
 
-    # Top view (aligned with z-axis)
-    vp.view.setValues(session.views['Front'])
+    # ── Show rigid tools (punch shape) ────────────────────────
+    # Overlay the undeformed rigid surfaces (Punch, Die, Matrix) as a
+    # translucent wireframe so the punch profile (flat vs. hemispherical)
+    # is clearly visible against the SDV1 contour plot.
+    try:
+        vp.odbDisplay.display.setValues(
+            plotState=(CONTOURS_ON_DEF, UNDEFORMED))
+        vp.odbDisplay.superimposeOptions.setValues(
+            visibleEdges=FEATURE,
+            translucency=ON,
+            translucencyFactor=0.55)
+    except Exception as e:
+        print('  NOTE: superimpose options not applied (%s)' % e)
+
+    # ── Isometric view — shows punch shape clearly ────────────
+    # Front view (along -Y) clips the punch if fitView re-centres on the
+    # blank each frame.  Iso shows the 3-D geometry (flat vs. hemisphere)
+    # without needing to tilt manually.
+    vp.view.setValues(session.views['Iso'])
     vp.view.fitView()
-    vp.view.zoom(zoomFactor=1.4)
+    vp.view.zoom(zoomFactor=1.25)
+
+    # Snapshot the camera once so it stays locked across all frames.
+    # (setFrame resets the view in some Abaqus versions.)
+    _cam = dict(
+        cameraPosition=vp.view.cameraPosition,
+        cameraUpVector=vp.view.cameraUpVector,
+        cameraTarget=vp.view.cameraTarget,
+        width=vp.view.width,
+        height=vp.view.height,
+    )
 
     # ── Export frames ─────────────────────────────────────────
     step   = odb.steps.values()[0]
@@ -117,7 +145,10 @@ def make_movie(odb_path, out_dir=None):
 
     for i in range(n):
         vp.odbDisplay.setFrame(step=0, frame=i)
-        vp.view.fitView()
+        try:
+            vp.view.setValues(**_cam)   # restore locked camera
+        except Exception:
+            pass
         frame_file = os.path.join(frame_dir, 'frame_%04d' % i)
         session.printToFile(
             fileName=frame_file,
