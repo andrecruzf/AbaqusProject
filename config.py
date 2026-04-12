@@ -36,7 +36,7 @@ NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)
 BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1))  # mm — varies per sheet batch
 MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', 0.0))
 _t        = str(BLANK_THICKNESS).replace('.', 'p')
-_test_cap = TEST_TYPE.capitalize()   # 'Nakazima' or 'Marciniak'
+_test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
 _ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
 JOB_NAME  = '{}_W{}_t{}_ang{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang)
 CAE_NAME  = '{}_W{}_t{}_ang{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
@@ -57,8 +57,13 @@ elif TEST_TYPE == 'marciniak':  # ISO 12004-2 §6.3.4.2
     DIE_INNER_RADIUS = 60.0  # mm — 120% of punch diameter (Ø120 mm die)
     DIE_FILLET       = 12.0  # mm — 12% of punch diameter (mid of 10–20% range)
     BH_INNER_RADIUS  = 62.0  # mm — 2 mm clearance over die inner radius
+elif TEST_TYPE == 'pip':
+    # Punch-in-Punch — die/BH geometry from PinP_CR210H reference
+    DIE_INNER_RADIUS = 55.0  # mm — die inner wall radius
+    DIE_FILLET       = 15.0  # mm — die throat fillet radius
+    BH_INNER_RADIUS  = 62.5  # mm — blank holder inner radius
 else:
-    raise ValueError("Unknown TEST_TYPE: '%s'. Expected 'nakazima' or 'marciniak'." % TEST_TYPE)
+    raise ValueError("Unknown TEST_TYPE: '%s'. Expected 'nakazima', 'marciniak', or 'pip'." % TEST_TYPE)
 
 # ── Punch geometry ────────────────────────────────────────────
 PUNCH_RADIUS      = 50.0   # mm — punch radius (hemi for Nakazima, flat for Marciniak)
@@ -72,6 +77,40 @@ PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of d
 # Overridable via R_DOME env var.
 R_DOME = float(_os.environ.get('R_DOME', 0.15 * PUNCH_RADIUS * 2.0))
 
+# ── PiP (Punch-in-Punch) geometry ─────────────────────────────
+# Only defined when TEST_TYPE == 'pip'; safe to read for all types.
+if TEST_TYPE == 'pip':
+    # Punch1 — annular outer punch (clamps blank and pre-forms outer zone)
+    PIP_PUNCH1_INNER_RADIUS  = 20.0   # mm — inner bore radius (central hole)
+    PIP_PUNCH1_EDGE_FILLET   = 2.0    # mm — fillet at inner bore edge
+    PIP_PUNCH1_FLANGE_INNER_R = 22.0  # mm — flat flange starts here
+    PIP_PUNCH1_FLANGE_OUTER_R = 28.75 # mm — flat flange ends / large fillet start
+    PIP_PUNCH1_FILLET_RADIUS  = 15.0  # mm — large outer fillet radius
+    PIP_PUNCH1_FILLET_CENTER_R = 28.75 # mm — fillet centre radial coordinate
+    PIP_PUNCH1_FILLET_CENTER_Z = 30.0  # mm — fillet centre axial coordinate (local Y)
+    PIP_PUNCH1_OUTER_RADIUS   = 43.75  # mm — outer cylindrical wall radius
+    PIP_PUNCH1_HEIGHT         = 43.0   # mm — total punch height (cylindrical body)
+    # Punch2 — inner hemispherical punch (forms dome in central zone)
+    PIP_PUNCH2_RADIUS         = 15.0   # mm — hemisphere radius
+    PIP_PUNCH2_HEIGHT         = 40.0   # mm — cylindrical body height below hemisphere
+    # Die geometry (flat ring + fillet, same BH/Die outer radius as Nakazima)
+    PIP_DIE_FLAT_INNER_R      = 70.0   # mm — inner edge of flat contact ring on die
+    PIP_DIE_FILLET            = 15.0   # mm — die throat fillet
+    PIP_DIE_INNER_WALL_R      = 55.0   # mm — die inner wall radius below fillet
+    PIP_DIE_HEIGHT            = 25.0   # mm — die wall height
+    PIP_BH_INNER_RADIUS       = 62.5   # mm — blank holder inner bore radius
+    PIP_BH_HEIGHT             = 20.0   # mm — blank holder height
+    PIP_BH_CHAMFER            = 2.0    # mm — blank holder inner chamfer
+    # Process parameters
+    PIP_PUNCH1_DISPLACEMENT   = 20.0   # mm — Punch1 travel in Step 1
+    PIP_PUNCH2_DISPLACEMENT   = 20.0   # mm — Punch2 additional travel in Step 2
+    PIP_STEP1_TIME            = 4.0    # s  — duration of Step 1 (linear amplitude)
+    PIP_STEP2_TIME            = 4.0    # s  — duration of Step 2
+    # Friction coefficients
+    FR_PUNCH1  = 0.10    # Punch1 / blank
+    FR_PUNCH2  = 0.005   # Punch2 / blank (near-frictionless per PiP reference)
+    FR_CLAMP   = 0.22    # Die and blank-holder / blank
+
 # ── Forming parameters ────────────────────────────────────────
 PUNCH_DISPLACEMENT = 50.0                        # mm — total punch travel
 STEP_TIME = PUNCH_DISPLACEMENT / 5.0             # s  — time-scaled (not real speed)
@@ -82,8 +121,9 @@ USE_MASS_SCALING = True
 MASS_SCALING_DT  = 1.0e-5   # s — target stable time increment (FIXED type)
 
 # ── Friction ──────────────────────────────────────────────────
-FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface
-FR_CLAMP = 0.15   # Coulomb coefficient — die / blank and blank-holder / blank
+FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface (nakazima/marciniak)
+if TEST_TYPE != 'pip':
+    FR_CLAMP = 0.15   # Coulomb coefficient — die / blank and blank-holder / blank
 
 # ── VUMAT ─────────────────────────────────────────────────────
 # Path relative to the AbaqusProject/ working directory.

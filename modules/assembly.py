@@ -20,7 +20,7 @@ from abaqus import mdb
 from abaqusConstants import CARTESIAN, ON, OFF
 
 
-_TOOL_NAMES = {'Matrix', 'Die', 'Punch'}
+_TOOL_NAMES = {'Matrix', 'Die', 'Punch', 'Punch1', 'Punch2'}
 
 
 def _get_specimen_name(cfg):
@@ -42,7 +42,8 @@ def create_assembly(cfg):
     """
     1. Instantiate all parts (tools + specimen).
     2. Rotate each tool instance +90° around X so forming direction = Z.
-    3. Create or detect symmetry sets on the specimen.
+    3. Position tools for initial contact.
+    4. Verify symmetry sets on the specimen.
     """
     print('--- Assembly ---')
     m = mdb.models[cfg.MODEL_NAME]
@@ -50,8 +51,19 @@ def create_assembly(cfg):
     a.DatumCsysByDefault(CARTESIAN)
 
     spec_name = _get_specimen_name(cfg)
+    test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
 
-    # ── Instantiate ───────────────────────────────────────────
+    if test_type == 'pip':
+        _create_assembly_pip(cfg, m, a, spec_name)
+    else:
+        _create_assembly_standard(cfg, m, a, spec_name)
+
+    _setup_symmetry_sets(cfg, a, spec_name)
+    print('--- Assembly done ---')
+
+
+def _create_assembly_standard(cfg, m, a, spec_name):
+    """Nakazima / Marciniak: single punch."""
     instances = {
         'Punch-1':    'Punch',
         'Die-1':      'Die',
@@ -59,14 +71,9 @@ def create_assembly(cfg):
         'Specimen-1': spec_name,
     }
     for inst_name, part_name in instances.items():
-        a.Instance(name=inst_name,
-                   part=m.parts[part_name],
-                   dependent=ON)
+        a.Instance(name=inst_name, part=m.parts[part_name], dependent=ON)
         print('  Instanced: %s  ←  %s' % (inst_name, part_name))
 
-    # ── Rotate rigid tools: local Y → global Z ────────────────
-    # Rotation +90° around global X: (x, y, z) → (x, -z, y)
-    # This maps the local revolution axis (Y) to global Z.
     for tool_inst in ('Punch-1', 'Die-1', 'Matrix-1'):
         a.instances[tool_inst].rotateAboutAxis(
             axisPoint=(0.0, 0.0, 0.0),
@@ -74,16 +81,39 @@ def create_assembly(cfg):
             angle=90.0)
         print('  Rotated +90° around X: %s' % tool_inst)
 
-    # ── Small initial gap under the blank ─────────────────────
-    # Moves the punch 0.01 mm below z=0 so contact is established
-    # cleanly in the first increments rather than starting active.
     a.instances['Punch-1'].translate(vector=(0.0, 0.0, -0.01))
     print('  Punch-1 translated -0.01 mm in Z (initial gap)')
 
-    # ── Symmetry sets on the specimen ─────────────────────────
-    _setup_symmetry_sets(cfg, a, spec_name)
 
-    print('--- Assembly done ---')
+def _create_assembly_pip(cfg, m, a, spec_name):
+    """
+    PiP: two punches.
+    After +90° rotation (local Y → global Z):
+      • Punch1 bore face lands at z=0 — the annular punch sits on blank bottom.
+      • Punch2 hemisphere tip at z=0 — same as Nakazima punch.
+    Both are given a -0.01 mm gap to avoid initial contact activation.
+    """
+    instances = {
+        'Punch1-1':   'Punch1',
+        'Punch2-1':   'Punch2',
+        'Die-1':      'Die',
+        'Matrix-1':   'Matrix',
+        'Specimen-1': spec_name,
+    }
+    for inst_name, part_name in instances.items():
+        a.Instance(name=inst_name, part=m.parts[part_name], dependent=ON)
+        print('  Instanced: %s  ←  %s' % (inst_name, part_name))
+
+    for tool_inst in ('Punch1-1', 'Punch2-1', 'Die-1', 'Matrix-1'):
+        a.instances[tool_inst].rotateAboutAxis(
+            axisPoint=(0.0, 0.0, 0.0),
+            axisDirection=(1.0, 0.0, 0.0),
+            angle=90.0)
+        print('  Rotated +90° around X: %s' % tool_inst)
+
+    a.instances['Punch1-1'].translate(vector=(0.0, 0.0, -0.01))
+    a.instances['Punch2-1'].translate(vector=(0.0, 0.0, -0.01))
+    print('  Punch1-1 and Punch2-1 translated -0.01 mm in Z (initial gap)')
 
 
 def _setup_symmetry_sets(cfg, assembly, spec_name):

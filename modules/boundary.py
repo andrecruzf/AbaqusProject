@@ -27,26 +27,26 @@ def apply_bcs(cfg):
     print('--- Boundary conditions ---')
     m = mdb.models[cfg.MODEL_NAME]
     a = m.rootAssembly
+    test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
 
-    # 1. Blank holder — fixed
+    # Die and blank holder always fixed
     m.EncastreBC(name='BC_Matrix_Fixed',
                  createStepName='Initial',
                  region=a.instances['Matrix-1'].sets['RP'])
     print('  BC_Matrix_Fixed: ENCASTRE')
 
-    # 2. Die — fixed
     m.EncastreBC(name='BC_Die_Fixed',
                  createStepName='Initial',
                  region=a.instances['Die-1'].sets['RP'])
     print('  BC_Die_Fixed: ENCASTRE')
 
-    # 3. Punch — driven in +Z
-    _apply_punch_bc(cfg, m, a)
+    if test_type == 'pip':
+        _apply_pip_punch_bcs(cfg, m, a)
+    else:
+        _apply_punch_bc(cfg, m, a)
 
-    # 4 & 5. Specimen symmetry planes
     _apply_symmetry_bcs(cfg, m, a)
 
-    # 6. Outer edge (optional)
     if cfg.USE_EDGE_ENCASTRE:
         _apply_edge_bc(cfg, m, a)
 
@@ -55,13 +55,12 @@ def apply_bcs(cfg):
 
 def _apply_punch_bc(cfg, m, a):
     """
-    Initial step: punch fully fixed (including U3).
-    Forming step: U3 = +PUNCH_DISPLACEMENT driven by Amp_Punch.
-    All rotations and lateral translations remain fixed throughout.
+    Standard single-punch BC.
+    Initial: all DOFs fixed.
+    Forming: U3 = +PUNCH_DISPLACEMENT with SmoothStep.
     """
     region = a.instances['Punch-1'].sets['RP']
 
-    # Initial — all DOFs fixed
     m.DisplacementBC(
         name='BC_Punch',
         createStepName='Initial',
@@ -69,13 +68,68 @@ def _apply_punch_bc(cfg, m, a):
         u1=SET, u2=SET, u3=SET,
         ur1=SET, ur2=SET, ur3=SET)
 
-    # Forming — drive U3, keep the rest fixed
     m.boundaryConditions['BC_Punch'].setValuesInStep(
         stepName='Forming',
         u3=cfg.PUNCH_DISPLACEMENT,
         amplitude='Amp_Punch')
 
     print('  BC_Punch: U3 = +%.1f mm (SmoothStep Amp_Punch)' % cfg.PUNCH_DISPLACEMENT)
+
+
+def _apply_pip_punch_bcs(cfg, m, a):
+    """
+    PiP two-punch BCs across two steps.
+
+    Step1_Clamp (both punches move together):
+      Punch1: U3 = +PIP_PUNCH1_DISPLACEMENT  (Amp_Step1)
+      Punch2: U3 = +PIP_PUNCH1_DISPLACEMENT  (same travel, Amp_Step1)
+
+    Step2_Form (Punch1 holds, Punch2 continues):
+      Punch1: U3 = 0 (held — no additional displacement in step 2)
+      Punch2: U3 = +PIP_PUNCH2_DISPLACEMENT  (Amp_Step2, relative to step start)
+    """
+    d1 = cfg.PIP_PUNCH1_DISPLACEMENT
+    d2 = cfg.PIP_PUNCH2_DISPLACEMENT
+    r1 = a.instances['Punch1-1'].sets['RP']
+    r2 = a.instances['Punch2-1'].sets['RP']
+
+    # Punch1 — Initial: all fixed
+    m.DisplacementBC(
+        name='BC_Punch1',
+        createStepName='Initial',
+        region=r1,
+        u1=SET, u2=SET, u3=SET,
+        ur1=SET, ur2=SET, ur3=SET)
+    # Step1: drive +d1
+    m.boundaryConditions['BC_Punch1'].setValuesInStep(
+        stepName='Step1_Clamp',
+        u3=d1,
+        amplitude='Amp_Step1')
+    # Step2: hold — zero increment, no amplitude (matches reference ENCASTRE in Step2)
+    m.boundaryConditions['BC_Punch1'].setValuesInStep(
+        stepName='Step2_Form',
+        u3=0.0)
+
+    # Punch2 — Initial: all fixed
+    m.DisplacementBC(
+        name='BC_Punch2',
+        createStepName='Initial',
+        region=r2,
+        u1=SET, u2=SET, u3=SET,
+        ur1=SET, ur2=SET, ur3=SET)
+    # Step1: drive +d1 (same as Punch1)
+    m.boundaryConditions['BC_Punch2'].setValuesInStep(
+        stepName='Step1_Clamp',
+        u3=d1,
+        amplitude='Amp_Step1')
+    # Step2: drive additional +d2
+    m.boundaryConditions['BC_Punch2'].setValuesInStep(
+        stepName='Step2_Form',
+        u3=d2,
+        amplitude='Amp_Step2')
+
+    print('  BC_Punch1: Step1 U3=+%.1f mm; Step2 held' % d1)
+    print('  BC_Punch2: Step1 U3=+%.1f mm; Step2 U3=+%.1f mm' % (d1, d2))
 
 
 def _get_region(a, inst, set_name):

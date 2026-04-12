@@ -53,8 +53,12 @@ def run():
     print('  Specimen  : W%d (source=%s)' % (cfg.SPECIMEN_WIDTH,
                                               cfg.GEOMETRY_SOURCE))
     print('  Épaisseur : %.2f mm' % cfg.BLANK_THICKNESS)
-    print('  Punch     : %.1f mm  →  step=%.4e s'
-          % (cfg.PUNCH_DISPLACEMENT, cfg.STEP_TIME))
+    if cfg.TEST_TYPE == 'pip':
+        print('  Test type : pip  (Punch1=%.1f mm + Punch2=%.1f mm)'
+              % (cfg.PIP_PUNCH1_DISPLACEMENT, cfg.PIP_PUNCH2_DISPLACEMENT))
+    else:
+        print('  Punch     : %.1f mm  →  step=%.4e s'
+              % (cfg.PUNCH_DISPLACEMENT, cfg.STEP_TIME))
     print('  Output    : %s/' % cfg.OUTPUT_DIR)
     print('=' * 60)
 

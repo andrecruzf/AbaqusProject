@@ -5,6 +5,10 @@ import os
 import math
 
 
+def _is_pip(cfg):
+    return getattr(cfg, 'TEST_TYPE', 'nakazima').lower() == 'pip'
+
+
 def save_and_export(cfg):
     import shutil
     m = mdb.models[cfg.MODEL_NAME]
@@ -30,7 +34,7 @@ def save_and_export(cfg):
 
     if getattr(cfg, 'USE_MASS_SCALING', False):
         _inject_mass_scaling(inp_file, cfg.MASS_SCALING_DT)
-    _inject_output_requests(inp_file)
+    _inject_output_requests(inp_file, cfg)
     _inject_initial_conditions(inp_file, cfg)
 
     # Move .inp into output directory
@@ -78,19 +82,45 @@ def _update_cluster_script(job_name, out_dir):
     print('  Updated run_cluster.sh: JOB_NAME=%s, OUTPUT_SUBDIR=%s' % (job_name, os.path.basename(out_dir)))
 
 
-def _inject_output_requests(inp_file):
+def _inject_output_requests(inp_file, cfg):
     """
-    Replace the default Abaqus output section (PRESELECT) with custom requests:
-      Field : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 50 intervals
-      History: U3/RF3 on Punch RP, RF3 on Die/Matrix RPs
-    Replaces everything between '** OUTPUT REQUESTS' and '*End Step'.
+    Replace the default Abaqus output section (PRESELECT) with custom requests.
+    For PiP, replaces the output block in BOTH steps.
+
+    Field : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 50 intervals
+    History: U3/RF3 on punch RP(s), RF3 on Die/Matrix RPs
     """
+    pip = _is_pip(cfg)
+
+    if pip:
+        history_block = (
+            '*Output, history\n'
+            '*Node Output, nset=Punch1-1.RP\n'
+            'U3, RF3\n'
+            '*Node Output, nset=Punch2-1.RP\n'
+            'U3, RF3\n'
+            '*Node Output, nset=Die-1.RP\n'
+            'RF3\n'
+            '*Node Output, nset=Matrix-1.RP\n'
+            'RF3\n'
+        )
+    else:
+        history_block = (
+            '*Output, history\n'
+            '*Node Output, nset=Punch-1.RP\n'
+            'U3, RF3\n'
+            '*Node Output, nset=Die-1.RP\n'
+            'RF3\n'
+            '*Node Output, nset=Matrix-1.RP\n'
+            'RF3\n'
+        )
+
     custom_output = (
         '** OUTPUT REQUESTS\n'
         '** \n'
         '*Restart, write, number interval=1, time marks=NO\n'
         '** \n'
-        '** FIELD OUTPUT: FO_Forming\n'
+        '** FIELD OUTPUT\n'
         '** \n'
         '*Output, field, number interval=50\n'
         '*Element Output, directions=YES\n'
@@ -98,44 +128,40 @@ def _inject_output_requests(inp_file):
         '*Node Output\n'
         'U, RF\n'
         '** \n'
-        '** HISTORY OUTPUT: HO_Tools\n'
+        '** HISTORY OUTPUT\n'
         '** \n'
-        '*Output, history\n'
-        '*Node Output, nset=Punch-1.RP\n'
-        'U3, RF3\n'
-        '*Node Output, nset=Die-1.RP\n'
-        'RF3\n'
-        '*Node Output, nset=Matrix-1.RP\n'
-        'RF3\n'
+        + history_block +
         '*End Step\n'
     )
 
     with open(inp_file, 'r') as f:
         content = f.read()
 
-    # Find the output section start and replace to *End Step
     marker = '** OUTPUT REQUESTS'
-    start = content.find(marker)
-    if start == -1:
+    replaced = 0
+    search_from = 0
+    while True:
+        start = content.find(marker, search_from)
+        if start == -1:
+            break
+        end = content.find('*End Step', start)
+        if end == -1:
+            break
+        end += len('*End Step')
+        content = content[:start] + custom_output + content[end:]
+        search_from = start + len(custom_output)
+        replaced += 1
+
+    if replaced == 0:
         print('  WARNING _inject_output_requests: "** OUTPUT REQUESTS" not found — '
               'output NOT replaced.')
         return
 
-    end = content.find('*End Step', start)
-    if end == -1:
-        print('  WARNING _inject_output_requests: "*End Step" not found — '
-              'output NOT replaced.')
-        return
-
-    # end points to '*End Step'; advance past it
-    end += len('*End Step')
-
-    content = content[:start] + custom_output + content[end:]
-
     with open(inp_file, 'w') as f:
         f.write(content)
 
-    print('  Injected custom output requests (50 intervals, SDV, TRIAX, SP, MISES, LEP)')
+    print('  Injected custom output requests (%d step(s), 50 intervals, SDV, TRIAX, SP, MISES, LEP)'
+          % replaced)
 
 
 def _inject_extra_output_vars(inp_file):

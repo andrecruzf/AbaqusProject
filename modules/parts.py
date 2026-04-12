@@ -127,6 +127,227 @@ def create_punch(cfg):
     print('  Punch  : tip at local y=0  (→ global z=0 after rotation)  OK')
 
 
+def create_pip_punch1(cfg):
+    """
+    PiP Punch1 — annular outer punch, analytic rigid surface.
+
+    Profile is an open path derived from PUNCH1.inp (PinP_CR210H reference).
+    Local Y = revolution axis (→ global Z after +90° rotation).
+    Blank contact face is at y=0.  Punch body extends to y < 0.
+
+    Path (r, y):
+      (Ri, 0)   → inner bore edge at blank face
+      (Ri, -H)  → inner bore wall (going away from blank)
+      arc → (Ri+ef, -(H+ef))  inner top fillet, center (Ri+ef, -H)
+      (Rfo, -(H+ef))  → flat inner flange
+      arc → (Ro, -(fcz))  large outer fillet, center (Rfo, -fcz)
+      (Ro, 0)   → outer wall back to blank face
+
+    Reference: PUNCH1.inp START/LINE/CIRCL data (y-axis flipped to match
+    our convention where punch body is at y < 0).
+    """
+    Ri   = cfg.PIP_PUNCH1_INNER_RADIUS     # 20.0
+    ef   = cfg.PIP_PUNCH1_EDGE_FILLET      # 2.0
+    Rfo  = cfg.PIP_PUNCH1_FLANGE_OUTER_R   # 28.75
+    fr   = cfg.PIP_PUNCH1_FILLET_RADIUS    # 15.0
+    fcz  = cfg.PIP_PUNCH1_FILLET_CENTER_Z  # 30.0 → -30.0 in our coords
+    Ro   = cfg.PIP_PUNCH1_OUTER_RADIUS     # 43.75
+    H    = cfg.PIP_PUNCH1_HEIGHT           # 43.0
+
+    # Derived coordinates (match PUNCH1.inp flipped to y < 0)
+    # Inner bore wall bottom: y = -H
+    # Inner fillet center: (Ri+ef, -H); arc end: (Ri+ef, -(H+ef))
+    # Flat flange: y = -(H+ef) = -45
+    # Large fillet center: (Rfo, -fcz) = (28.75, -30); arc end: (Ro, -fcz) = (43.75, -30)
+    y_bore_bottom  = -H              # -43
+    y_flange       = -(H + ef)       # -45
+    y_fillet_ctr   = -fcz            # -30
+
+    m = mdb.models[cfg.MODEL_NAME]
+    s = m.ConstrainedSketch(name='__profile__', sheetSize=400.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -200.0), point2=(0.0, 200.0))
+    s.FixedConstraint(entity=g[2])
+
+    # 1. Inner bore wall: (Ri, 0) → (Ri, -H)
+    s.Line(point1=(Ri, 0.0), point2=(Ri, y_bore_bottom))
+
+    # 2. Inner top fillet (convex): (Ri, -H) → (Ri+ef, -(H+ef))
+    #    Center: (Ri+ef, -H), radius=ef
+    s.ArcByCenterEnds(
+        center=(Ri + ef, y_bore_bottom),
+        point1=(Ri, y_bore_bottom),
+        point2=(Ri + ef, y_flange),
+        direction=CLOCKWISE)
+
+    # 3. Flat inner flange: (Ri+ef, -(H+ef)) → (Rfo, -(H+ef))
+    s.Line(point1=(Ri + ef, y_flange), point2=(Rfo, y_flange))
+
+    # 4. Large outer fillet (convex): (Rfo, -(H+ef)) → (Ro, -fcz)
+    #    Center: (Rfo, -fcz), radius=fr
+    s.ArcByCenterEnds(
+        center=(Rfo, y_fillet_ctr),
+        point1=(Rfo, y_flange),
+        point2=(Ro, y_fillet_ctr),
+        direction=CLOCKWISE)
+
+    # 5. Outer wall: (Ro, -fcz) → (Ro, 0)
+    s.Line(point1=(Ro, y_fillet_ctr), point2=(Ro, 0.0))
+
+    p = m.Part(name='Punch1', dimensionality=THREE_D,
+               type=ANALYTIC_RIGID_SURFACE)
+    p = m.parts['Punch1']
+    p.AnalyticRigidSurfRevolve(sketch=s)
+    s.unsetPrimaryObject()
+    del m.sketches['__profile__']
+    print('  Punch1 (PiP annular): Ri=%.1f Ro=%.1f H=%.1f  OK' % (Ri, Ro, H))
+
+
+def create_pip_punch2(cfg):
+    """
+    PiP Punch2 — inner hemispherical punch, analytic rigid surface.
+
+    Profile from PUNCH2.inp:
+      START (r=0, y=15) → CIRCL (r=15, y=0), center (0, 0)
+    This is a quarter-circle arc — the hemisphere tip at y=0 (blank face),
+    body extending to y < 0 in our convention.
+
+    Our sketch (Y = revolution axis, blank face at y=0, body at y < 0):
+      (0, 0) → arc (R, -R), center (0, -R) → (R, -R-H) → (0, -R-H)
+    """
+    R = cfg.PIP_PUNCH2_RADIUS    # 15.0
+    H = cfg.PIP_PUNCH2_HEIGHT    # 40.0
+    ctr = -R
+
+    m = mdb.models[cfg.MODEL_NAME]
+    s = m.ConstrainedSketch(name='__profile__', sheetSize=400.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -200.0), point2=(0.0, 200.0))
+    s.FixedConstraint(entity=g[2])
+
+    # Quarter-sphere hemisphere
+    s.ArcByCenterEnds(
+        center=(0.0, ctr),
+        point1=(0.0, 0.0),
+        point2=(R, ctr),
+        direction=CLOCKWISE)
+    # Cylindrical body below hemisphere
+    s.Line(point1=(R, ctr), point2=(R, ctr - H))
+    s.Line(point1=(R, ctr - H), point2=(0.0, ctr - H))
+
+    p = m.Part(name='Punch2', dimensionality=THREE_D,
+               type=ANALYTIC_RIGID_SURFACE)
+    p = m.parts['Punch2']
+    p.AnalyticRigidSurfRevolve(sketch=s)
+    s.unsetPrimaryObject()
+    del m.sketches['__profile__']
+    print('  Punch2 (PiP hemisphere): R=%.1f mm  OK' % R)
+
+
+def create_pip_die(cfg):
+    """
+    PiP Die — flat contact ring with fillet, analytic rigid surface.
+
+    Profile from DIE surface in PinP_CR210H reference:
+      START (75, 0) → LINE (70, 0) → CIRCL (55, 15) center (70, 15) → LINE (55, 25)
+
+    y=0 in reference = blank TOP face contact level.
+    In our convention, die contact face at local y=t (blank thickness).
+    Die body extends to y > t (above blank, global z > t after rotation).
+
+    Our sketch:
+      (Ro, t) → (Rfi, t) → arc (Rw, t+f) center (Rfi, t+f) → (Rw, t+H)
+    where Ro=75, Rfi=70, Rw=55, f=15, H=25, t=BLANK_THICKNESS.
+    """
+    t   = cfg.BLANK_THICKNESS
+    Ro  = cfg.DIE_OUTER_RADIUS           # 73 mm (standard outer radius)
+    Rfi = cfg.PIP_DIE_FLAT_INNER_R       # 70.0 — inner edge of flat ring
+    Rw  = cfg.PIP_DIE_INNER_WALL_R       # 55.0 — inner wall radius
+    f   = cfg.PIP_DIE_FILLET             # 15.0
+    H   = cfg.PIP_DIE_HEIGHT             # 25.0
+
+    m = mdb.models[cfg.MODEL_NAME]
+    s = m.ConstrainedSketch(name='__profile__', sheetSize=400.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -200.0), point2=(0.0, 200.0))
+    s.FixedConstraint(entity=g[2])
+
+    # Outer edge to flat ring inner edge: both at y=t
+    s.Line(point1=(Ro, t), point2=(Rfi, t))
+    # Fillet arc from flat ring inner edge → inner wall
+    # Reference: CIRCL(55, 15) center(70, 15) — concave fillet
+    # Our coords: CIRCL(Rw, t+f) center(Rfi, t+f)
+    s.ArcByCenterEnds(
+        center=(Rfi, t + f),
+        point1=(Rfi, t),
+        point2=(Rw, t + f),
+        direction=CLOCKWISE)
+    # Inner wall going up
+    s.Line(point1=(Rw, t + f), point2=(Rw, t + H))
+
+    p = m.Part(name='Die', dimensionality=THREE_D,
+               type=ANALYTIC_RIGID_SURFACE)
+    p = m.parts['Die']
+    p.AnalyticRigidSurfRevolve(sketch=s)
+    s.unsetPrimaryObject()
+    del m.sketches['__profile__']
+    print('  Die (PiP): Ro=%.1f, Rfi=%.1f, Rw=%.1f, f=%.1f  OK' % (Ro, Rfi, Rw, f))
+
+
+def create_pip_matrix(cfg):
+    """
+    PiP Blank holder (Matrix) — analytic rigid surface.
+
+    Profile from BLANKHOLDER surface in PinP_CR210H reference:
+      START (62.5, 0) → LINE (62.5, 20) → LINE (64.5, 22) → LINE (75, 22)
+
+    Reference y=0 is the BOTTOM of the BH body; the blank contact face is
+    at y=22 (the chamfer top + outer flat ring).
+
+    In our convention (local y=0 = blank BOTTOM face = global z=0 after rotation,
+    BH body at y < 0):
+      y_our = y_ref - (H + ch)  =  y_ref - 22
+
+    Reference profile → Our profile:
+      (62.5,  0) → (62.5, -22)   inner bore bottom
+      (62.5, 20) → (62.5,  -2)   inner bore top
+      (64.5, 22) → (64.5,   0)   chamfer end / contact face start
+      (75,   22) → (75,     0)   outer contact face
+
+    Traversal order (outer-to-inner): (75,0) → (64.5,0) → (62.5,-2) → (62.5,-22)
+    """
+    Ri  = cfg.PIP_BH_INNER_RADIUS    # 62.5
+    H   = cfg.PIP_BH_HEIGHT          # 20.0
+    ch  = cfg.PIP_BH_CHAMFER         # 2.0
+    Ro  = 75.0                       # outer radius (from reference, matches BH flat ring)
+
+    m = mdb.models[cfg.MODEL_NAME]
+    s = m.ConstrainedSketch(name='__profile__', sheetSize=400.0)
+    g = s.geometry
+    s.setPrimaryObject(option=STANDALONE)
+    s.ConstructionLine(point1=(0.0, -200.0), point2=(0.0, 200.0))
+    s.FixedConstraint(entity=g[2])
+
+    # Outer flat contact ring at y=0 (blank face)
+    s.Line(point1=(Ro, 0.0), point2=(Ri + ch, 0.0))
+    # Chamfer: 45° bevel going down-inward from contact face
+    s.Line(point1=(Ri + ch, 0.0), point2=(Ri, -ch))
+    # Inner bore wall going down
+    s.Line(point1=(Ri, -ch), point2=(Ri, -(H + ch)))
+
+    p = m.Part(name='Matrix', dimensionality=THREE_D,
+               type=ANALYTIC_RIGID_SURFACE)
+    p = m.parts['Matrix']
+    p.AnalyticRigidSurfRevolve(sketch=s)
+    s.unsetPrimaryObject()
+    del m.sketches['__profile__']
+    print('  Matrix (PiP BH): Ri=%.1f, Ro=%.1f, H=%.1f, chamfer=%.1f  OK'
+          % (Ri, Ro, H, ch))
+
+
 def create_flat_punch(cfg):
     """
     Flat Marciniak punch — analytic rigid surface (ISO 12004-2 §6.3.4).
@@ -666,23 +887,20 @@ def _rebuild_contact_surfaces(cfg, part):
 
 def create_tool_rp_and_surfaces(cfg):
     """
-    For each rigid tool (Punch, Matrix, Die):
-      • Creates a Reference Point at the part origin (0,0,0)
-      • Puts it in a Set named 'RP'
-      • Creates a surface 'Outer' covering the whole analytic face
-
-    For GEOMETRY_SOURCE='inp', specimen surfaces (ZMIN, ZMAX) already
-    exist in the imported part — no action needed here.
-    For GEOMETRY_SOURCE='macro', specimen contact surfaces are created.
+    For each rigid tool: create RP set and 'Outer' surface.
+    Tool names depend on TEST_TYPE (PiP has Punch1 + Punch2 instead of Punch).
     """
-    for tool_name in ('Punch', 'Matrix', 'Die'):
+    test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
+    if test_type == 'pip':
+        tool_names = ('Punch1', 'Punch2', 'Matrix', 'Die')
+    else:
+        tool_names = ('Punch', 'Matrix', 'Die')
+
+    for tool_name in tool_names:
         p  = mdb.models[cfg.MODEL_NAME].parts[tool_name]
         rp = p.ReferencePoint(point=(0.0, 0.0, 0.0))
         r  = p.referencePoints
         p.Set(referencePoints=(r[max(r.keys())],), name='RP')
-        # ANALYTIC_RIGID_SURFACE parts expose their analytic face(s) via
-        # p.faces directly. Using getSequenceFromMask on these parts can
-        # return an empty sequence, producing an empty (invalid) surface.
         try:
             if len(p.faces) == 0:
                 raise ValueError('p.faces is empty for analytic rigid part')
@@ -705,12 +923,19 @@ def create_parts(cfg):
     test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
     if test_type == 'nakazima':
         create_punch(cfg)
+        create_die(cfg)
+        create_matrix(cfg)
     elif test_type == 'marciniak':
         create_flat_punch(cfg)
+        create_die(cfg)
+        create_matrix(cfg)
+    elif test_type == 'pip':
+        create_pip_punch1(cfg)
+        create_pip_punch2(cfg)
+        create_pip_die(cfg)
+        create_pip_matrix(cfg)
     else:
         raise ValueError("Unknown TEST_TYPE: '%s'." % test_type)
-    create_die(cfg)
-    create_matrix(cfg)
 
     if cfg.GEOMETRY_SOURCE == 'cae':
         import_specimen_cae(cfg)
