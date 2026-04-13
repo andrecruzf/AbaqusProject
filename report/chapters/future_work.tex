@@ -1,0 +1,21 @@
+\chapter{Future Work}\label{chap:future_work}
+
+The following directions are identified for future investigation, ordered by priority:
+
+\begin{enumerate}
+  \item \textbf{Mesh sensitivity study.} The current geometry files use a fixed element size ($\approx 1$\,mm in the dome zone). A systematic study varying the element size and monitoring the extracted failure strains would quantify discretisation sensitivity and establish a recommended mesh density for this class of problem.
+
+  \item \textbf{Full parametric campaign.} Complete the simulation campaigns for all three test configurations (Nakazima, Marciniak, PiP) across multiple sheet thicknesses and orientation angles. This will allow quantification of thickness effects and anisotropy effects on the numerical FLC, directly supporting the experimental investigation of Task~I.
+
+  \item \textbf{Comparison between test configurations.} A direct comparison of the FLCs produced by Nakazima, Marciniak, and PiP simulations will quantify the effect of strain path linearity on the extracted limit strains. The PiP configuration is expected to produce more linear paths in the biaxial regime.
+
+  \item \textbf{Strain path analysis.} Extract and visualise the full strain path trajectory $(\varepsilon_2(t), \varepsilon_1(t))$ at the critical element to verify the assumed strain state and assess non-linearity induced by punch contact and bending.
+
+  \item \textbf{Integration with Task~II identification criteria.} The numerical strain field data (from \texttt{strain\_path.csv}) can be fed into the FLC identification framework of Task~II (Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, Pham-Sigvant~\cite{Pham2023}, Min-Stoughton~\cite{Min2017}) to compare criterion-dependent FLC values on numerically generated data where the ground truth is known.
+
+  \item \textbf{Validation against experimental results.} Once the experimental FLC from the Nakazima/Marciniak test bench (Task~I) is available, the numerical FLC can be compared directly to assess the accuracy of the Hosford-Coulomb material model and the pipeline as a whole.
+
+  \item \textbf{HC material constant calibration.} The 46 VUMAT constants used in this work were taken from a reference calibration. A calibration against dedicated characterisation tests (uniaxial tension, notched tension, shear) for the specific sheet batch used in Task~I would improve predictive accuracy.
+
+  \item \textbf{Friction sensitivity.} The Coulomb friction coefficients are set to fixed values in \texttt{config.py}. A parametric study varying the punch--blank and die--blank coefficients would quantify their influence on the FLC and on the prevalence of base fracture vs.\ dome fracture.
+\end{enumerate}
