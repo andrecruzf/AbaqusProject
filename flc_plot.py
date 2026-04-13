@@ -108,12 +108,16 @@ COLORS = [
     '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
 ]
 
-fig, ax = plt.subplots(figsize=(10, 7))
+import re as _re
+
+fig, ax = plt.subplots(figsize=(14, 10))
 
 for i, p in enumerate(paths):
     color  = COLORS[i % len(COLORS)]
     valid  = p['fracture_type'] == 'dome'
-    label  = p['label'] if valid else p['label'] + ' [base fracture]'
+    _m     = _re.search(r'W\d+', p['label'])
+    short  = _m.group(0) if _m else p['label']
+    label  = short if valid else short + ' [base fracture]'
     # Strain path
     ax.plot(p['eps2s'], p['eps1s'],
             color=color,
@@ -137,11 +141,21 @@ if len(dome_points) >= 2:
     ax.plot(curve_e2, curve_e1, 'k-', linewidth=2, zorder=5, label='FLC (dome fractures only)')
 
 ax.axvline(0, color='grey', linewidth=0.8, linestyle=':')
-ax.set_xlabel(u'Minor strain \u03b5\u2082', fontsize=13)
-ax.set_ylabel(u'Major strain \u03b5\u2081', fontsize=13)
-ax.set_title('%s \u2014 Forming Limit Curve  (t = %s mm, \u03b1 = %s\u00b0)'
-             % (test_type.capitalize(), thickness, orientation), fontsize=14)
-ax.legend(fontsize=9, loc='upper right')
+
+# Reference load-path lines
+_e1_ref = [0.0, 0.8]
+ax.plot([-e / 2.0 for e in _e1_ref], _e1_ref,
+        color='#999999', linewidth=1.2, linestyle='--', alpha=0.6,
+        label=u'Uniaxial tension (\u03b5\u2082 = \u2212\u03b5\u2081/2)')
+ax.plot(_e1_ref, _e1_ref,
+        color='#999999', linewidth=1.2, linestyle='--', alpha=0.6,
+        label=u'Equibiaxial (\u03b5\u2082 = \u03b5\u2081)')
+
+ax.set_xlabel(u'Minor strain \u03b5\u2082', fontsize=14)
+ax.set_ylabel(u'Major strain \u03b5\u2081', fontsize=14)
+ax.set_title(u'%s \u2014 Forming Limit Curve  |  t = %s mm  |  \u03b1 = %s\u00b0'
+             % (test_type.capitalize(), thickness, orientation), fontsize=15)
+ax.legend(fontsize=10, loc='upper right')
 ax.grid(True, alpha=0.3)
 ax.set_xlim(-0.6, 0.6)
 ax.set_ylim(0, None)

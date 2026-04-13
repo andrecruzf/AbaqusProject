@@ -263,10 +263,86 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         writer.writerow(['time_s', 'eps1_major', 'eps2_minor', 'EQPS', 'fracture_type'])
         writer.writerows(records)
 
-    odb.close()
     print('  Written %d points -> %s' % (len(records), out_csv))
+
+    # ── 6. Energy ratio plot ──────────────────────────────────
+    _plot_energy_ratio(odb, os.path.dirname(out_csv))
+
+    odb.close()
     print('=' * 60)
     return out_csv
+
+
+def _plot_energy_ratio(odb, out_dir):
+    """
+    Extract ALLKE and ALLIE from history output across all steps,
+    compute ALLKE/ALLIE (%) vs total time, and save energy_ratio.png.
+    Steps are concatenated — total time is accumulated so the x-axis
+    is continuous (important for PiP which has two steps).
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print('  WARNING: matplotlib not available — energy ratio plot skipped.')
+        return
+
+    times_all  = []
+    ratios_all = []
+    step_boundaries = []   # total times at which a new step starts (for vlines)
+    t_offset = 0.0
+
+    for step in odb.steps.values():
+        # Find the history region that contains both ALLKE and ALLIE
+        ke_data = ie_data = None
+        for region in step.historyRegions.values():
+            ho = region.historyOutputs.keys()
+            if 'ALLKE' in ho and 'ALLIE' in ho:
+                ke_data = region.historyOutputs['ALLKE'].data
+                ie_data = region.historyOutputs['ALLIE'].data
+                break
+
+        if ke_data is None:
+            print('  WARNING: ALLKE/ALLIE not found in step "%s" — skipped.' % step.name)
+            t_offset += step.timePeriod
+            continue
+
+        if t_offset > 0.0:
+            step_boundaries.append(t_offset)
+
+        for (t, ke), (_, ie) in zip(ke_data, ie_data):
+            ratio = 100.0 * ke / ie if ie > 1e-10 else 0.0
+            times_all.append(t_offset + t)
+            ratios_all.append(ratio)
+
+        t_offset += step.timePeriod
+
+    if not times_all:
+        print('  WARNING: no energy data extracted — energy ratio plot skipped.')
+        return
+
+    max_ratio = max(ratios_all)
+    print('  Max ALLKE/ALLIE = %.2f%%' % max_ratio)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(times_all, ratios_all, color='#1f77b4', linewidth=1.5)
+    ax.axhline(5.0, color='red', linewidth=1.0, linestyle='--', label='5% threshold (quasi-static limit)')
+
+    for t_b in step_boundaries:
+        ax.axvline(t_b, color='grey', linewidth=0.8, linestyle=':', label='Step boundary')
+
+    ax.set_xlabel('Time (s)', fontsize=12)
+    ax.set_ylabel('ALLKE / ALLIE (%)', fontsize=12)
+    ax.set_title('Quasi-static check — Kinetic / Internal energy ratio', fontsize=13)
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(0, max(max_ratio * 1.2, 6.0))
+
+    out_png = os.path.join(out_dir, 'energy_ratio.png')
+    fig.savefig(out_png, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('  Energy ratio    -> %s' % out_png)
 
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ The XSYMM, YSYMM, and EDGE nsets are defined in the geometry .inp files
 and imported with the specimen part.
 """
 from abaqus import mdb
-from abaqusConstants import SET, XSYMM, YSYMM
+from abaqusConstants import SET, XSYMM, YSYMM, ON
 
 
 def apply_bcs(cfg):
@@ -84,9 +84,9 @@ def _apply_pip_punch_bcs(cfg, m, a):
       Punch1: U3 = +PIP_PUNCH1_DISPLACEMENT  (Amp_Step1)
       Punch2: U3 = +PIP_PUNCH1_DISPLACEMENT  (same travel, Amp_Step1)
 
-    Step2_Form (Punch1 holds, Punch2 continues):
-      Punch1: U3 = 0 (held — no additional displacement in step 2)
-      Punch2: U3 = +PIP_PUNCH2_DISPLACEMENT  (Amp_Step2, relative to step start)
+    Step2_Form (Punch1 locked, Punch2 continues):
+      Punch1: ENCASTRE (velocity=0 → holds at end-of-Step1 position, 20 mm)
+      Punch2: U3 = +PIP_PUNCH2_DISPLACEMENT  (Amp_Step2)
     """
     d1 = cfg.PIP_PUNCH1_DISPLACEMENT
     d2 = cfg.PIP_PUNCH2_DISPLACEMENT
@@ -105,10 +105,16 @@ def _apply_pip_punch_bcs(cfg, m, a):
         stepName='Step1_Clamp',
         u3=d1,
         amplitude='Amp_Step1')
-    # Step2: hold — zero increment, no amplitude (matches reference ENCASTRE in Step2)
-    m.boundaryConditions['BC_Punch1'].setValuesInStep(
-        stepName='Step2_Form',
-        u3=0.0)
+    # Step2: deactivate the ramping BC; apply ENCASTRE to lock Punch1 at its
+    # end-of-Step1 position.  In Abaqus/Explicit, ENCASTRE constrains nodal
+    # velocity to zero — it holds the node in place, NOT forces it back to the
+    # reference (undeformed) origin.  This matches the reference INP:
+    #   *Boundary
+    #   PUNCH_1-1.PUNCH1_RP_SET, ENCASTRE
+    m.boundaryConditions['BC_Punch1'].deactivate(stepName='Step2_Form')
+    m.EncastreBC(name='BC_Punch1_Hold',
+                 createStepName='Step2_Form',
+                 region=r1)
 
     # Punch2 — Initial: all fixed
     m.DisplacementBC(

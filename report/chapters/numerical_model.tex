@@ -2,15 +2,36 @@
 
 \section{Model Overview}
 
-The FE model replicates the Nakazima or Marciniak test in Abaqus/Explicit, selected via the \texttt{TEST\_TYPE} flag in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost. The model consists of four parts:
+The FE model replicates the selected forming test in Abaqus/Explicit, chosen via the \texttt{TEST\_TYPE} flag (\texttt{nakazima}, \texttt{marciniak}, or \texttt{pip}) in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost.
+
+Table~\ref{tab:tool_geometry} summarises the tool geometry for each test configuration.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Tool geometry by test configuration.}
+\label{tab:tool_geometry}
+\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
+Parameter & Nakazima & Marciniak & Punch-in-Punch \\ \midrule
+Punch type        & Hemisphere ($R=50$\,mm) & Flat ($\varnothing 100$\,mm) & Annular + hemisphere \\
+Die inner radius  & 52.5\,mm & 60\,mm & 55\,mm \\
+Die fillet        & 8\,mm    & 12\,mm & 15\,mm \\
+BH inner radius   & 54.5\,mm & 62\,mm & 62.5\,mm \\
+Punch displacement & 37\,mm   & 37\,mm & 20\,mm + 20\,mm \\
+Punch speed       & 2\,mm/s  & 2\,mm/s & 2\,mm/s \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+For the PiP configuration, the model includes five parts:
 \begin{itemize}
   \item \textbf{Blank}: deformable solid, meshed with the supervisor-provided specimen geometry.
-  \item \textbf{Punch}: rigid body — hemispherical (Nakazima) or flat cylindrical with 10\,mm edge fillet (Marciniak, ISO~12004-2~\cite{ISO120042}).
-  \item \textbf{Die}: rigid ring, fixed in space. Inner radius 52.5\,mm (Nakazima) or 60\,mm (Marciniak).
-  \item \textbf{Blank holder}: rigid plate, applies a clamping force to the blank edge.
+  \item \textbf{Punch~1}: outer annular rigid body (inner bore $r = 20$\,mm, outer $r = 43.75$\,mm).
+  \item \textbf{Punch~2}: inner hemispherical rigid body ($R = 15$\,mm).
+  \item \textbf{Die}: rigid ring with flat contact face and 15\,mm fillet.
+  \item \textbf{Blank holder}: rigid body with 2\,mm inner chamfer, inner radius 62.5\,mm.
 \end{itemize}
 
-The specimen geometry files (\texttt{.cae}) are provided by the supervisor for specimen widths W20 to W200 and are shared between both test configurations.
+For Nakazima and Marciniak, the standard four-part model is used (single punch, die, blank holder, blank). Specimen geometry files (\texttt{.cae}) are provided for widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm and are shared between all test configurations.
 
 \section{Material Model}
 
@@ -18,31 +39,50 @@ The blank material is defined via a VUMAT Fortran subroutine (\texttt{VUMAT\_exp
 
 \section{Boundary Conditions and Interactions}
 
-Symmetry boundary conditions are applied on the two cut planes of the quarter model. The blank holder is fixed in the vertical direction. The punch is prescribed a smooth-step velocity amplitude to avoid dynamic effects at the start of the simulation. Surface-to-surface kinematic contact is defined between the blank and each rigid tool, with a Coulomb friction coefficient set in \texttt{config.py}.
+Symmetry boundary conditions are applied on the two cut planes of the quarter model. The blank holder and die are fully fixed. Surface-to-surface kinematic contact is defined between the blank and each rigid tool, with Coulomb friction coefficients set in \texttt{config.py}.
 
-\section{Step and Output}
+For the PiP configuration, the two-step process is controlled by separate boundary conditions on each punch reference point:
+\begin{itemize}
+  \item \textbf{Step~1} (\texttt{Step1\_Clamp}, 10\,s): both Punch~1 and Punch~2 advance 20\,mm together with a linear amplitude.
+  \item \textbf{Step~2} (\texttt{Step2\_Form}, 10\,s): Punch~1 is locked via an \texttt{EncastreBC} (zero nodal velocity, holding at end-of-step-1 position); Punch~2 advances a further 20\,mm with a linear amplitude.
+\end{itemize}
 
-A single Dynamic Explicit step is used. Mass scaling is applied to reduce computation time while keeping the ratio of kinetic to internal energy below 5\%. Field outputs are requested at regular intervals and include:
+For Nakazima and Marciniak, a single \texttt{Forming} step (18.5\,s) uses a smooth-step amplitude to prescribe the 37\,mm punch displacement.
+
+\section{Forming Speed and Mass Scaling}
+
+All simulations use a punch speed of 2\,mm/s, consistent with the upper bound specified in ISO~12004-2~\cite{ISO120042} (0.5--2\,mm/s). This is an artificial speed used in the quasi-static Abaqus/Explicit framework: the step time is set to $t = d/v$ (18.5\,s for Nakazima/Marciniak; $2 \times 10$\,s for PiP).
+
+Fixed mass scaling with a target stable time increment $\Delta t = 2 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation. The mass scaling value was chosen accounting for the reduced punch speed relative to earlier implementations: since ALLKE $\propto \Delta t^2 v^2$, reducing $v$ from 5\,mm/s to 2\,mm/s allows $\Delta t$ to be increased by a factor of 2.5 while maintaining the same energy ratio.
+
+\section{Output Requests}
+
+Field outputs are requested at regular intervals and include:
 \begin{itemize}
   \item \texttt{LE}: Logarithmic strain tensor (used to compute principal strains $\varepsilon_1$, $\varepsilon_2$).
   \item \texttt{SDV1--17}: All solution-dependent variables (EQPS, stress state, fracture strain).
   \item \texttt{STATUS}: Element status (0 = deleted, used to detect failure frame).
-  \item \texttt{S}, \texttt{U}, \texttt{RF}, \texttt{TRIAX}: Stress, displacement, reaction forces, triaxiality.
+  \item \texttt{S}, \texttt{U}, \texttt{RF}: Stress, displacement, reaction forces.
 \end{itemize}
+
+History output includes whole-model energies \texttt{ALLKE} and \texttt{ALLIE} for quasi-static validation.
 
 \section{Simulation Pipeline}
 
-The entire workflow is automated via a set of Python and shell scripts. The pipeline is summarised in Figure~\ref{fig:pipeline} and runs end-to-end with a single \texttt{sbatch run\_cluster.sh} command on the ETH Euler cluster.
+The entire workflow is automated via a set of Python and shell scripts deployed on the ETH Euler HPC cluster. The pipeline runs end-to-end from a single \texttt{deploy\_all.sh} invocation on the local machine.
 
 \begin{enumerate}
-  \item \texttt{config.py} — Sets all parameters (width, thickness, friction, VUMAT constants, output directory).
-  \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model and write the \texttt{.inp} file.
-  \item Abaqus/Explicit solver — Runs the simulation on the compute node.
-  \item \texttt{postproc.py} — Extracts principal strains and EQPS at failure → \texttt{strain\_path.csv}.
-  \item \texttt{postproc\_movie.py} — Renders a SDV1 (EQPS) animation → \texttt{.webm}.
-  \item \texttt{plot\_flc.py} — Aggregates all \texttt{strain\_path.csv} files and plots the FLC.
+  \item \texttt{config.py} — Central parameter file: test type, specimen width, thickness, friction coefficients, VUMAT constants, forming speed, output directory.
+  \item \texttt{deploy\_all.sh} — Pushes scripts to Euler, builds all models on the login node, and submits all solver jobs via SLURM.
+  \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model (\texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job}) and write the \texttt{.inp} file.
+  \item Abaqus/Explicit solver — Runs the simulation on the compute node (24 CPUs, \texttt{mp\_mode=threads}).
+  \item \texttt{postproc.py} — Extracts principal strains and EQPS at failure $\to$ \texttt{strain\_path.csv}; plots ALLKE/ALLIE vs.\ time $\to$ \texttt{energy\_ratio.png}.
+  \item \texttt{postproc\_movie.py} — Renders a SDV1 (EQPS) animation $\to$ \texttt{.webm}.
+  \item \texttt{flc\_plot.py} — Aggregates all \texttt{strain\_path.csv} files across widths and plots the FLC $\to$ \texttt{flc\_diagram.png}.
 \end{enumerate}
 
 \section{Failure Detection}
 
-The failure frame is defined as the last output frame before the first element deletion, detected by a drop in STATUS below 0.5. At that frame, the element with the maximum SDV1 (EQPS) is identified as the critical element. Its major and minor principal strains, computed analytically from the LE tensor eigenvalues, define one point on the FLC.
+The failure frame is identified as the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within a radius $R_\mathrm{dome}$ of the punch axis ($X = Y = 0$), set to 15\% of the punch diameter per ISO~12004-2. If the first deletion occurs outside the dome zone, the fracture is classified as a \textit{base fracture} and the corresponding FLC point is excluded from the curve.
+
+At the pre-failure frame, the element with the maximum SDV1 (EQPS) in the dome zone is identified as the critical element. Its major and minor principal strains, computed analytically from the LE tensor eigenvalues, define one point on the FLC.

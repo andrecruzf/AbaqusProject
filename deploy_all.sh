@@ -30,14 +30,14 @@ DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); im
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
-shift 3 || true
+shift $(( $# < 3 ? $# : 3 ))
 WIDTHS=("${@}")
 if [ ${#WIDTHS[@]} -eq 0 ]; then
     WIDTHS=(20 50 80 90 100 120 200)
 fi
 
 # Derived name components (computed once, used in loop and FLC job)
-_t=$(python3 -c "print(str(${THICKNESS}).replace('.','p'))")
+_t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"

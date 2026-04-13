@@ -15,7 +15,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem-per-cpu=4G
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 
 # =============================================================
 set -e
@@ -96,6 +96,9 @@ echo "=============================================="
 cp "$SCRATCH_DIR/strain_path.csv"             "$WORK_DIR/" 2>/dev/null \
     && echo "  strain_path.csv ✓" \
     || echo "  WARNING: strain_path.csv not found in scratch"
+cp "$SCRATCH_DIR/energy_ratio.png"            "$WORK_DIR/" 2>/dev/null \
+    && echo "  energy_ratio.png ✓" \
+    || echo "  WARNING: energy_ratio.png not found in scratch (matplotlib may be unavailable)"
 cp "$SCRATCH_DIR/${JOB_NAME}_movie.webm"      "$WORK_DIR/" 2>/dev/null \
     && echo "  ${JOB_NAME}_movie.webm ✓" \
     || echo "  WARNING: movie not found in scratch (ffmpeg may have failed)"

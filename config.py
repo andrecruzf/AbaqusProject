@@ -12,11 +12,12 @@
 # ── Abaqus names ──────────────────────────────────────────────
 MODEL_NAME = 'Model-1'
 
-# ── Test type ─────────────────────────────────────────────────
+# ──────────────────────────────────── Test type ─────────────────────────────────────────────────
 import os as _os
 # 'nakazima' → hemispherical punch
 # 'marciniak' → flat punch (ISO 12004-2 §6.3.4)
-TEST_TYPE = _os.environ.get('TEST_TYPE', 'nakazima').lower()
+# 'pip' → punch in punch
+TEST_TYPE = _os.environ.get('TEST_TYPE', 'pip').lower()
 
 # ── Specimen selection ────────────────────────────────────────
 # Width in mm — selects geometry file W{width}.inp from INP_DIR.
@@ -29,12 +30,14 @@ INP_DIR = 'geometries'
 # Name of the imported specimen part (None = first non-tool part found)
 SPECIMEN_PART_NAME = None
 
-# ── Cluster resources ─────────────────────────────────────────
+# ──────────────────────────── Cluster resources ─────────────────────────────────────────
 NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)
 
-# ── Sheet thickness ───────────────────────────────────────────
+# ───────────────────── Sheet thickness + Orientation angle ──────────────────────────────
 BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1))  # mm — varies per sheet batch
 MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', 0.0))
+
+# ───────────────────── File naming convention ──────────────────────────────
 _t        = str(BLANK_THICKNESS).replace('.', 'p')
 _test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
 _ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
@@ -43,39 +46,14 @@ CAE_NAME  = '{}_W{}_t{}_ang{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
 INP_NAME  = '{}_W{}_t{}_ang{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
 OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
-# ── Die geometry ──────────────────────────────────────────────
+# ── Common geometry — shared across all test types ────────────
 DIE_OUTER_RADIUS = 73.0  # mm — outer radius (die and blank holder), same for both tests
 DIE_HEIGHT       = 40.0  # mm — die wall height above blank
 BH_HEIGHT        = 44.0  # mm — blank holder height below blank
 BH_FILLET        = 4.0   # mm — blank holder inner fillet radius
-
-if TEST_TYPE == 'nakazima':
-    DIE_INNER_RADIUS = 52.5  # mm — die throat radius
-    DIE_FILLET       = 8.0   # mm — die throat fillet
-    BH_INNER_RADIUS  = 54.5  # mm — blank holder inner radius (2 mm clearance over die)
-elif TEST_TYPE == 'marciniak':  # ISO 12004-2 §6.3.4.2
-    DIE_INNER_RADIUS = 60.0  # mm — 120% of punch diameter (Ø120 mm die)
-    DIE_FILLET       = 12.0  # mm — 12% of punch diameter (mid of 10–20% range)
-    BH_INNER_RADIUS  = 62.0  # mm — 2 mm clearance over die inner radius
-elif TEST_TYPE == 'pip':
-    # Punch-in-Punch — die/BH geometry from PinP_CR210H reference
-    DIE_INNER_RADIUS = 55.0  # mm — die inner wall radius
-    DIE_FILLET       = 15.0  # mm — die throat fillet radius
-    BH_INNER_RADIUS  = 62.5  # mm — blank holder inner radius
-else:
-    raise ValueError("Unknown TEST_TYPE: '%s'. Expected 'nakazima', 'marciniak', or 'pip'." % TEST_TYPE)
-
-# ── Punch geometry ────────────────────────────────────────────
 PUNCH_RADIUS      = 50.0   # mm — punch radius (hemi for Nakazima, flat for Marciniak)
 PUNCH_HEIGHT      = 60.0   # mm — punch cylindrical body height
 PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of diameter per ISO 12004-2)
-
-# ── Dome zone radius for FLC post-processing ──────────────────
-# Observation zone used by postproc.py to find the critical element.
-# ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter
-# from the dome apex → 0.15 × 100 mm = 15 mm.
-# Overridable via R_DOME env var.
-R_DOME = float(_os.environ.get('R_DOME', 0.15 * PUNCH_RADIUS * 2.0))
 
 # ── PiP (Punch-in-Punch) geometry ─────────────────────────────
 # Only defined when TEST_TYPE == 'pip'; safe to read for all types.
@@ -104,21 +82,49 @@ if TEST_TYPE == 'pip':
     # Process parameters
     PIP_PUNCH1_DISPLACEMENT   = 20.0   # mm — Punch1 travel in Step 1
     PIP_PUNCH2_DISPLACEMENT   = 20.0   # mm — Punch2 additional travel in Step 2
-    PIP_STEP1_TIME            = 4.0    # s  — duration of Step 1 (linear amplitude)
-    PIP_STEP2_TIME            = 4.0    # s  — duration of Step 2
+    PIP_STEP1_TIME            = 10.0   # s  — duration of Step 1 → 2 mm/s (ISO 12004-2: 0.5–2 mm/s)
+    PIP_STEP2_TIME            = 10.0   # s  — duration of Step 2 → 2 mm/s
     # Friction coefficients
     FR_PUNCH1  = 0.10    # Punch1 / blank
     FR_PUNCH2  = 0.005   # Punch2 / blank (near-frictionless per PiP reference)
     FR_CLAMP   = 0.22    # Die and blank-holder / blank
 
+
+# ── Test-type-specific geometry — die throat, BH inner radius ─────────────────
+if TEST_TYPE == 'nakazima':
+    DIE_INNER_RADIUS = 52.5  # mm — die throat radius
+    DIE_FILLET       = 8.0   # mm — die throat fillet
+    BH_INNER_RADIUS  = 54.5  # mm — blank holder inner radius (2 mm clearance over die)
+elif TEST_TYPE == 'marciniak':  # ISO 12004-2 §6.3.4.2
+    DIE_INNER_RADIUS = 60.0  # mm — 120% of punch diameter (Ø120 mm die)
+    DIE_FILLET       = 12.0  # mm — 12% of punch diameter (mid of 10–20% range)
+    BH_INNER_RADIUS  = 62.0  # mm — 2 mm clearance over die inner radius
+elif TEST_TYPE == 'pip':
+    # Punch-in-Punch — die/BH geometry from PinP_CR210H reference
+    DIE_INNER_RADIUS = 55.0  # mm — die inner wall radius
+    DIE_FILLET       = 15.0  # mm — die throat fillet radius
+    BH_INNER_RADIUS  = 62.5  # mm — blank holder inner radius
+else:
+    raise ValueError("Unknown TEST_TYPE: '%s'. Expected 'nakazima', 'marciniak', or 'pip'." % TEST_TYPE)
+
+
+# ── Dome zone radius for FLC post-processing ──────────────────
+# Observation zone used by postproc.py to find the critical element
+# ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter
+# from the dome apex → 0.15 × 100 mm = 15 mm.
+# Overridable via R_DOME env var.
+R_DOME = float(_os.environ.get('R_DOME', 0.15 * PUNCH_RADIUS * 2.0))
+
+
 # ── Forming parameters ────────────────────────────────────────
-PUNCH_DISPLACEMENT = 50.0                        # mm — total punch travel
-STEP_TIME = PUNCH_DISPLACEMENT / 5.0             # s  — time-scaled (not real speed)
+PUNCH_DISPLACEMENT = 37.0                        # mm — matches Lennart reference (parameter_naka.inp)
+STEP_TIME = PUNCH_DISPLACEMENT / 2.0            # s  — 2 mm/s (ISO 12004-2: 0.5–2 mm/s)
 # Check ALLKE/ALLIE < 5 % in post-processing to validate quasi-static assumption.
 
 # ── Mass scaling ──────────────────────────────────────────────
 USE_MASS_SCALING = True
-MASS_SCALING_DT  = 1.0e-5   # s — target stable time increment (FIXED type)
+MASS_SCALING_DT  = 2.0e-5   # s — increased from 1e-5: v reduced 5→2 mm/s so ALLKE/ALLIE
+                             #     scales as DT²×v²; 2e-5 keeps ratio well below 5% threshold
 
 # ── Friction ──────────────────────────────────────────────────
 FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface (nakazima/marciniak)

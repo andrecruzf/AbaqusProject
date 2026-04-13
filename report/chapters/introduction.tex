@@ -15,7 +15,7 @@ This work is part of a larger semester project titled \textit{Towards Robust For
 \begin{description}
   \item[Task I] Experimental forming campaign on Nakazima and Marciniak test benches, investigating size effects across a range of geometries and sheet thicknesses.
   \item[Task II] Implementation of a modularised FLC identification framework integrating multiple necking detection criteria: Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, Pham-Sigvant~\cite{Pham2023}, and Stoughton~\cite{Min2017}.
-  \item[Task III] \textbf{(this report)} Development of a fully automated numerical simulation framework for the generation of FLCs via Nakazima and Marciniak FEA.
+  \item[Task III] \textbf{(this report)} Development of a fully automated numerical simulation framework for the generation of FLCs via Nakazima, Marciniak, and Punch-in-Punch (PiP) FEA.
 \end{description}
 
 \section{Objectives}
@@ -23,12 +23,12 @@ This work is part of a larger semester project titled \textit{Towards Robust For
 The objective of this semester project is to build a complete, automated FEA pipeline for the numerical generation of Forming Limit Curves. Specifically, the goals are:
 
 \begin{enumerate}
-  \item Implement Nakazima and Marciniak test geometries in Abaqus/Explicit with a VUMAT user material subroutine based on the Hosford-Coulomb (HC) fracture criterion.
+  \item Implement Nakazima, Marciniak, and Punch-in-Punch test geometries in Abaqus/Explicit with a VUMAT user material subroutine based on the Hosford-Coulomb (HC) fracture criterion.
   \item Simulate a range of specimen widths (W20 to W200) to cover the full strain path spectrum from uniaxial tension to equibiaxial stretching.
-  \item Automate the complete pipeline — from model building to post-processing and FLC plotting — on the ETH Euler HPC cluster.
+  \item Automate the complete pipeline — from model building to post-processing and FLC plotting — on the ETH Euler HPC cluster, with all forming speeds compliant with ISO~12004-2.
   \item Extract the critical principal strains at the onset of failure and assemble the numerical FLC, providing reference data for the identification criteria of Task~II.
 \end{enumerate}
 
 \section{Report Structure}
 
-Chapter~\ref{chap:theory} introduces the theoretical background: the Nakazima and Marciniak test methods, the FLC concept, the Hosford-Coulomb failure criterion, and an overview of experimental FLC identification criteria. Chapter~\ref{chap:numerical_model} describes the FE model, the simulation pipeline, and the post-processing methodology. Chapter~\ref{chap:results} presents the simulation results and the resulting FLC. Chapter~\ref{chap:conclusion} summarises the findings and outlines directions for future work.
+Chapter~\ref{chap:theory} introduces the theoretical background: the Nakazima, Marciniak, and Punch-in-Punch test methods, the FLC concept, the Hosford-Coulomb failure criterion, and an overview of experimental FLC identification criteria. Chapter~\ref{chap:numerical_model} describes the FE model, the simulation pipeline, and the post-processing methodology. Chapter~\ref{chap:results} presents the simulation results and the resulting FLC. Chapter~\ref{chap:conclusion} summarises the findings and outlines directions for future work.

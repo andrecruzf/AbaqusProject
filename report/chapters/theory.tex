@@ -19,7 +19,7 @@ Two standardised experimental methods are used to determine FLCs, both described
 
 In the Nakazima test, a hemispherical punch of diameter 100\,mm is pushed through a clamped blank until fracture. By varying the width of the specimen — from a narrow strip (approaching uniaxial tension) to a full-width disc (approaching equibiaxial stretching) — different strain paths are induced along the FLC. The method is widely used due to its simplicity, but the strain path at the specimen apex is known to be slightly non-linear due to bending and contact pressure effects~\cite{ISO120042}.
 
-In this work, specimen widths $W \in \{20, 50, 80, 100, 120, 200\}$\,mm are considered. Due to symmetry, only a quarter model is simulated.
+In this work, specimen widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm are considered. Due to symmetry, only a quarter model is simulated.
 
 \subsection{Marciniak Test}
 
@@ -31,6 +31,19 @@ Key tool dimensions per ISO~12004-2~\cite{ISO120042}:
   \item Die inner diameter: 120\% of punch diameter ($= 120$\,mm)
   \item Die fillet: 10--20\% of punch diameter ($= 10$--20\,mm)
 \end{itemize}
+
+\subsection{Punch-in-Punch Test}
+
+The Punch-in-Punch (PiP) test is an alternative forming test designed to generate more linear strain paths than the standard Nakazima configuration, particularly in the biaxial stretching regime. It employs two coaxial punches acting sequentially on the specimen:
+
+\begin{itemize}
+  \item \textbf{Punch~1} (outer, annular): inner bore radius 20\,mm, outer radius 43.75\,mm. Pre-forms the outer zone of the blank and maintains clamping in the second step.
+  \item \textbf{Punch~2} (inner, hemispherical): radius 15\,mm. Forms the central dome region.
+\end{itemize}
+
+The process consists of two steps. In Step~1, both punches advance together by 20\,mm, pre-forming the specimen. In Step~2, Punch~1 is held fixed while Punch~2 advances a further 20\,mm (40\,mm total), deepening the dome until fracture. This two-stage loading produces a controlled strain path in the dome zone that is more directly comparable to the target strain state than the single-punch Nakazima approach.
+
+The PiP test geometry and process parameters are derived from the validated reference model of Lennart~(PinP\_CR210H), which was used as the basis for calibration of the FE implementation.
 
 \section{Hosford-Coulomb Failure Criterion}
 
