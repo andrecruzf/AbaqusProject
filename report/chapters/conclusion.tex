@@ -1,19 +1,15 @@
 \chapter{Conclusion}\label{chap:conclusion}
 
-\section{Summary}
+This project developed a fully automated pipeline for the numerical determination of Forming Limit Curves using three test configurations — Nakazima, Marciniak, and Punch-in-Punch — in Abaqus/Explicit. The pipeline covers the complete workflow from model building and HPC job submission to strain extraction, quasi-static validation, and FLC plotting, and runs end-to-end on the ETH Euler cluster from a single deployment command.
 
-This project developed a fully automated pipeline for the numerical determination of Forming Limit Curves using Nakazima and Marciniak test simulations in Abaqus/Explicit. The pipeline covers the complete workflow — from model building and solver submission to strain extraction and FLC plotting — and runs end-to-end on the ETH Euler HPC cluster with a single command. The Hosford-Coulomb VUMAT subroutine was successfully integrated. Both test configurations are supported through a shared pipeline parameterised by a \texttt{TEST\_TYPE} flag, with test-specific punch geometry and die dimensions automatically selected from the configuration.
-
-% TODO: Summarise quantitative findings once all simulations are complete.
-
-\section{Outlook}
-
-Directions for future work include:
+The key contributions are:
 \begin{itemize}
-  \item Completion and analysis of the full Nakazima and Marciniak simulation campaigns across all specimen widths and thicknesses.
-  \item Comparison of numerically determined FLCs between the two test configurations to quantify the effect of strain path linearity.
-  \item Calibration and validation of the HC material constants against experimental tensile, shear, and notched test data.
-  \item Sensitivity analysis of the FLC with respect to friction coefficient, punch velocity, and mesh size.
-  \item Integration of the numerical strain field data with the FLC identification criteria of Task~II (Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, Pham-Sigvant~\cite{Pham2023}, Min-Stoughton~\cite{Min2017}).
-  \item Comparison of numerical FLCs with experimental results from the Nakazima/Marciniak test bench of Task~I.
+  \item A modular, configuration-file-driven pipeline (\texttt{config.py}) supporting all three test types, seven specimen widths, variable sheet thickness, and material orientation angle, with no code changes required between configurations.
+  \item A correct implementation of the two-step Punch-in-Punch boundary conditions in Abaqus/Explicit: Punch~1 is held at its Step~1 end-position via an \texttt{EncastreBC} (zero nodal velocity) in Step~2, while Punch~2 advances a further 20\,mm.
+  \item Forming speeds of 2\,mm/s throughout, compliant with the upper bound of ISO~12004-2 (0.5--2\,mm/s), with fixed mass scaling ($\Delta t = 2 \times 10^{-5}$\,s) verified to maintain ALLKE/ALLIE $< 5$\% across all widths.
+  \item Automated failure detection restricted to the ISO-compliant dome zone ($R_\mathrm{dome} = 15$\,mm for the Nakazima/Marciniak punch, scaled appropriately for PiP), with base-fracture rejection.
+  \item Per-simulation quasi-static validation plots (ALLKE/ALLIE vs.\ time) produced automatically alongside the strain path data.
 \end{itemize}
+
+% TODO: Summarise quantitative findings (FLC point values, ALLKE/ALLIE maxima, comparison
+%       between configurations) once all simulation campaigns are complete.

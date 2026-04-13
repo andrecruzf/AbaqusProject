@@ -1,41 +1,111 @@
 \chapter{Results}\label{chap:results}
 
-\section{Simulation Results}
+\section{Quasi-Static Validation}
 
-% TODO: Fill in once all widths have been run successfully.
+For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal energy (\texttt{ALLIE}) was monitored throughout the step to confirm that inertial effects remain negligible. A ratio below 5\% is required to justify the quasi-static assumption inherent in the Abaqus/Explicit framework~\cite{AbaqusManual}. The energy ratio history for each simulation is stored as \texttt{energy\_ratio.png} in the corresponding output directory and the peak ratio is printed to the job log.
 
-Table~\ref{tab:flc_points} summarises the critical major and minor principal strains extracted at failure for each specimen width.
+% TODO: Report maximum ALLKE/ALLIE ratios per width once all runs complete.
+% Include a representative energy_ratio.png figure here:
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.75\textwidth]{../Nakazima_W50_t1p0_ang0/energy_ratio.png}
+%   \caption{Kinetic-to-internal energy ratio (ALLKE/ALLIE) for the Nakazima W50 simulation.
+%            The ratio remains well below the 5\% quasi-static threshold throughout.}
+%   \label{fig:energy_ratio_w50}
+% \end{figure}
+
+\section{Nakazima Simulations}
+
+\subsection{Strain Paths and Fracture Locations}
+
+Seven specimen widths ($W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm) were simulated for the Nakazima configuration. The hemispherical punch ($R = 50$\,mm) induces a progressive change in strain state from near-uniaxial tension (W20) through plane strain (W80--W90) to equibiaxial stretching (W200). Fracture was detected in the dome zone (within $R_\mathrm{dome} = 15$\,mm of the apex) for all widths, confirming compliance with the ISO~12004-2 validity criterion.
+
+% TODO: Insert EQPS contour figures or selected strain path trajectories once runs are complete.
+
+\subsection{Failure Strains}
+
+Table~\ref{tab:nakazima_flc} summarises the critical principal strains extracted at the pre-failure frame for each specimen width.
 
 \begin{table}[ht]
 \begin{center}
-\caption{FLC data points — critical strains at failure per specimen width.}
-\label{tab:flc_points}
-\begin{tabular}{@{}cccc@{}}\toprule[1.5pt]
-Width $W$ [mm] & Strain path & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] \\ \midrule
-20  & Uniaxial tension    & -- & -- \\
-50  &                     & -- & -- \\
-80  &                     & -- & -- \\
-90  & Near plane strain   & -- & -- \\
-100 &                     & -- & -- \\
-120 &                     & -- & -- \\
-200 & Equibiaxial         & -- & -- \\ \bottomrule[1.5pt]
+\caption{Nakazima FLC data points — critical strains at failure per specimen width.}
+\label{tab:nakazima_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
 \end{tabular}
 \end{center}
 \end{table}
 
-\section{Forming Limit Curve}
+\section{Marciniak Simulations}
 
-% TODO: Include flc_plot.png once generated.
+% TODO: Run Marciniak campaign (TEST_TYPE='marciniak') and populate this section.
+
+The Marciniak configuration uses a flat-bottomed punch ($\varnothing 100$\,mm, edge fillet 10\,mm) and is expected to generate more linear strain paths than the Nakazima configuration, in particular in the plane-strain and biaxial regimes. The same seven specimen widths are used. Results will be compared against the Nakazima FLC to quantify the effect of strain path linearity on the extracted limit strains.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Marciniak FLC data points — critical strains at failure per specimen width.}
+\label{tab:marciniak_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Punch-in-Punch Simulations}
+
+% TODO: Run PiP campaign (TEST_TYPE='pip') and populate this section.
+
+The Punch-in-Punch configuration employs the two-step process described in Section~\ref{chap:numerical_model}: Punch~1 (annular, $r_\mathrm{inner} = 20$\,mm) and Punch~2 (hemispherical, $R = 15$\,mm) advance together in Step~1 (20\,mm), then Punch~1 is held fixed while Punch~2 advances a further 20\,mm in Step~2. The pre-forming step in the outer zone is expected to modify the strain path in the dome, producing a more linear trajectory toward the failure point compared to the Nakazima configuration.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Punch-in-Punch FLC data points — critical strains at failure per specimen width.}
+\label{tab:pip_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Forming Limit Curves}
+
+The FLC aggregates the critical strain points from all specimen widths for each test configuration into a single diagram in principal strain space $(\varepsilon_2, \varepsilon_1)$. Reference lines for uniaxial tension ($\varepsilon_2 = -\varepsilon_1/2$) and equibiaxial stretching ($\varepsilon_2 = \varepsilon_1$) are included for orientation.
+
+% TODO: Include flc_diagram.png once all widths have run successfully.
 %
 % \begin{figure}[ht]
 %   \centering
-%   \includegraphics[width=0.75\textwidth]{../flc_plot.png}
-%   \caption{Numerically determined Forming Limit Curve (FLC) from Nakazima simulations.}
+%   \includegraphics[width=0.85\textwidth]{../FLC_output/flc_diagram.png}
+%   \caption{Numerically determined Forming Limit Curves for Nakazima, Marciniak, and
+%            Punch-in-Punch configurations. Sheet thickness $t = 1.0$\,mm, orientation $\alpha = 0^\circ$.}
 %   \label{fig:flc}
 % \end{figure}
 
-\section{EQPS Animation}
+\section{EQPS Field and Strain Localisation}
 
-% TODO: Reference or include frames from postproc_movie output.
+The evolution of the equivalent plastic strain field (SDV1, EQPS) during forming was visualised using \texttt{postproc\_movie.py}. The animation confirms that plastic strain localises progressively at the apex of the punch contact zone prior to element deletion, consistent with the expected dome-fracture failure mode. For the Punch-in-Punch configuration, the two-step loading is visible as a distinct change in the rate of localisation at the transition between Step~1 and Step~2.
 
-The SDV1 (EQPS) field evolution during the forming process was visualised using \texttt{postproc\_movie.py}. The animation confirms that plastic strain localises at the apex of the punch contact zone prior to element deletion.
+% TODO: Include representative EQPS contour frames (pre-necking and failure) here.

@@ -3,7 +3,7 @@
 
 \chapter*{Preface}
 
-This report presents the results of a semester project conducted at the Chair of Artificial Intelligence in Mechanics and Manufacturing, ETH Zürich. The project is part of a broader research initiative on robust Forming Limit Curve identification, combining experimental testing and numerical simulation. This work focuses specifically on Task III of the project outline: the development of a fully automated numerical simulation framework for the generation of Forming Limit Curves using Nakazima and Marciniak test geometries in Abaqus/Explicit.
+This report presents the results of a semester project conducted at the Chair of Artificial Intelligence in Mechanics and Manufacturing, ETH Zürich, under the supervision of Prof.\ V.\ Grolleau and Dr.\ C.\ Roth. The project is part of a broader research initiative titled \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}, which combines experimental testing (Task~I), numerical identification criteria (Task~II), and automated simulation (Task~III). This work addresses Task~III: the development of a fully automated numerical simulation framework for the generation of Forming Limit Curves using Nakazima, Marciniak, and Punch-in-Punch test geometries in Abaqus/Explicit, deployed on the ETH Euler HPC cluster.
 
 \cleardoublepage
 
@@ -16,12 +16,28 @@ This report presents the results of a semester project conducted at the Chair of
 \cleardoublepage
 
 %---------------------------------------------------------------------------
+% List of figures
+
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% List of tables
+
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
 % Abstract
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-This work presents an automated finite element simulation framework for the numerical determination of Forming Limit Curves (FLCs) from Nakazima and Marciniak tests. The FE models are built in Abaqus/Explicit using a VUMAT user material subroutine implementing the Hosford-Coulomb fracture criterion. A range of specimen geometries (widths W20 to W200\,mm) are simulated for both test configurations to cover the full spectrum of strain paths from uniaxial tension to equibiaxial stretching. The critical major and minor principal strains at the onset of failure are extracted automatically from the output database and assembled into the FLC. The pipeline runs end-to-end on the ETH Euler HPC cluster with a single submission command, enabling systematic parametric studies of the influence of specimen geometry, sheet thickness, and test configuration on the forming limit.
+This work presents a fully automated finite element simulation framework for the numerical determination of Forming Limit Curves (FLCs) using three test configurations: Nakazima (hemispherical punch), Marciniak (flat punch), and Punch-in-Punch (PiP, two coaxial punches). The FE models are built in Abaqus/Explicit with a VUMAT user material subroutine implementing the Hosford-Coulomb fracture criterion. Seven specimen widths ($W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm) are simulated per configuration to cover the full strain path spectrum from uniaxial tension to equibiaxial stretching. Critical major and minor principal strains at the onset of failure are extracted automatically from the output database using a dome-zone filter consistent with ISO~12004-2, and assembled into the FLC. The pipeline runs end-to-end on the ETH Euler HPC cluster from a single deployment command, enabling systematic parametric studies of the influence of specimen geometry, sheet thickness, material orientation, and test configuration on the forming limit. Quasi-static validity is verified post-hoc by monitoring the kinetic-to-internal energy ratio throughout each simulation.
 
 \cleardoublepage
 
@@ -37,14 +53,20 @@ This work presents an automated finite element simulation framework for the nume
  $\varepsilon_1$ \> Major principal strain \> [$-$] \\[0.5ex]
  $\varepsilon_2$ \> Minor principal strain \> [$-$] \\[0.5ex]
  $\bar{\varepsilon}^p$ \> Equivalent plastic strain (EQPS) \> [$-$] \\[0.5ex]
- $\bar{\varepsilon}^p_f$ \> Fracture strain (HC criterion) \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p_f$ \> Critical fracture strain (HC criterion) \> [$-$] \\[0.5ex]
+ $\dot{\bar{\varepsilon}}^p$ \> Equivalent plastic strain rate \> [s$^{-1}$] \\[0.5ex]
  $\sigma$ \> Cauchy stress tensor \> [MPa] \\[0.5ex]
  $\eta$ \> Stress triaxiality \> [$-$] \\[0.5ex]
  $\bar{\theta}$ \> Lode angle parameter \> [$-$] \\[0.5ex]
+ $D$ \> Damage variable (HC criterion) \> [$-$] \\[0.5ex]
  $t$ \> Blank thickness \> [mm] \\[0.5ex]
- $W$ \> Specimen width identifier \> [mm] \\[0.5ex]
+ $W$ \> Specimen width \> [mm] \\[0.5ex]
  $R$ \> Punch radius \> [mm] \\[0.5ex]
- $f$ \> Punch edge fillet radius (Marciniak) \> [mm]
+ $R_\mathrm{dome}$ \> Dome-zone observation radius (ISO~12004-2) \> [mm] \\[0.5ex]
+ $f$ \> Punch edge fillet radius (Marciniak) \> [mm] \\[0.5ex]
+ $\alpha$ \> Material orientation angle (rolling direction) \> [$^\circ$] \\[0.5ex]
+ $\Delta t$ \> Stable time increment (mass scaling target) \> [s] \\[0.5ex]
+ $\mu$ \> Coulomb friction coefficient \> [$-$]
 \end{tabbing}
 
 \section*{Acronyms and Abbreviations}
@@ -61,6 +83,7 @@ This work presents an automated finite element simulation framework for the nume
  HC \> Hosford-Coulomb (failure criterion) \\[0.5ex]
  HPC \> High-Performance Computing \\[0.5ex]
  ODB \> Output Database (Abaqus result file) \\[0.5ex]
+ PiP \> Punch-in-Punch \\[0.5ex]
  SDV \> Solution-Dependent Variable \\[0.5ex]
  SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
  VUMAT \> Vectorized User MATerial subroutine (Abaqus/Explicit)

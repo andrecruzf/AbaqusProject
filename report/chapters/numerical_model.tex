@@ -33,6 +33,12 @@ For the PiP configuration, the model includes five parts:
 
 For Nakazima and Marciniak, the standard four-part model is used (single punch, die, blank holder, blank). Specimen geometry files (\texttt{.cae}) are provided for widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm and are shared between all test configurations.
 
+\section{Discretisation}
+
+The blank is meshed with eight-node linear brick elements with reduced integration and hourglass control (\texttt{C3D8R}). A single element layer is used through the thickness, consistent with the supervisor-provided geometry files and with the mesh configuration used in the reference model (PinP\_CR210H). Element size in the dome zone is approximately 1\,mm, providing adequate resolution of the strain gradient without excessive computational cost for the explicit solver.
+
+Maintaining a consistent element size across all specimen widths and test configurations is a primary requirement of the project outline (Task~III). All geometry files use a common mesh density in the contact zone, ensuring that the extracted FLC points are not influenced by spatial discretisation artefacts. A mesh sensitivity study — varying element size systematically and monitoring the extracted failure strains — is identified as a direction for future work (see Chapter~\ref{chap:future_work}).
+
 \section{Material Model}
 
 The blank material is defined via a VUMAT Fortran subroutine (\texttt{VUMAT\_explicit.f}), which implements the Hosford-Coulomb criterion with 46 material constants. The subroutine computes the stress update using a radial return algorithm and evaluates the fracture criterion at each increment. Initial conditions for SDV8 ($\beta = 1.0$) and SDV17 ($\bar{\varepsilon}^p_f$) are injected programmatically at the start of the step to work around an Abaqus 2023 CAE limitation with VUMAT predefined fields.

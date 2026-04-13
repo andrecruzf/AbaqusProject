@@ -1,45 +1,52 @@
 \chapter{Simulation Pipeline}\label{app:pipeline}
 
+\section{Pipeline Architecture}
+
+Figure~\ref{fig:architecture} shows the full pipeline architecture, from local configuration to HPC output.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\textwidth]{../architecture.png}
+  \caption{Automated simulation pipeline architecture. Local machine (blue) deploys to the ETH Euler HPC cluster. The login node builds all FE models; compute nodes run the solver and post-processing jobs in parallel under SLURM. The FLC aggregation job runs after all solver jobs complete via a SLURM \texttt{afterok} dependency.}
+  \label{fig:architecture}
+\end{figure}
+
 \section{Repository Structure}
 
-The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). The key files are:
+The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
 
 \begin{tabbing}
  \hspace*{4.5cm} \= \kill
  \texttt{config.py}             \> Central configuration — all model parameters \\[0.5ex]
- \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules \\[0.5ex]
- \texttt{modules/}              \> parts, assembly, material, step, contact, boundary, output, job \\[0.5ex]
- \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran) \\[0.5ex]
- \texttt{geometries/}           \> Supervisor-provided geometry files (W20--W200) \\[0.5ex]
- \texttt{postproc.py}           \> Strain path extraction from ODB \\[0.5ex]
- \texttt{postproc\_movie.py}    \> SDV1 animation renderer \\[0.5ex]
- \texttt{plot\_flc.py}          \> FLC aggregation and plotting \\[0.5ex]
- \texttt{deploy\_all.sh}        \> Push config, build all widths, submit SLURM jobs \\[0.5ex]
- \texttt{collect\_results.sh}   \> Download results from Euler, plot FLC
+ \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
+ \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job} \\[0.5ex]
+ \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran 77) \\[0.5ex]
+ \texttt{geometries/}           \> Supervisor-provided blank geometry files (W20--W200) \\[0.5ex]
+ \texttt{postproc.py}           \> Extracts strain path and energy ratio from ODB \\[0.5ex]
+ \texttt{postproc\_movie.py}    \> Renders SDV1 (EQPS) animation to \texttt{.webm} \\[0.5ex]
+ \texttt{flc\_plot.py}          \> Aggregates all \texttt{strain\_path.csv} files and plots FLC \\[0.5ex]
+ \texttt{deploy\_all.sh}        \> Entry point: push scripts to Euler, build all widths, submit jobs \\[0.5ex]
+ \texttt{run\_cluster.sh}       \> SLURM job script: solver + postproc + copy results to home \\[0.5ex]
+ \texttt{run\_flc.sh}           \> SLURM FLC aggregation job (runs after all solver jobs)
 \end{tabbing}
 
-\section{Running a Simulation}
+\section{Running a Simulation Campaign}
 
-To launch a single simulation for width $W = 50$\,mm:
+To launch a full campaign for all widths with a given test configuration:
 \lstset{language=bash,numbers=none}
 \begin{lstlisting}[frame=lines]
-# 1. Edit config.py: set SPECIMEN_WIDTH = 50
-# 2. Deploy and run on Euler:
-./deploy.sh
-\end{lstlisting}
-
-To run all widths sequentially:
-\begin{lstlisting}[frame=lines]
+# Deploy and submit all widths (defaults to TEST_TYPE and thickness from config.py):
 ./deploy_all.sh
+
+# Or specify test type, thickness, and orientation angle explicitly:
+./deploy_all.sh nakazima 1.0 0
+./deploy_all.sh pip 1.0 0
 \end{lstlisting}
 
-To collect results and generate the FLC:
-\begin{lstlisting}[frame=lines]
-./collect_results.sh
-\end{lstlisting}
+Results are copied from scratch to the home directory after each job, and the FLC aggregation job runs automatically after all solver jobs complete.
 
 \section{Cluster Configuration}
 
-Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. The Abaqus module is loaded via \texttt{module load abaqus}. Post-processing uses \texttt{xvfb-run} for headless rendering of the animation.
+Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. Each solver job requests 24 CPUs, 64\,GB RAM, and a 24-hour time limit. The Abaqus module is loaded via \texttt{module load abaqus/2023}. Post-processing scripts use \texttt{xvfb-run} for headless ODB rendering. Results are stored in \texttt{/cluster/scratch/acruzfaria/} during the run and copied to \texttt{/cluster/home/acruzfaria/} on completion.
 
 \cleardoublepage
