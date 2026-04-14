@@ -28,7 +28,7 @@ SPECIMEN_WIDTH = int(_os.environ.get('SPECIMEN_WIDTH', 20))
 INP_DIR = 'geometries'
 
 # Name of the imported specimen part (None = first non-tool part found)
-SPECIMEN_PART_NAME = None
+SPECIMEN_PART_NAME = 'Specimen'
 
 # ──────────────────────────── Cluster resources ─────────────────────────────────────────
 NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)

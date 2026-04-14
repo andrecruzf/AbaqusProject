@@ -171,29 +171,29 @@ def create_pip_punch1(cfg):
     s.FixedConstraint(entity=g[2])
 
     # 1. Inner bore wall: (Ri, 0) → (Ri, -H)
-    s.Line(point1=(Ri, 0.0), point2=(Ri, y_bore_bottom))
+    s.Line(point1=(Ri, -ef), point2=(Ri, y_bore_bottom))
 
     # 2. Inner top fillet (convex): (Ri, -H) → (Ri+ef, -(H+ef))
     #    Center: (Ri+ef, -H), radius=ef
     s.ArcByCenterEnds(
-        center=(Ri + ef, y_bore_bottom),
-        point1=(Ri, y_bore_bottom),
-        point2=(Ri + ef, y_flange),
+        center=(Ri + ef, -ef),
+        point1=(Ri, -ef),
+        point2=(Ri + ef,0),
         direction=CLOCKWISE)
 
     # 3. Flat inner flange: (Ri+ef, -(H+ef)) → (Rfo, -(H+ef))
-    s.Line(point1=(Ri + ef, y_flange), point2=(Rfo, y_flange))
+    s.Line(point1=(Ri + ef, 0), point2=(Ro-fr, 0))
 
     # 4. Large outer fillet (convex): (Rfo, -(H+ef)) → (Ro, -fcz)
     #    Center: (Rfo, -fcz), radius=fr
     s.ArcByCenterEnds(
-        center=(Rfo, y_fillet_ctr),
-        point1=(Rfo, y_flange),
-        point2=(Ro, y_fillet_ctr),
+        center=(Ro-fr, -fr),
+        point1=(Ro-fr, 0),
+        point2=(Ro, -fr),
         direction=CLOCKWISE)
 
     # 5. Outer wall: (Ro, -fcz) → (Ro, 0)
-    s.Line(point1=(Ro, y_fillet_ctr), point2=(Ro, 0.0))
+    s.Line(point1=(Ro, -fr), point2=(Ro, y_bore_bottom))
 
     p = m.Part(name='Punch1', dimensionality=THREE_D,
                type=ANALYTIC_RIGID_SURFACE)

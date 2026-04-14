@@ -60,6 +60,11 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/flc_plot.py" \
+    "$SCRIPT_DIR/modules/parts.py" \
+    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+
+# ── Push full directory as well ──────────────────────────────────────────────
+scp -r "$SCRIPT_DIR/modules" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 echo "  Done."
 echo ""
