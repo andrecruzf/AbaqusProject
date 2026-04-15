@@ -887,19 +887,23 @@ def _rebuild_contact_surfaces(cfg, part):
 
 def import_pip_punch2_cae(cfg):
     """
-    Import the inner punch (Punch2) geometry from PIP_PUNCH_CAE (a single CAE
-    file containing all inner punch variants as separate parts).  The part
-    named cfg.PIP_PUNCH2_ID is copied into the current model as 'Punch2'.
+    Import the inner punch (Punch2) geometry from PIP_PUNCH_CAE.
+
+    Each punch variant lives in its own .cae file inside PiP_Punches/.
+    The file is expected to contain a single part; if the part name matches
+    PIP_PUNCH2_ID it is used directly, otherwise the first (and only) part
+    is taken with a warning so the import still works even if the internal
+    name differs.
 
     If the .cae was saved with an older Abaqus release it is upgraded in-place
     before opening, using the same _upgrade_cae helper as the specimen import.
-    If PIP_PUNCH2_ID does not match any part, available part names are printed.
     """
     path = os.path.abspath(cfg.PIP_PUNCH_CAE)
     if not os.path.isfile(path):
         raise IOError(
             'Inner punch .cae not found: %s\n'
-            '  Check PIP_PUNCH_CAE in config.py.' % path)
+            '  Check PIP_PUNCH2_ID in config.py and verify PiP_Punches/ contains the file.'
+            % path)
 
     punch_id = cfg.PIP_PUNCH2_ID
     temp_model_name = '__punch2_import_temp__'
@@ -920,10 +924,17 @@ def import_pip_punch2_cae(cfg):
     mdb.copyAuxMdbModel(fromName=src_model_name, toName=temp_model_name)
     mdb.closeAuxMdb()
 
-    temp_model  = mdb.models[temp_model_name]
-    part_names  = list(temp_model.parts.keys())
+    temp_model = mdb.models[temp_model_name]
+    part_names = list(temp_model.parts.keys())
 
-    if punch_id not in part_names:
+    if punch_id in part_names:
+        src_part_name = punch_id
+    elif len(part_names) == 1:
+        # Single-part CAE — accept it regardless of internal name.
+        src_part_name = part_names[0]
+        print('  WARNING: part "%s" not found in %s; using only part "%s".'
+              % (punch_id, os.path.basename(path), src_part_name))
+    else:
         del mdb.models[temp_model_name]
         raise RuntimeError(
             'Part "%s" not found in %s.\n'
@@ -932,12 +943,12 @@ def import_pip_punch2_cae(cfg):
             % (punch_id, path, part_names))
 
     m = mdb.models[cfg.MODEL_NAME]
-    m.Part(name='Punch2', objectToCopy=temp_model.parts[punch_id])
+    m.Part(name='Punch2', objectToCopy=temp_model.parts[src_part_name])
     del mdb.models[temp_model_name]
 
     # Imported punch is already correctly oriented along Z and has an RP at
     # its topmost point — no node normalisation or rotation needed.
-    print('  Punch2 imported from: %s  (part: "%s")' % (path, punch_id))
+    print('  Punch2 imported from: %s  (part: "%s")' % (path, src_part_name))
 
 
 # ─────────────────────────────────────────────────────────────

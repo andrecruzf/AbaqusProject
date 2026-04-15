@@ -121,6 +121,7 @@ def _create_assembly_pip(cfg, m, a, spec_name):
             angle=90.0)
         print('  Rotated +90° around X: %s' % tool_inst)
 
+
     # Gap translation for Punch1 (parametric — tip at z=0 after rotation)
     a.instances['Punch1-1'].translate(vector=(0.0, 0.0, -0.01))
     print('  Punch1-1 translated -0.01 mm in Z (initial gap)')

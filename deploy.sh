@@ -24,13 +24,15 @@ THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import 
 ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 SPECIMEN_WIDTH=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.SPECIMEN_WIDTH)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
-PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', 'PinP.cae'))")
+PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', '') or '')")
 
 echo "  Pushing scripts and modules ..."
 scp "$SCRIPT_DIR/config.py" \
+    "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
+    "$SCRIPT_DIR/VUMAT_explicit.f" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 scp -r "$SCRIPT_DIR/modules" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
@@ -39,7 +41,7 @@ scp -r "$SCRIPT_DIR/modules" \
 if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
     if [ -f "$SCRIPT_DIR/$PIP_PUNCH_CAE" ]; then
         echo "  Pushing inner punch CAE: ${PIP_PUNCH_CAE} ..."
-        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/${PIP_PUNCH_CAE}"
     else
         echo "  WARNING: punch CAE not found locally: $SCRIPT_DIR/$PIP_PUNCH_CAE"
     fi

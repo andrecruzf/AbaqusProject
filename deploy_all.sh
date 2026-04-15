@@ -27,7 +27,7 @@ DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}');
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.R_DOME)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
-PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', 'PinP.cae'))")
+PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', '') or '')")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
@@ -45,6 +45,11 @@ fi
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
+if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
+    _pip_suffix="_p2$(echo "$PIP_PUNCH2_ID" | sed 's/PUNCH_//')"
+else
+    _pip_suffix=""
+fi
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
 
 echo "=============================================="
@@ -53,6 +58,9 @@ echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Widths      : ${WIDTHS[*]}"
+if [ "$TEST_TYPE" = "pip" ]; then
+    echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
+fi
 if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
     echo "  FLC output  : ${FLC_OUTDIR}/"
 fi
@@ -62,11 +70,13 @@ echo "=============================================="
 # ── Push scripts once ─────────────────────────────────────────────────────────
 echo "  Pushing scripts to Euler ..."
 scp "$SCRIPT_DIR/config.py" \
+    "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/flc_plot.py" \
+    "$SCRIPT_DIR/VUMAT_explicit.f" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 
 # ── Push modules directory ────────────────────────────────────────────────────
@@ -77,7 +87,7 @@ scp -r "$SCRIPT_DIR/modules" \
 if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
     if [ -f "$SCRIPT_DIR/$PIP_PUNCH_CAE" ]; then
         echo "  Pushing inner punch CAE: ${PIP_PUNCH_CAE} ..."
-        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/${PIP_PUNCH_CAE}"
     else
         echo "  WARNING: punch CAE not found locally: $SCRIPT_DIR/$PIP_PUNCH_CAE"
     fi
@@ -91,7 +101,7 @@ OUTPUT_DIRS=()
 
 for W in "${WIDTHS[@]}"; do
     echo "----------------------------------------------"
-    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}"
+    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}"
     OUTPUT_SUBDIR="$JOB_NAME"
 
     echo "  Building ${JOB_NAME} on login node ..."
@@ -101,6 +111,7 @@ for W in "${WIDTHS[@]}"; do
          SPECIMEN_WIDTH=${W} \
          BLANK_THICKNESS=${THICKNESS} \
          MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+         PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
          abaqus cae noGUI=build_model.py"
 
     echo "  Submitting solver job ..."

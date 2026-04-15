@@ -21,11 +21,13 @@ TEST_TYPE = _os.environ.get('TEST_TYPE', 'pip').lower()
 
 # ── Specimen selection ────────────────────────────────────────
 # Width in mm — selects geometry file W{width}.inp from INP_DIR.
-# Available in Engin_Input_Files/geometries: 20, 50, 80, 100, 120, 200
+# Available widths: 20, 50, 80, 90, 100, 120, 200
 SPECIMEN_WIDTH = int(_os.environ.get('SPECIMEN_WIDTH', 20))
 
-# Path to geometry .inp files (relative to AbaqusProject/ working directory)
-INP_DIR = 'geometries'
+# Path to geometry files (relative to AbaqusProject/ working directory)
+#   Nakazima / Marciniak → Naka_Marciniak_Geometries/  (WXX.cae / WXX.inp)
+#   PiP                  → PiP_Geometries/             (WXX + SPECIMEN*.cae)
+INP_DIR = 'PiP_Geometries' if TEST_TYPE == 'pip' else 'Naka_Marciniak_Geometries'
 
 # Name of the imported specimen part (None = first non-tool part found)
 SPECIMEN_PART_NAME = 'Specimen'
@@ -60,12 +62,14 @@ PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of d
 # ── PiP (Punch-in-Punch) geometry ─────────────────────────────
 # Only defined when TEST_TYPE == 'pip'; safe to read for all types.
 if TEST_TYPE == 'pip':
-    # Inner punch geometry — set PIP_PUNCH2_ID to the part name inside PIP_PUNCH_CAE
-    # to import that geometry instead of using the parametric sketch.
+    # Inner punch geometry — set PIP_PUNCH2_ID to the punch variant to import.
     # None = use parametric sketch (default).
-    # Available parts in PinP.cae: PUNCH_1, PUNCH_2, PUNCH_21, PUNCH_23, PUNCH_24, PUNCH_25
-    PIP_PUNCH_CAE  = 'PinP.cae'    # single CAE with all inner punch variants
-    PIP_PUNCH2_ID  = _pip_punch2_id # set via PIP_PUNCH2_ID env var or edit _pip_punch2_id above
+    # Each variant has its own .cae in PiP_Punches/.
+    # Available IDs: PUNCH_1, PUNCH_2, PUNCH_21, PUNCH_23, PUNCH_24, PUNCH_25
+    PIP_PUNCH_DIR  = 'PiP_Punches'    # one .cae per punch variant
+    PIP_GEOMETRY_DIR = 'PiP_Geometries'  # one .cae per specimen variant
+    PIP_PUNCH2_ID  = _pip_punch2_id  # set via PIP_PUNCH2_ID env var or edit _pip_punch2_id above
+    PIP_PUNCH_CAE  = _os.path.join(PIP_PUNCH_DIR, '{}.cae'.format(PIP_PUNCH2_ID)) if PIP_PUNCH2_ID else None
 
     # Punch1 — annular outer punch (clamps blank and pre-forms outer zone)
     PIP_PUNCH1_INNER_RADIUS  = 20.0   # mm — inner bore radius (central hole)
