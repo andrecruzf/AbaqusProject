@@ -137,7 +137,7 @@ STEP_TIME = PUNCH_DISPLACEMENT / 2.0            # s  — 2 mm/s (ISO 12004-2: 0.
 # ── Mass scaling ──────────────────────────────────────────────
 USE_MASS_SCALING = True
 MASS_SCALING_DT  = 2.0e-5   # s — increased from 1e-5: v reduced 5→2 mm/s so ALLKE/ALLIE
-                             #     scales as DT²×v²; 2e-5 keeps ratio well below 5% threshold
+                             #scales as DT²×v²; 2e-5 keeps ratio well below 5% threshold
 
 # ── Friction ──────────────────────────────────────────────────
 FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface (nakazima/marciniak)
