@@ -88,10 +88,14 @@ def _create_assembly_standard(cfg, m, a, spec_name):
 def _create_assembly_pip(cfg, m, a, spec_name):
     """
     PiP: two punches.
-    After +90° rotation (local Y → global Z):
-      • Punch1 bore face lands at z=0 — the annular punch sits on blank bottom.
-      • Punch2 hemisphere tip at z=0 — same as Nakazima punch.
-    Both are given a -0.01 mm gap to avoid initial contact activation.
+
+    Punch1 — parametric analytic rigid, sketched with local Y as revolution
+    axis.  Rotated +90° around X so local Y → global Z, then translated -0.01.
+
+    Punch2 — when imported from CAE (PIP_PUNCH2_ID set): already oriented along
+    global Z with an RP at its topmost contact point.  Not rotated; translated
+    so its RP lands at z=-0.01.
+    When parametric (PIP_PUNCH2_ID None): same convention as Punch1.
     """
     instances = {
         'Punch1-1':   'Punch1',
@@ -104,16 +108,35 @@ def _create_assembly_pip(cfg, m, a, spec_name):
         a.Instance(name=inst_name, part=m.parts[part_name], dependent=ON)
         print('  Instanced: %s  ←  %s' % (inst_name, part_name))
 
-    for tool_inst in ('Punch1-1', 'Punch2-1', 'Die-1', 'Matrix-1'):
+    pip_punch2_imported = bool(getattr(cfg, 'PIP_PUNCH2_ID', None))
+
+    # Rotate parametric tools (local Y → global Z)
+    tools_to_rotate = ['Punch1-1', 'Die-1', 'Matrix-1']
+    if not pip_punch2_imported:
+        tools_to_rotate.append('Punch2-1')
+    for tool_inst in tools_to_rotate:
         a.instances[tool_inst].rotateAboutAxis(
             axisPoint=(0.0, 0.0, 0.0),
             axisDirection=(1.0, 0.0, 0.0),
             angle=90.0)
         print('  Rotated +90° around X: %s' % tool_inst)
 
+    # Gap translation for Punch1 (parametric — tip at z=0 after rotation)
     a.instances['Punch1-1'].translate(vector=(0.0, 0.0, -0.01))
-    a.instances['Punch2-1'].translate(vector=(0.0, 0.0, -0.01))
-    print('  Punch1-1 and Punch2-1 translated -0.01 mm in Z (initial gap)')
+    print('  Punch1-1 translated -0.01 mm in Z (initial gap)')
+
+    # Gap translation for Punch2
+    if pip_punch2_imported:
+        # Find tip position from node coordinates (max Z = contact face)
+        p2_nodes = m.parts['Punch2'].nodes
+        tip_z    = max(n.coordinates[2] for n in p2_nodes)
+        dz = -tip_z - 0.01
+        a.instances['Punch2-1'].translate(vector=(0.0, 0.0, dz))
+        print('  Punch2-1 (imported): RP at z=%.4f → translated %.4f mm → gap z=%.4f mm'
+              % (tip_z, dz, tip_z + dz))
+    else:
+        a.instances['Punch2-1'].translate(vector=(0.0, 0.0, -0.01))
+        print('  Punch2-1 (parametric) translated -0.01 mm in Z (initial gap)')
 
 
 def _setup_symmetry_sets(cfg, assembly, spec_name):

@@ -114,8 +114,8 @@ def _define_contact_standard(cfg, m, a):
     blank_zmax   = _get_specimen_surface(a, m, 'Specimen-1', 'ZMAX')
 
     _make_contact_pair(m, 'CP_Punch',  'Forming', punch_outer,  blank_zmin, 'IntPropPunch')
-    _make_contact_pair(m, 'CP_Die',    'Forming', die_outer,    blank_zmax, 'IntPropClamp')
-    _make_contact_pair(m, 'CP_Matrix', 'Forming', matrix_outer, blank_zmin, 'IntPropClamp')
+    _make_contact_pair(m, 'CP_Die',   'Forming', die_outer,    blank_zmax, 'IntPropClamp')
+    _make_contact_pair(m, 'CP_Matrix','Forming', matrix_outer, blank_zmin, 'IntPropClamp')
 
     print('  CP_Punch  : Punch-1.Outer  <-> ZMIN  mu=%.3f' % cfg.FR_PUNCH)
     print('  CP_Die    : Die-1.Outer    <-> ZMAX  mu=%.3f' % cfg.FR_CLAMP)
@@ -141,10 +141,10 @@ def _define_contact_pip(cfg, m, a):
     blank_zmin   = _get_specimen_surface(a, m, 'Specimen-1', 'ZMIN')
     blank_zmax   = _get_specimen_surface(a, m, 'Specimen-1', 'ZMAX')
 
-    _make_contact_pair(m, 'CP_Punch1',  'Step1_Clamp', punch1_outer, blank_zmin, 'IntPropPunch1')
-    _make_contact_pair(m, 'CP_Punch2',  'Step1_Clamp', punch2_outer, blank_zmin, 'IntPropPunch2')
-    _make_contact_pair(m, 'CP_Die',     'Step1_Clamp', die_outer,    blank_zmax, 'IntPropClamp')
-    _make_contact_pair(m, 'CP_Matrix',  'Step1_Clamp', matrix_outer, blank_zmin, 'IntPropClamp')
+    _make_contact_pair(m, 'CP_Punch1', 'Step1_Clamp', punch1_outer, blank_zmin, 'IntPropPunch1')
+    _make_contact_pair(m, 'CP_Punch2', 'Step1_Clamp', punch2_outer, blank_zmin, 'IntPropPunch2')
+    _make_contact_pair(m, 'CP_Die',    'Step1_Clamp', die_outer,    blank_zmax, 'IntPropClamp')
+    _make_contact_pair(m, 'CP_Matrix', 'Step1_Clamp', matrix_outer, blank_zmin, 'IntPropClamp')
 
     print('  CP_Punch1 : Punch1-1.Outer <-> ZMIN  mu=%.3f' % cfg.FR_PUNCH1)
     print('  CP_Punch2 : Punch2-1.Outer <-> ZMIN  mu=%.4f' % cfg.FR_PUNCH2)

@@ -23,7 +23,6 @@ import visualization
 import os
 import sys
 import subprocess
-import glob
 
 
 def _resolve_odb_path():
@@ -137,25 +136,32 @@ def make_movie(odb_path, out_dir=None):
         height=vp.view.height,
     )
 
-    # ── Export frames ─────────────────────────────────────────
-    step   = odb.steps.values()[0]
-    frames = step.frames
-    n      = len(frames)
-    print('  Exporting %d frames ...' % n)
+    # ── Export frames — all steps ─────────────────────────────
+    step_keys  = odb.steps.keys()
+    total      = 0
+    for k in step_keys:
+        total += len(odb.steps[k].frames)
+    print('  Steps: %d   Total frames: %d' % (len(step_keys), total))
 
-    for i in range(n):
-        vp.odbDisplay.setFrame(step=0, frame=i)
-        try:
-            vp.view.setValues(**_cam)   # restore locked camera
-        except Exception:
-            pass
-        frame_file = os.path.join(frame_dir, 'frame_%04d' % i)
-        session.printToFile(
-            fileName=frame_file,
-            format=PNG,
-            canvasObjects=(vp,))
-        if i % 10 == 0:
-            print('    frame %d / %d' % (i, n))
+    global_idx = 0
+    for step_idx in range(len(step_keys)):
+        step_name = step_keys[step_idx]
+        n_frames  = len(odb.steps[step_name].frames)
+        print('  Step %d (%s): %d frames' % (step_idx, step_name, n_frames))
+        for frame_idx in range(n_frames):
+            vp.odbDisplay.setFrame(step=step_idx, frame=frame_idx)
+            try:
+                vp.view.setValues(**_cam)
+            except Exception:
+                pass
+            frame_file = os.path.join(frame_dir, 'frame_%04d' % global_idx)
+            session.printToFile(
+                fileName=frame_file,
+                format=PNG,
+                canvasObjects=(vp,))
+            if global_idx % 10 == 0:
+                print('    frame %d / %d' % (global_idx, total))
+            global_idx += 1
 
     odb.close()
 
@@ -168,7 +174,7 @@ def make_movie(odb_path, out_dir=None):
     if ret != 0:
         print('  WARNING: ffmpeg failed (exit %d). Frames kept in %s' % (ret, frame_dir))
     else:
-        # Clean up frames
+        import glob
         for f in glob.glob(os.path.join(frame_dir, 'frame_*.png')):
             os.remove(f)
         os.rmdir(frame_dir)

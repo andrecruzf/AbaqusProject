@@ -882,6 +882,65 @@ def _rebuild_contact_surfaces(cfg, part):
 
 
 # ─────────────────────────────────────────────────────────────
+# PiP inner punch — import from CAE file
+# ─────────────────────────────────────────────────────────────
+
+def import_pip_punch2_cae(cfg):
+    """
+    Import the inner punch (Punch2) geometry from PIP_PUNCH_CAE (a single CAE
+    file containing all inner punch variants as separate parts).  The part
+    named cfg.PIP_PUNCH2_ID is copied into the current model as 'Punch2'.
+
+    If the .cae was saved with an older Abaqus release it is upgraded in-place
+    before opening, using the same _upgrade_cae helper as the specimen import.
+    If PIP_PUNCH2_ID does not match any part, available part names are printed.
+    """
+    path = os.path.abspath(cfg.PIP_PUNCH_CAE)
+    if not os.path.isfile(path):
+        raise IOError(
+            'Inner punch .cae not found: %s\n'
+            '  Check PIP_PUNCH_CAE in config.py.' % path)
+
+    punch_id = cfg.PIP_PUNCH2_ID
+    temp_model_name = '__punch2_import_temp__'
+
+    try:
+        mdb.openAuxMdb(pathName=path)
+    except Exception as e:
+        if 'incompatible release' in str(e).lower():
+            print('  .cae version mismatch — upgrading via upgradeMdb...')
+            _upgrade_cae(path)
+            mdb.openAuxMdb(pathName=path)
+        else:
+            raise
+
+    # The CAE may contain multiple models — try 'Model-1' first, then any other.
+    aux_model_names = list(mdb.models.keys())
+    src_model_name  = 'Model-1' if 'Model-1' in aux_model_names else aux_model_names[0]
+    mdb.copyAuxMdbModel(fromName=src_model_name, toName=temp_model_name)
+    mdb.closeAuxMdb()
+
+    temp_model  = mdb.models[temp_model_name]
+    part_names  = list(temp_model.parts.keys())
+
+    if punch_id not in part_names:
+        del mdb.models[temp_model_name]
+        raise RuntimeError(
+            'Part "%s" not found in %s.\n'
+            '  Available parts: %s\n'
+            '  Set PIP_PUNCH2_ID in config.py to one of the names above.'
+            % (punch_id, path, part_names))
+
+    m = mdb.models[cfg.MODEL_NAME]
+    m.Part(name='Punch2', objectToCopy=temp_model.parts[punch_id])
+    del mdb.models[temp_model_name]
+
+    # Imported punch is already correctly oriented along Z and has an RP at
+    # its topmost point — no node normalisation or rotation needed.
+    print('  Punch2 imported from: %s  (part: "%s")' % (path, punch_id))
+
+
+# ─────────────────────────────────────────────────────────────
 # Reference points and contact surfaces for rigid tools
 # ─────────────────────────────────────────────────────────────
 
@@ -897,9 +956,14 @@ def create_tool_rp_and_surfaces(cfg):
         tool_names = ('Punch', 'Matrix', 'Die')
 
     for tool_name in tool_names:
-        p  = mdb.models[cfg.MODEL_NAME].parts[tool_name]
-        rp = p.ReferencePoint(point=(0.0, 0.0, 0.0))
-        r  = p.referencePoints
+        p = mdb.models[cfg.MODEL_NAME].parts[tool_name]
+        r = p.referencePoints
+        if len(r) == 0:
+            p.ReferencePoint(point=(0.0, 0.0, 0.0))
+            r = p.referencePoints
+            print('  RP created on %s' % tool_name)
+        else:
+            print('  RP already exists on %s (imported from CAE)' % tool_name)
         p.Set(referencePoints=(r[max(r.keys())],), name='RP')
         try:
             if len(p.faces) == 0:
@@ -931,7 +995,11 @@ def create_parts(cfg):
         create_matrix(cfg)
     elif test_type == 'pip':
         create_pip_punch1(cfg)
-        create_pip_punch2(cfg)
+        pip_punch2_id = getattr(cfg, 'PIP_PUNCH2_ID', None)
+        if pip_punch2_id:
+            import_pip_punch2_cae(cfg)
+        else:
+            create_pip_punch2(cfg)
         create_pip_die(cfg)
         create_pip_matrix(cfg)
     else:

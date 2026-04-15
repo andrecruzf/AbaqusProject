@@ -26,14 +26,19 @@ DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}');
 DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.R_DOME)")
+PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
+PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', 'PinP.cae'))")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 shift $(( $# < 3 ? $# : 3 ))
+CUSTOM_WIDTHS=false
 WIDTHS=("${@}")
 if [ ${#WIDTHS[@]} -eq 0 ]; then
     WIDTHS=(20 50 80 90 100 120 200)
+else
+    CUSTOM_WIDTHS=true
 fi
 
 # Derived name components (computed once, used in loop and FLC job)
@@ -48,7 +53,9 @@ echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Widths      : ${WIDTHS[*]}"
-echo "  FLC output  : ${FLC_OUTDIR}/"
+if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
+    echo "  FLC output  : ${FLC_OUTDIR}/"
+fi
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
@@ -60,12 +67,21 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/flc_plot.py" \
-    "$SCRIPT_DIR/modules/parts.py" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 
-# ── Push full directory as well ──────────────────────────────────────────────
+# ── Push modules directory ────────────────────────────────────────────────────
 scp -r "$SCRIPT_DIR/modules" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+
+# ── Push inner punch CAE if PiP with file-based punch ────────────────────────
+if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
+    if [ -f "$SCRIPT_DIR/$PIP_PUNCH_CAE" ]; then
+        echo "  Pushing inner punch CAE: ${PIP_PUNCH_CAE} ..."
+        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+    else
+        echo "  WARNING: punch CAE not found locally: $SCRIPT_DIR/$PIP_PUNCH_CAE"
+    fi
+fi
 echo "  Done."
 echo ""
 
@@ -100,26 +116,29 @@ for W in "${WIDTHS[@]}"; do
     echo ""
 done
 
-# ── Submit FLC aggregation job (runs after all solver jobs succeed) ────────────
-DEPENDENCY="afterok:$(IFS=:; echo "${JOB_IDS[*]}")"
-DIRS_STR="$(IFS=:; echo "${OUTPUT_DIRS[*]}")"
-
-echo "----------------------------------------------"
-echo "  Submitting FLC aggregation job ..."
-echo "  Dependency  : ${DEPENDENCY}"
-FLC_JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-    "cd ${EULER_DIR} && sbatch \
-     --dependency=${DEPENDENCY} \
-     --job-name=FLC_${TEST_TYPE}_ang${_ang} \
-     --export=ALL,OUTPUT_DIRS=${DIRS_STR},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
-     --parsable run_flc.sh")
-echo "  FLC job → SLURM job ${FLC_JOB_ID} (held until all solver jobs complete)"
-echo ""
-
 echo "=============================================="
 echo "  All jobs submitted."
 echo "  Sim jobs    : ${JOB_IDS[*]}"
-echo "  FLC job     : ${FLC_JOB_ID}"
-echo "  FLC diagram : ${EULER_DIR}/${FLC_OUTDIR}/flc_diagram.png"
+
+if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
+    # ── Submit FLC aggregation job (runs after all solver jobs succeed) ──────────
+    DEPENDENCY="afterok:$(IFS=:; echo "${JOB_IDS[*]}")"
+    DIRS_STR="$(IFS=:; echo "${OUTPUT_DIRS[*]}")"
+
+    echo "----------------------------------------------"
+    echo "  Submitting FLC aggregation job ..."
+    echo "  Dependency  : ${DEPENDENCY}"
+    FLC_JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
+        "cd ${EULER_DIR} && sbatch \
+         --dependency=${DEPENDENCY} \
+         --job-name=FLC_${TEST_TYPE}_ang${_ang} \
+         --export=ALL,OUTPUT_DIRS=${DIRS_STR},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+         --parsable run_flc.sh")
+    echo "  FLC job     : ${FLC_JOB_ID} (held until all solver jobs complete)"
+    echo "  FLC diagram : ${EULER_DIR}/${FLC_OUTDIR}/flc_diagram.png"
+else
+    echo "  FLC job     : skipped (test=${TEST_TYPE}, custom_widths=${CUSTOM_WIDTHS})"
+fi
+
 echo "  Monitor     : ssh ${EULER_USER}@${EULER_HOST} 'squeue --me'"
 echo "=============================================="

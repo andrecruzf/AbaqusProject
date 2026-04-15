@@ -18,18 +18,43 @@ echo "  deploy.sh — push + build + submit"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
-# ── 1. Push scripts ───────────────────────────────────────────
-echo "  Pushing config.py, run_cluster.sh, postproc.py, postproc_movie.py ..."
+# ── 1. Read parameters (env override or config.py defaults) ───
+TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
+THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
+ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
+SPECIMEN_WIDTH=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.SPECIMEN_WIDTH)")
+PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
+PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', 'PinP.cae'))")
+
+echo "  Pushing scripts and modules ..."
 scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+scp -r "$SCRIPT_DIR/modules" \
+    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+
+# ── Push inner punch CAE if PiP with file-based punch ─────────
+if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
+    if [ -f "$SCRIPT_DIR/$PIP_PUNCH_CAE" ]; then
+        echo "  Pushing inner punch CAE: ${PIP_PUNCH_CAE} ..."
+        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+    else
+        echo "  WARNING: punch CAE not found locally: $SCRIPT_DIR/$PIP_PUNCH_CAE"
+    fi
+fi
 echo "  Done."
 
 # ── 2. Build model on login node ──────────────────────────────
 echo "  Building model on login node ..."
-ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && module load abaqus/2023 && abaqus cae noGUI=build_model.py"
+ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && module load abaqus/2023 && \
+    TEST_TYPE=${TEST_TYPE} \
+    SPECIMEN_WIDTH=${SPECIMEN_WIDTH} \
+    BLANK_THICKNESS=${THICKNESS} \
+    MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+    PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
+    abaqus cae noGUI=build_model.py"
 echo "  Build done."
 
 # ── 3. Submit solver job ──────────────────────────────────────

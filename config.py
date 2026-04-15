@@ -41,9 +41,11 @@ MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE',
 _t        = str(BLANK_THICKNESS).replace('.', 'p')
 _test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
 _ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
-JOB_NAME  = '{}_W{}_t{}_ang{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang)
-CAE_NAME  = '{}_W{}_t{}_ang{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
-INP_NAME  = '{}_W{}_t{}_ang{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang)
+_pip_punch2_id = _os.environ.get('PIP_PUNCH2_ID', 'PUNCH_21') if TEST_TYPE == 'pip' else None
+_pip_suffix    = '_p2{}'.format(_pip_punch2_id).replace('PUNCH_', '') if _pip_punch2_id else ''
+JOB_NAME  = '{}_W{}_t{}_ang{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
+CAE_NAME  = '{}_W{}_t{}_ang{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
+INP_NAME  = '{}_W{}_t{}_ang{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
 OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
 # ── Common geometry — shared across all test types ────────────
@@ -58,6 +60,13 @@ PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet radius (Marciniak only, 10% of d
 # ── PiP (Punch-in-Punch) geometry ─────────────────────────────
 # Only defined when TEST_TYPE == 'pip'; safe to read for all types.
 if TEST_TYPE == 'pip':
+    # Inner punch geometry — set PIP_PUNCH2_ID to the part name inside PIP_PUNCH_CAE
+    # to import that geometry instead of using the parametric sketch.
+    # None = use parametric sketch (default).
+    # Available parts in PinP.cae: PUNCH_1, PUNCH_2, PUNCH_21, PUNCH_23, PUNCH_24, PUNCH_25
+    PIP_PUNCH_CAE  = 'PinP.cae'    # single CAE with all inner punch variants
+    PIP_PUNCH2_ID  = _pip_punch2_id # set via PIP_PUNCH2_ID env var or edit _pip_punch2_id above
+
     # Punch1 — annular outer punch (clamps blank and pre-forms outer zone)
     PIP_PUNCH1_INNER_RADIUS  = 20.0   # mm — inner bore radius (central hole)
     PIP_PUNCH1_EDGE_FILLET   = 2.0    # mm — fillet at inner bore edge
