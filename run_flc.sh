@@ -1,14 +1,14 @@
 #!/bin/bash
 # =============================================================
-# run_flc.sh  —  SLURM aggregation job: strain paths → FLC diagram
+# run_flc.sh  —  Per-specimen diagnostic plots + FLC aggregation.
 #
 # Submitted automatically by deploy_all.sh with
 #   --dependency=afterok:<all_sim_job_ids>
 # Do NOT submit this script manually.
 #
 # Required env vars (injected via --export in deploy_all.sh):
-#   OUTPUT_DIRS                : colon-separated output subdir names
-#   FLC_OUTDIR                 : directory to save flc_diagram.png
+#   OUTPUT_DIRS   : colon-separated output subdir names (relative to EULER_DIR)
+#   FLC_OUTDIR    : subdir name for the aggregated FLC PDF
 #   TEST_TYPE, BLANK_THICKNESS, MATERIAL_ORIENTATION_ANGLE
 # =============================================================
 
@@ -23,20 +23,55 @@
 set -e
 
 module load stack/2024-06
-module load python
+module load python/3.11.6
 
-cd "$SLURM_SUBMIT_DIR"
+python3 -c "import matplotlib" 2>/dev/null || pip install --user matplotlib
+
+PROJ_DIR="$SLURM_SUBMIT_DIR"
 
 echo "=============================================="
-echo "  run_flc.sh — FLC aggregation"
+echo "  run_flc.sh — plots + FLC aggregation"
 echo "  Test type   : $TEST_TYPE"
 echo "  Thickness   : $BLANK_THICKNESS mm"
 echo "  Orientation : $MATERIAL_ORIENTATION_ANGLE deg"
-echo "  Output dirs : $OUTPUT_DIRS"
-echo "  FLC out     : $FLC_OUTDIR"
 echo "  Start       : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
-EULER_DIR="$SLURM_SUBMIT_DIR" python3 flc_plot.py
+# Convert colon-separated OUTPUT_DIRS to space-separated full paths
+DIRS=""
+IFS=':' read -ra DIR_NAMES <<< "$OUTPUT_DIRS"
+for D in "${DIR_NAMES[@]}"; do
+    FULL="${PROJ_DIR}/${D}"
+    if [ -d "$FULL" ]; then
+        DIRS="$DIRS $FULL"
+    else
+        echo "  WARNING: directory not found: $FULL — skipping."
+    fi
+done
 
+if [ -z "$DIRS" ]; then
+    echo "  ERROR: no valid output directories found."
+    exit 1
+fi
+
+# ── Per-specimen diagnostic plots ─────────────────────────────
+echo ""
+echo "--- Per-specimen plots ---"
+python3 "${PROJ_DIR}/plot_results.py" $DIRS
+
+# ── Aggregated FLC (nakazima / marciniak only) ────────────────
+if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]]; then
+    echo ""
+    echo "--- FLC aggregation ---"
+    mkdir -p "${PROJ_DIR}/${FLC_OUTDIR}"
+    FLC_PDF="${PROJ_DIR}/${FLC_OUTDIR}/FLC_${TEST_TYPE}.pdf"
+    python3 "${PROJ_DIR}/plot_flc.py" $DIRS --output "$FLC_PDF"
+    echo "  FLC: ${FLC_PDF}"
+else
+    echo "  FLC aggregation skipped for test type: ${TEST_TYPE}"
+fi
+
+echo ""
+echo "=============================================="
 echo "  Done: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "=============================================="

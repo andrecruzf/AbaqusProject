@@ -93,13 +93,12 @@ echo "  Movie written."
 echo "=============================================="
 echo "  Copying results to home ..."
 echo "=============================================="
-cp "$SCRATCH_DIR/strain_path.csv"             "$WORK_DIR/" 2>/dev/null \
-    && echo "  strain_path.csv ✓" \
-    || echo "  WARNING: strain_path.csv not found in scratch"
-cp "$SCRATCH_DIR/energy_ratio.png"            "$WORK_DIR/" 2>/dev/null \
-    && echo "  energy_ratio.png ✓" \
-    || echo "  WARNING: energy_ratio.png not found in scratch (matplotlib may be unavailable)"
-cp "$SCRATCH_DIR/${JOB_NAME}_movie.webm"      "$WORK_DIR/" 2>/dev/null \
+for f in strain_path.csv forming_limits.csv energy_data.csv; do
+    cp "$SCRATCH_DIR/$f" "$WORK_DIR/" 2>/dev/null \
+        && echo "  $f ✓" \
+        || echo "  WARNING: $f not found in scratch"
+done
+cp "$SCRATCH_DIR/${JOB_NAME}_movie.webm" "$WORK_DIR/" 2>/dev/null \
     && echo "  ${JOB_NAME}_movie.webm ✓" \
     || echo "  WARNING: movie not found in scratch (ffmpeg may have failed)"
 

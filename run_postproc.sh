@@ -62,12 +62,16 @@ for W in ${WIDTHS}; do
 
     R_DOME=${R_DOME} abaqus python "${PROJ_DIR}/postproc.py" -- "$ODB"
 
-    # Copy strain_path.csv back to home output dir
+    # Copy all CSVs back to project output dir for archiving
     OUT_DIR="${PROJ_DIR}/${JOB_NAME}"
+    SCRATCH_DIR="/cluster/scratch/acruzfaria/${JOB_NAME}"
     if [ -d "$OUT_DIR" ]; then
-        cp "/cluster/scratch/acruzfaria/${JOB_NAME}/strain_path.csv" "$OUT_DIR/" 2>/dev/null \
-            && echo "  strain_path.csv copied to ${OUT_DIR}/" \
-            || echo "  WARNING: could not copy strain_path.csv"
+        for f in strain_path.csv forming_limits.csv energy_data.csv; do
+            [ -f "${SCRATCH_DIR}/${f}" ] \
+                && cp "${SCRATCH_DIR}/${f}" "$OUT_DIR/" \
+                && echo "  ${f} -> ${OUT_DIR}/" \
+                || echo "  WARNING: ${f} not found in scratch"
+        done
     fi
 done
 

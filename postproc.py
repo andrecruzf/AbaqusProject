@@ -339,7 +339,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         if eps1 is not None:
             records.append((t, eps1, eps2,
                             eqps_val if eqps_val is not None else 0.0,
-                            d_crit, fracture_type))
+                            d_crit, fracture_type, d_dome))
             times_list.append(t)
             d_dome_list.append(d_dome)
 
@@ -406,160 +406,31 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     # ── 7. Write strain_path.csv ──────────────────────────────
     with open(out_csv, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(['time_s', 'eps1_major', 'eps2_minor', 'EQPS', 'D', 'fracture_type'])
+        writer.writerow(['time_s', 'eps1_major', 'eps2_minor', 'EQPS', 'D', 'fracture_type', 'd_dome_max'])
         writer.writerows(records)
 
     print('  Written %d points -> %s' % (len(records), out_csv))
 
-    # ── 8. Necking diagnostic plots ───────────────────────────
-    _plot_necking_diagnostic(
-        times_list, eps1_hist, d_dome_list,
-        neck_vh_idx, neck_sdv6_idx, out_dir)
-
-    # ── 9. Energy ratio plot ──────────────────────────────────
-    _plot_energy_ratio(odb, out_dir)
+    # ── 8. Write energy_data.csv ──────────────────────────────
+    _write_energy_csv(odb, out_dir)
 
     odb.close()
     print('=' * 60)
     return out_csv
 
 
-def _plot_necking_diagnostic(times, eps1_hist, d_dome_list,
-                              neck_vh_idx, neck_sdv6_idx, out_dir):
+def _write_energy_csv(odb, out_dir):
     """
-    Save necking_diagnostic.png with two side-by-side panels:
-
-    Left  — Volk-Hora (ε₁-based):
-        top subplot   : ε₁(t) — strain history of the critical element
-        middle subplot: dε₁/dt — strain rate (velocity)
-        bottom subplot: d²ε₁/dt² — acceleration; peak = detected necking frame
-
-    Right — SDV6/damage-based:
-        top subplot   : D_max(t) — dome-zone maximum damage
-        middle subplot: dD/dt
-        bottom subplot: d²D/dt² — peak = detected necking frame
-
-    Vertical dashed lines mark the detected necking frame in each panel.
+    Extract ALLKE and ALLIE from history output across all steps and write
+    energy_data.csv with accumulated total time for continuous x-axis.
+    Steps are concatenated — total_time_s is monotonically increasing.
     """
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print('  WARNING: matplotlib not available — necking diagnostic skipped.')
-        return
-
-    def _derivatives(times, values):
-        """Return smoothed values, dv/dt, d²v/dt² (all same length as input)."""
-        n   = len(values)
-        v   = _smooth3(values)
-        dv  = [0.0] * n
-        d2v = [0.0] * n
-        for i in range(1, n - 1):
-            dt = times[i + 1] - times[i - 1]
-            if dt > 1e-12:
-                dv[i]  = (v[i + 1] - v[i - 1]) / dt
-        for i in range(1, n - 1):
-            dt = times[i + 1] - times[i - 1]
-            if dt > 1e-12:
-                d2v[i] = (dv[i + 1] - dv[i - 1]) / dt
-        return v, dv, d2v
-
-    n = len(times)
-    has_sdv6 = (d_dome_list is not None and
-                len(d_dome_list) == n and
-                any(d > 0.0 for d in d_dome_list))
-
-    ncols = 2 if has_sdv6 else 1
-    fig, axes = plt.subplots(3, ncols, figsize=(7 * ncols, 10),
-                             sharex='col', squeeze=False)
-    fig.suptitle('Necking onset detection — diagnostic', fontsize=13, y=0.98)
-
-    # ── Left panel: Volk-Hora (ε₁) ──────────────────────────────
-    if eps1_hist and len(eps1_hist) == n:
-        v_vh, dv_vh, d2v_vh = _derivatives(times, eps1_hist)
-
-        t_neck_vh = times[neck_vh_idx] if neck_vh_idx is not None else None
-
-        axes[0][0].plot(times, eps1_hist, color='#1f77b4', linewidth=1.5)
-        axes[0][0].set_ylabel(u'\u03b5\u2081 (major strain)', fontsize=11)
-        axes[0][0].set_title('Volk-Hora  (critical element \u03b5\u2081)', fontsize=11)
-        axes[0][0].grid(True, alpha=0.3)
-
-        axes[1][0].plot(times, dv_vh, color='#ff7f0e', linewidth=1.5,
-                        label=u'd\u03b5\u2081/dt (strain rate)')
-        axes[1][0].set_ylabel(u'd\u03b5\u2081/dt  (s\u207b\u00b9)', fontsize=11)
-        axes[1][0].grid(True, alpha=0.3)
-
-        axes[2][0].plot(times, d2v_vh, color='#2ca02c', linewidth=1.5,
-                        label=u'd\u00b2\u03b5\u2081/dt\u00b2')
-        axes[2][0].set_ylabel(u'd\u00b2\u03b5\u2081/dt\u00b2  (s\u207b\u00b2)', fontsize=11)
-        axes[2][0].set_xlabel('Time (s)', fontsize=11)
-        axes[2][0].grid(True, alpha=0.3)
-
-        if t_neck_vh is not None:
-            for ax in axes[:, 0]:
-                ax.axvline(t_neck_vh, color='red', linewidth=1.5,
-                           linestyle='--', label='Necking onset')
-            axes[0][0].legend(fontsize=9)
-
-    # ── Right panel: SDV6/damage ─────────────────────────────────
-    if has_sdv6:
-        v_d, dv_d, d2v_d = _derivatives(times, d_dome_list)
-
-        t_neck_d = times[neck_sdv6_idx] if neck_sdv6_idx is not None else None
-
-        axes[0][1].plot(times, d_dome_list, color='#9467bd', linewidth=1.5)
-        axes[0][1].set_ylabel('D\u2098\u2090\u2093 (dome-zone max damage)', fontsize=11)
-        axes[0][1].set_title('SDV6/damage  (dome-zone max D)', fontsize=11)
-        axes[0][1].grid(True, alpha=0.3)
-
-        axes[1][1].plot(times, dv_d, color='#d62728', linewidth=1.5,
-                        label='dD/dt (damage rate)')
-        axes[1][1].set_ylabel('dD/dt  (s\u207b\u00b9)', fontsize=11)
-        axes[1][1].grid(True, alpha=0.3)
-
-        axes[2][1].plot(times, d2v_d, color='#8c564b', linewidth=1.5,
-                        label='d\u00b2D/dt\u00b2')
-        axes[2][1].set_ylabel('d\u00b2D/dt\u00b2  (s\u207b\u00b2)', fontsize=11)
-        axes[2][1].set_xlabel('Time (s)', fontsize=11)
-        axes[2][1].grid(True, alpha=0.3)
-
-        if t_neck_d is not None:
-            for ax in axes[:, 1]:
-                ax.axvline(t_neck_d, color='red', linewidth=1.5,
-                           linestyle='--', label='Necking onset')
-            axes[0][1].legend(fontsize=9)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    out_png = os.path.join(out_dir, 'necking_diagnostic.png')
-    fig.savefig(out_png, dpi=150, bbox_inches='tight')
-    plt.close(fig)
-    print('  Necking diag.   -> %s' % out_png)
-
-
-def _plot_energy_ratio(odb, out_dir):
-    """
-    Extract ALLKE and ALLIE from history output across all steps,
-    compute ALLKE/ALLIE (%) vs total time, and save energy_ratio.png.
-    Steps are concatenated — total time is accumulated so the x-axis
-    is continuous (important for PiP which has two steps).
-    """
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print('  WARNING: matplotlib not available — energy ratio plot skipped.')
-        return
-
-    times_all  = []
-    ratios_all = []
-    step_boundaries = []   # total times at which a new step starts (for vlines)
+    out_csv = os.path.join(out_dir, 'energy_data.csv')
     t_offset = 0.0
+    rows = []
+    first_step = True
 
     for step in odb.steps.values():
-        # Find the history region that contains both ALLKE and ALLIE
         ke_data = ie_data = None
         for region in step.historyRegions.values():
             ho = region.historyOutputs.keys()
@@ -573,41 +444,24 @@ def _plot_energy_ratio(odb, out_dir):
             t_offset += step.timePeriod
             continue
 
-        if t_offset > 0.0:
-            step_boundaries.append(t_offset)
-
+        is_new_step = 0 if first_step else 1
+        first_step = False
         for (t, ke), (_, ie) in zip(ke_data, ie_data):
-            ratio = 100.0 * ke / ie if ie > 1e-10 else 0.0
-            times_all.append(t_offset + t)
-            ratios_all.append(ratio)
+            rows.append([step.name, t_offset + t, ke, ie, is_new_step])
+            is_new_step = 0
 
         t_offset += step.timePeriod
 
-    if not times_all:
-        print('  WARNING: no energy data extracted — energy ratio plot skipped.')
+    if not rows:
+        print('  WARNING: no energy data — energy_data.csv not written.')
         return
 
-    max_ratio = max(ratios_all)
-    print('  Max ALLKE/ALLIE = %.2f%%' % max_ratio)
+    with open(out_csv, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['step_name', 'total_time_s', 'ALLKE', 'ALLIE', 'is_step_boundary'])
+        writer.writerows(rows)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(times_all, ratios_all, color='#1f77b4', linewidth=1.5)
-    ax.axhline(5.0, color='red', linewidth=1.0, linestyle='--', label='5% threshold (quasi-static limit)')
-
-    for t_b in step_boundaries:
-        ax.axvline(t_b, color='grey', linewidth=0.8, linestyle=':', label='Step boundary')
-
-    ax.set_xlabel('Time (s)', fontsize=12)
-    ax.set_ylabel('ALLKE / ALLIE (%)', fontsize=12)
-    ax.set_title('Quasi-static check — Kinetic / Internal energy ratio', fontsize=13)
-    ax.legend(fontsize=10)
-    ax.grid(True, alpha=0.3)
-    ax.set_ylim(0, max(max_ratio * 1.2, 6.0))
-
-    out_png = os.path.join(out_dir, 'energy_ratio.png')
-    fig.savefig(out_png, dpi=150, bbox_inches='tight')
-    plt.close(fig)
-    print('  Energy ratio    -> %s' % out_png)
+    print('  Energy data     -> %s' % out_csv)
 
 
 if __name__ == '__main__':

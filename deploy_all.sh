@@ -75,7 +75,8 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
-    "$SCRIPT_DIR/flc_plot.py" \
+    "$SCRIPT_DIR/plot_results.py" \
+    "$SCRIPT_DIR/plot_flc.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 

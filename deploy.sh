@@ -32,6 +32,9 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
+    "$SCRIPT_DIR/plot_results.py" \
+    "$SCRIPT_DIR/plot_flc.py" \
+    "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 scp -r "$SCRIPT_DIR/modules" \
@@ -62,9 +65,28 @@ echo "  Build done."
 # ── 3. Submit solver job ──────────────────────────────────────
 echo "  Submitting solver job ..."
 JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && source last_build.env && sbatch --job-name=\$JOB_NAME --export=ALL,JOB_NAME=\$JOB_NAME,OUTPUT_SUBDIR=\$OUTPUT_SUBDIR --parsable run_cluster.sh")
+echo "  Solver job: $JOB_ID"
+
+# ── 4. Submit plot job (afterok solver) ───────────────────────
+echo "  Submitting plot job ..."
+_t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
+_test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
+_ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
+JOB_NAME="${_test_cap}_W${SPECIMEN_WIDTH}_t${_t}_ang${_ang}"
+if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]]; then
+    FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
+else
+    FLC_OUTDIR=""
+fi
+PLOT_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
+    "cd ${EULER_DIR} && sbatch \
+     --dependency=afterok:${JOB_ID} \
+     --job-name=plot_${JOB_NAME} \
+     --export=ALL,OUTPUT_DIRS=${JOB_NAME},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+     --parsable run_flc.sh")
 echo "=============================================="
-echo "  Job submitted: $JOB_ID"
+echo "  Solver job : $JOB_ID"
+echo "  Plot job   : $PLOT_ID  (afterok:${JOB_ID})"
 echo "  Monitor with:"
-echo "    ssh ${EULER_USER}@${EULER_HOST} 'squeue -j ${JOB_ID}'"
-echo "    ssh ${EULER_USER}@${EULER_HOST} 'tail -f ${EULER_DIR}/nakazima_${JOB_ID}.out'"
+echo "    ssh ${EULER_USER}@${EULER_HOST} 'squeue -j ${JOB_ID},${PLOT_ID}'"
 echo "=============================================="
