@@ -36,7 +36,7 @@ SPECIMEN_PART_NAME = 'Specimen'
 NUM_CPUS = 24         # CPUs for Abaqus/Explicit (threads, mp_mode=threads)
 
 # ───────────────────── Sheet thickness + Orientation angle ──────────────────────────────
-BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1))  # mm — varies per sheet batch
+BLANK_THICKNESS = float(_os.environ.get('BLANK_THICKNESS', 1.5))  # mm — varies per sheet batch
 MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', 0.0))
 
 # ───────────────────── File naming convention ──────────────────────────────

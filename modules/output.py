@@ -3,7 +3,7 @@
 modules/output.py
 Field and history output requests.
 
-Field output (50 intervals over the full step):
+Field output (100 intervals over the full step):
   S, LE, PEEQ, SDV, TRIAX, SP, MISES, U, RF, STATUS
   → matches the reference output variables including all 17 SDVs
 
@@ -45,8 +45,8 @@ def define_output(cfg):
         name='FO_Forming',
         createStepName=first_step,
         variables=('S', 'LE', 'PEEQ', 'SDV', 'U', 'RF', 'STATUS'),
-        numIntervals=50)
-    print('  FO_Forming: S, LE, PEEQ, SDV, U, RF, STATUS  (50 frames)'
+        numIntervals=100)
+    print('  FO_Forming: S, LE, PEEQ, SDV, U, RF, STATUS  (100 frames)'
           ' + TRIAX, SP, MISES, LEP injected post-writeInput')
 
     a = m.rootAssembly

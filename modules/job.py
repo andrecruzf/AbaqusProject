@@ -87,7 +87,7 @@ def _inject_output_requests(inp_file, cfg):
     Replace the default Abaqus output section (PRESELECT) with custom requests.
     For PiP, replaces the output block in BOTH steps.
 
-    Field : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 50 intervals
+    Field : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 100 intervals
     History: U3/RF3 on punch RP(s), RF3 on Die/Matrix RPs
     """
     pip = _is_pip(cfg)
@@ -122,7 +122,7 @@ def _inject_output_requests(inp_file, cfg):
         '** \n'
         '** FIELD OUTPUT\n'
         '** \n'
-        '*Output, field, number interval=50\n'
+        '*Output, field, number interval=100\n'
         '*Element Output, directions=YES\n'
         'S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP\n'
         '*Node Output\n'
@@ -160,7 +160,7 @@ def _inject_output_requests(inp_file, cfg):
     with open(inp_file, 'w') as f:
         f.write(content)
 
-    print('  Injected custom output requests (%d step(s), 50 intervals, SDV, TRIAX, SP, MISES, LEP)'
+    print('  Injected custom output requests (%d step(s), 100 intervals, SDV, TRIAX, SP, MISES, LEP)'
           % replaced)
 
 

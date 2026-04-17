@@ -9,7 +9,8 @@ From pipeline (run_cluster.sh):
     abaqus python postproc.py -- <OUTPUT_DIR>/<JOB_NAME>.odb
 
 Output:
-    <odb_dir>/strain_path.csv   columns: time_s, eps1_major, eps2_minor, EQPS, fracture_type
+    <odb_dir>/strain_path.csv      columns: time_s, eps1_major, eps2_minor, EQPS, D, fracture_type
+    <odb_dir>/forming_limits.csv   one row per method: fracture / sdv6 / volk_hora
 
 Algorithm:
     1. Build the dome zone: all elements whose undeformed centroid lies within
@@ -18,13 +19,16 @@ Algorithm:
        is consistent across all specimen widths.  The sample does not always
        crack at the centreline, so the zone must be wide enough to capture
        off-centre failure bands (e.g. narrow strip specimens).
-    2. Find the first frame where any dome-zone element has STATUS < 0.5.
-       Step back one frame → last fully intact state.
-       If no dome element fails (base/edge fracture ended the job first),
-       snap the endpoint to the base-fracture frame and flag fracture_type=base.
+    2. Find the first frame where any dome-zone element has STATUS < 0.5
+       (fracture frame).
     3. Critical element: max EQPS (SDV1) in the dome zone at the pre-failure frame.
-    4. Extract the full (eps1_major, eps2_minor, EQPS) history of that element.
+    4. Extract the full (eps1_major, eps2_minor, EQPS, D) history of that element
+       up to fracture. Also collect dome-zone max SDV6 per frame.
        Principal strains are computed from the LE tensor (eigenvalues).
+    5. Necking onset — two independent methods:
+         SDV6/damage : inflection of dome-max D(t)  →  argmax d²D/dt²
+         Volk-Hora   : inflection of critical-element ε₁(t)  →  argmax d²ε₁/dt²
+       Both use a 3-point smoothing pass before differentiation.
 
 Environment variables:
     R_DOME : override dome radius in mm (default = PUNCH_RADIUS / 2 = 25 mm).
@@ -34,6 +38,64 @@ import sys
 import os
 import csv
 import math
+
+
+# ── Necking-detection helpers ─────────────────────────────────────────────────
+
+def _smooth3(values):
+    """3-point centred moving-average; end-points are left unchanged."""
+    n = len(values)
+    if n < 3:
+        return list(values)
+    out = list(values)
+    for i in range(1, n - 1):
+        out[i] = (values[i - 1] + values[i] + values[i + 1]) / 3.0
+    return out
+
+
+def _inflection_index(times, values, start_frac=0.1):
+    """
+    Return the index of the inflection point (argmax d²y/dt²) in a time
+    series, or None if there are fewer than 5 data points.
+
+    Only searches after the signal exceeds *start_frac* × max(|values|) to
+    skip the flat pre-deformation region.
+    """
+    n = len(values)
+    if n < 5:
+        return None
+
+    v = _smooth3(values)
+
+    # First derivative — central differences
+    dv = [0.0] * n
+    for i in range(1, n - 1):
+        dt = times[i + 1] - times[i - 1]
+        dv[i] = (v[i + 1] - v[i - 1]) / dt if dt > 1e-12 else 0.0
+
+    # Second derivative — central differences on dv
+    d2v = [0.0] * n
+    for i in range(1, n - 1):
+        dt = times[i + 1] - times[i - 1]
+        d2v[i] = (dv[i + 1] - dv[i - 1]) / dt if dt > 1e-12 else 0.0
+
+    # Search start: first index where |values| >= threshold
+    v_max = max(abs(x) for x in values) if values else 1.0
+    threshold = start_frac * v_max
+    start_idx = 1
+    for i in range(n):
+        if abs(values[i]) >= threshold:
+            start_idx = max(1, i)
+            break
+
+    # Argmax of d2v in [start_idx, n-2]
+    best_idx, best_val = None, -1e30
+    for i in range(start_idx, n - 1):
+        if d2v[i] > best_val:
+            best_val = d2v[i]
+            best_idx = i
+
+    return best_idx
 
 # ── Dome zone radius ──────────────────────────────────────────────────────────
 R_DOME_DEFAULT = float(os.environ.get('R_DOME', 25.0))   # mm
@@ -235,14 +297,23 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                     break
             break
 
-    # ── 4. Extract LE + EQPS history for critical element ─────
-    records = []
+    # ── 4. Extract LE + EQPS + SDV6 history for critical element ─────
+    # Also collect dome-zone max SDV6 per frame for the SDV6 necking method.
+    # All three lists share the same index (entries added only when LE is valid).
+    records     = []   # (t, eps1, eps2, eqps, d_crit, fracture_type)
+    times_list  = []   # frame times aligned with records
+    d_dome_list = []   # dome-zone max SDV6, aligned with records
+
+    sdv6_in_odb = True   # will be set False if SDV6 absent from first frame
+
     for fi in range(failure_frame_idx):
         frame    = frames[fi]
         t        = frame.frameValue
         eps1     = None
         eps2     = None
         eqps_val = None
+        d_crit   = 0.0
+        d_dome   = 0.0
 
         for val in frame.fieldOutputs['LE'].values:
             if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
@@ -254,23 +325,217 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                 eqps_val = val.data
                 break
 
-        if eps1 is not None:
-            records.append((t, eps1, eps2, eqps_val, fracture_type))
+        if sdv6_in_odb and 'SDV6' in frame.fieldOutputs.keys():
+            for val in frame.fieldOutputs['SDV6'].values:
+                in_dome = (dome_labels is None) or (val.elementLabel in dome_labels)
+                if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
+                    d_crit = val.data
+                if in_dome and val.data > d_dome:
+                    d_dome = val.data
+        elif sdv6_in_odb and fi == 0:
+            sdv6_in_odb = False
+            print('  WARNING: SDV6 not found in ODB — SDV6 necking method disabled.')
 
-    # ── 5. Write CSV ──────────────────────────────────────────
+        if eps1 is not None:
+            records.append((t, eps1, eps2,
+                            eqps_val if eqps_val is not None else 0.0,
+                            d_crit, fracture_type))
+            times_list.append(t)
+            d_dome_list.append(d_dome)
+
+    # ── 5. Find necking onset frames ──────────────────────────
+    eps1_hist = [r[1] for r in records]
+
+    neck_sdv6_idx = None
+    neck_vh_idx   = None
+
+    if sdv6_in_odb and any(d > 0.0 for d in d_dome_list):
+        neck_sdv6_idx = _inflection_index(times_list, d_dome_list)
+
+    if eps1_hist:
+        neck_vh_idx = _inflection_index(times_list, eps1_hist)
+
+    # Convenience: limit strains at each frame of interest
+    def _lim(idx):
+        """Return (eps1, eps2, eqps, d, t) for records[idx], or None."""
+        if idx is None or idx >= len(records):
+            return None
+        r = records[idx]
+        return r[1], r[2], r[3], r[4], r[0]
+
+    lim_frac = _lim(len(records) - 1)
+    lim_sdv6 = _lim(neck_sdv6_idx)
+    lim_vh   = _lim(neck_vh_idx)
+
+    # Print summary
+    print('')
+    print('  %-12s  %7s  %7s  %7s  %7s' % ('Method', 't (s)', 'eps1', 'eps2', 'D'))
+    print('  ' + '-' * 52)
+    if lim_vh:
+        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+              'Volk-Hora', lim_vh[4], lim_vh[0], lim_vh[1], lim_vh[3]))
+    else:
+        print('  %-12s  %s' % ('Volk-Hora', 'N/A (< 5 data points)'))
+    if lim_sdv6:
+        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+              'SDV6/damage', lim_sdv6[4], lim_sdv6[0], lim_sdv6[1], lim_sdv6[3]))
+    else:
+        print('  %-12s  %s' % ('SDV6/damage', 'N/A'))
+    if lim_frac:
+        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+              'Fracture', lim_frac[4], lim_frac[0], lim_frac[1], lim_frac[3]))
+    print('')
+
+    # ── 6. Write forming_limits.csv ───────────────────────────
+    out_dir    = os.path.dirname(out_csv)
+    limits_csv = os.path.join(out_dir, 'forming_limits.csv')
+    with open(limits_csv, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['method', 'eps1_major', 'eps2_minor', 'EQPS', 'D', 'time_s'])
+        if lim_frac:
+            writer.writerow(['fracture',
+                             lim_frac[0], lim_frac[1], lim_frac[2], lim_frac[3], lim_frac[4]])
+        if lim_sdv6:
+            writer.writerow(['sdv6',
+                             lim_sdv6[0], lim_sdv6[1], lim_sdv6[2], lim_sdv6[3], lim_sdv6[4]])
+        if lim_vh:
+            writer.writerow(['volk_hora',
+                             lim_vh[0], lim_vh[1], lim_vh[2], lim_vh[3], lim_vh[4]])
+    print('  Forming limits -> %s' % limits_csv)
+
+    # ── 7. Write strain_path.csv ──────────────────────────────
     with open(out_csv, 'w') as f:
         writer = csv.writer(f)
-        writer.writerow(['time_s', 'eps1_major', 'eps2_minor', 'EQPS', 'fracture_type'])
+        writer.writerow(['time_s', 'eps1_major', 'eps2_minor', 'EQPS', 'D', 'fracture_type'])
         writer.writerows(records)
 
     print('  Written %d points -> %s' % (len(records), out_csv))
 
-    # ── 6. Energy ratio plot ──────────────────────────────────
-    _plot_energy_ratio(odb, os.path.dirname(out_csv))
+    # ── 8. Necking diagnostic plots ───────────────────────────
+    _plot_necking_diagnostic(
+        times_list, eps1_hist, d_dome_list,
+        neck_vh_idx, neck_sdv6_idx, out_dir)
+
+    # ── 9. Energy ratio plot ──────────────────────────────────
+    _plot_energy_ratio(odb, out_dir)
 
     odb.close()
     print('=' * 60)
     return out_csv
+
+
+def _plot_necking_diagnostic(times, eps1_hist, d_dome_list,
+                              neck_vh_idx, neck_sdv6_idx, out_dir):
+    """
+    Save necking_diagnostic.png with two side-by-side panels:
+
+    Left  — Volk-Hora (ε₁-based):
+        top subplot   : ε₁(t) — strain history of the critical element
+        middle subplot: dε₁/dt — strain rate (velocity)
+        bottom subplot: d²ε₁/dt² — acceleration; peak = detected necking frame
+
+    Right — SDV6/damage-based:
+        top subplot   : D_max(t) — dome-zone maximum damage
+        middle subplot: dD/dt
+        bottom subplot: d²D/dt² — peak = detected necking frame
+
+    Vertical dashed lines mark the detected necking frame in each panel.
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print('  WARNING: matplotlib not available — necking diagnostic skipped.')
+        return
+
+    def _derivatives(times, values):
+        """Return smoothed values, dv/dt, d²v/dt² (all same length as input)."""
+        n   = len(values)
+        v   = _smooth3(values)
+        dv  = [0.0] * n
+        d2v = [0.0] * n
+        for i in range(1, n - 1):
+            dt = times[i + 1] - times[i - 1]
+            if dt > 1e-12:
+                dv[i]  = (v[i + 1] - v[i - 1]) / dt
+        for i in range(1, n - 1):
+            dt = times[i + 1] - times[i - 1]
+            if dt > 1e-12:
+                d2v[i] = (dv[i + 1] - dv[i - 1]) / dt
+        return v, dv, d2v
+
+    n = len(times)
+    has_sdv6 = (d_dome_list is not None and
+                len(d_dome_list) == n and
+                any(d > 0.0 for d in d_dome_list))
+
+    ncols = 2 if has_sdv6 else 1
+    fig, axes = plt.subplots(3, ncols, figsize=(7 * ncols, 10),
+                             sharex='col', squeeze=False)
+    fig.suptitle('Necking onset detection — diagnostic', fontsize=13, y=0.98)
+
+    # ── Left panel: Volk-Hora (ε₁) ──────────────────────────────
+    if eps1_hist and len(eps1_hist) == n:
+        v_vh, dv_vh, d2v_vh = _derivatives(times, eps1_hist)
+
+        t_neck_vh = times[neck_vh_idx] if neck_vh_idx is not None else None
+
+        axes[0][0].plot(times, eps1_hist, color='#1f77b4', linewidth=1.5)
+        axes[0][0].set_ylabel(u'\u03b5\u2081 (major strain)', fontsize=11)
+        axes[0][0].set_title('Volk-Hora  (critical element \u03b5\u2081)', fontsize=11)
+        axes[0][0].grid(True, alpha=0.3)
+
+        axes[1][0].plot(times, dv_vh, color='#ff7f0e', linewidth=1.5,
+                        label=u'd\u03b5\u2081/dt (strain rate)')
+        axes[1][0].set_ylabel(u'd\u03b5\u2081/dt  (s\u207b\u00b9)', fontsize=11)
+        axes[1][0].grid(True, alpha=0.3)
+
+        axes[2][0].plot(times, d2v_vh, color='#2ca02c', linewidth=1.5,
+                        label=u'd\u00b2\u03b5\u2081/dt\u00b2')
+        axes[2][0].set_ylabel(u'd\u00b2\u03b5\u2081/dt\u00b2  (s\u207b\u00b2)', fontsize=11)
+        axes[2][0].set_xlabel('Time (s)', fontsize=11)
+        axes[2][0].grid(True, alpha=0.3)
+
+        if t_neck_vh is not None:
+            for ax in axes[:, 0]:
+                ax.axvline(t_neck_vh, color='red', linewidth=1.5,
+                           linestyle='--', label='Necking onset')
+            axes[0][0].legend(fontsize=9)
+
+    # ── Right panel: SDV6/damage ─────────────────────────────────
+    if has_sdv6:
+        v_d, dv_d, d2v_d = _derivatives(times, d_dome_list)
+
+        t_neck_d = times[neck_sdv6_idx] if neck_sdv6_idx is not None else None
+
+        axes[0][1].plot(times, d_dome_list, color='#9467bd', linewidth=1.5)
+        axes[0][1].set_ylabel('D\u2098\u2090\u2093 (dome-zone max damage)', fontsize=11)
+        axes[0][1].set_title('SDV6/damage  (dome-zone max D)', fontsize=11)
+        axes[0][1].grid(True, alpha=0.3)
+
+        axes[1][1].plot(times, dv_d, color='#d62728', linewidth=1.5,
+                        label='dD/dt (damage rate)')
+        axes[1][1].set_ylabel('dD/dt  (s\u207b\u00b9)', fontsize=11)
+        axes[1][1].grid(True, alpha=0.3)
+
+        axes[2][1].plot(times, d2v_d, color='#8c564b', linewidth=1.5,
+                        label='d\u00b2D/dt\u00b2')
+        axes[2][1].set_ylabel('d\u00b2D/dt\u00b2  (s\u207b\u00b2)', fontsize=11)
+        axes[2][1].set_xlabel('Time (s)', fontsize=11)
+        axes[2][1].grid(True, alpha=0.3)
+
+        if t_neck_d is not None:
+            for ax in axes[:, 1]:
+                ax.axvline(t_neck_d, color='red', linewidth=1.5,
+                           linestyle='--', label='Necking onset')
+            axes[0][1].legend(fontsize=9)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    out_png = os.path.join(out_dir, 'necking_diagnostic.png')
+    fig.savefig(out_png, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('  Necking diag.   -> %s' % out_png)
 
 
 def _plot_energy_ratio(odb, out_dir):

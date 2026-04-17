@@ -65,17 +65,35 @@ for subdir in output_dirs:
         print('  WARNING: %s is empty — skipping.' % csv_path)
         continue
 
+    # Try to read forming_limits.csv (produced by updated postproc.py)
+    limits_data = {}   # method -> {'eps1': float, 'eps2': float}
+    limits_path = os.path.join(base_dir, subdir, 'forming_limits.csv')
+    if os.path.isfile(limits_path):
+        with open(limits_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get('eps1_major') and row.get('eps2_minor'):
+                    limits_data[row['method']] = {
+                        'eps1': float(row['eps1_major']),
+                        'eps2': float(row['eps2_minor']),
+                    }
+
     flag = '' if ftype == 'dome' else '  [%s fracture — EXCLUDED from FLC]' % ftype
-    print('  %-35s  FLC point: (%.3f, %.3f)%s'
+    print('  %-35s  fracture: (%.3f, %.3f)%s'
           % (subdir, eps2s[-1], eps1s[-1], flag))
+    for meth, lim in limits_data.items():
+        if meth != 'fracture':
+            print('    %-10s                       necking:  (%.3f, %.3f)'
+                  % (meth, lim['eps2'], lim['eps1']))
 
     paths.append({
-        'label':        subdir,
-        'eps1s':        eps1s,
-        'eps2s':        eps2s,
-        'flc_eps1':     eps1s[-1],
-        'flc_eps2':     eps2s[-1],
+        'label':         subdir,
+        'eps1s':         eps1s,
+        'eps2s':         eps2s,
+        'flc_eps1':      eps1s[-1],
+        'flc_eps2':      eps2s[-1],
         'fracture_type': ftype,
+        'limits':        limits_data,
     })
 
 if not paths:
@@ -89,9 +107,20 @@ flc_sorted = sorted(paths, key=lambda p: p['flc_eps2'])
 dome_points = [p for p in flc_sorted if p['fracture_type'] == 'dome']
 with open(flc_csv, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(['subdir', 'eps2_minor', 'eps1_major', 'fracture_type'])
+    writer.writerow(['subdir', 'fracture_type',
+                     'eps2_fracture', 'eps1_fracture',
+                     'eps2_sdv6', 'eps1_sdv6',
+                     'eps2_volk_hora', 'eps1_volk_hora'])
     for p in flc_sorted:
-        writer.writerow([p['label'], p['flc_eps2'], p['flc_eps1'], p['fracture_type']])
+        lims = p.get('limits', {})
+        sdv6 = lims.get('sdv6', {})
+        vh   = lims.get('volk_hora', {})
+        writer.writerow([
+            p['label'], p['fracture_type'],
+            p['flc_eps2'], p['flc_eps1'],
+            sdv6.get('eps2', ''), sdv6.get('eps1', ''),
+            vh.get('eps2',  ''), vh.get('eps1',  ''),
+        ])
 print('  FLC points  → %s' % flc_csv)
 
 # ── Plot ─────────────────────────────────────────────────────────────────────
@@ -134,11 +163,27 @@ for i, p in enumerate(paths):
             markeredgewidth=2,
             label=label)
 
-# FLC curve — only dome-fracture points
-if len(dome_points) >= 2:
-    curve_e2 = [p['flc_eps2'] for p in dome_points]
-    curve_e1 = [p['flc_eps1'] for p in dome_points]
-    ax.plot(curve_e2, curve_e1, 'k-', linewidth=2, zorder=5, label='FLC (dome fractures only)')
+# FLC curves — fracture baseline + necking methods if forming_limits.csv present
+METHOD_STYLES = [
+    ('fracture',   'FLC (fracture)',           'k',       '--', 2.0),
+    ('sdv6',       'FLC (SDV6/damage onset)',   '#e6550d', '-',  2.0),
+    ('volk_hora',  'FLC (Volk-Hora onset)',     '#31a354', '-',  2.0),
+]
+for mkey, mlabel, mcolor, mls, mlw in METHOD_STYLES:
+    mpts = []
+    for p in paths:
+        if p['fracture_type'] != 'dome':
+            continue
+        if mkey == 'fracture':
+            mpts.append((p['flc_eps2'], p['flc_eps1']))
+        elif mkey in p.get('limits', {}):
+            lim = p['limits'][mkey]
+            mpts.append((lim['eps2'], lim['eps1']))
+    if len(mpts) >= 2:
+        mpts.sort()
+        ax.plot([pt[0] for pt in mpts], [pt[1] for pt in mpts],
+                color=mcolor, linewidth=mlw, linestyle=mls,
+                zorder=5, label=mlabel)
 
 ax.axvline(0, color='grey', linewidth=0.8, linestyle=':')
 
