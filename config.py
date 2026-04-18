@@ -45,9 +45,22 @@ _test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
 _ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
 _pip_punch2_id = _os.environ.get('PIP_PUNCH2_ID', 'PUNCH_21') if TEST_TYPE == 'pip' else None
 _pip_suffix    = '_p2{}'.format(_pip_punch2_id).replace('PUNCH_', '') if _pip_punch2_id else ''
-JOB_NAME  = '{}_W{}_t{}_ang{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
-CAE_NAME  = '{}_W{}_t{}_ang{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
-INP_NAME  = '{}_W{}_t{}_ang{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
+
+# Mass-scaling suffix — only present when MASS_SCALING_DT is explicitly
+# overridden via env (e.g. by deploy_mass_scaling.sh).  Normal deploys
+# leave MASS_SCALING_DT unset so this suffix is empty and naming is unchanged.
+_ms_dt_env = _os.environ.get('MASS_SCALING_DT', '')
+_ms_suffix = ''
+if _ms_dt_env:
+    import math as _math
+    _ms_val  = float(_ms_dt_env)
+    _ms_exp  = int(_math.floor(_math.log10(_ms_val)))
+    _ms_mant = int(round(_ms_val / 10 ** _ms_exp))
+    _ms_suffix = '_ms%de%d' % (_ms_mant, abs(_ms_exp))
+
+JOB_NAME  = '{}_W{}_t{}_ang{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
+CAE_NAME  = '{}_W{}_t{}_ang{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
+INP_NAME  = '{}_W{}_t{}_ang{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
 OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
 # ── Common geometry — shared across all test types ────────────
