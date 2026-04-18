@@ -79,6 +79,8 @@ print('_ms%de%d' % (mant, abs(exp)))
     echo "  DT = ${DT} s  →  ${JOB_NAME}"
 
     echo "  Building model ..."
+    # MASS_SCALING_DT is injected into the .inp by job.py; config.py keeps a
+    # fixed default so job names stay clean — we name the output ourselves.
     ssh "${EULER_USER}@${EULER_HOST}" \
         "cd ${EULER_DIR} && module load abaqus/2023 && \
          TEST_TYPE=${TEST_TYPE} \
@@ -89,10 +91,12 @@ print('_ms%de%d' % (mant, abs(exp)))
          abaqus cae noGUI=build_model.py"
 
     echo "  Submitting solver ..."
+    # JOB_NAME and OUTPUT_SUBDIR are passed explicitly with the _ms suffix so
+    # each DT value produces its own output directory, independent of config.py.
     JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-        "cd ${EULER_DIR} && source last_build.env && sbatch \
-         --job-name=\$JOB_NAME \
-         --export=ALL,JOB_NAME=\$JOB_NAME,OUTPUT_SUBDIR=\$OUTPUT_SUBDIR \
+        "cd ${EULER_DIR} && sbatch \
+         --job-name=${JOB_NAME} \
+         --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${JOB_NAME} \
          --parsable run_cluster.sh")
 
     echo "  Submitting plot job (afterok:${JOB_ID}) ..."
