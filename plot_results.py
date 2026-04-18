@@ -151,25 +151,36 @@ def _volk_hora_onset(times, e1, e2):
     """
     Volk-Hora necking criterion: two-line fit on thinning rate.
 
-    Returns a dict with all data needed for plotting and the overlay:
+    Both fits are restricted to the monotonically increasing portion of
+    ė_thin, i.e. [0, k_peak] where k_peak = argmax(ė_thin).  The stable
+    and unstable lines are fitted only within this window; the intersection
+    is the V&H necking onset.
+
+    Returns a dict:
       e_thin    — raw thinning rate series
       e_thin_s  — doubly smoothed thinning rate
-      neck_idx  — inflection-based seed index
-      t_neck    — inflection-based onset time
+      k_peak    — index of ė_thin maximum (end of valid window)
+      neck_idx  — inflection of ė_thin (stable/unstable split seed)
+      t_neck    — inflection time
       stable    — (m, b, start, end) of stable linear fit
       unstable  — (m, b, start, end) of unstable linear fit
       t_vh      — V&H intersection time (None if not found)
     """
     de1 = _central_diff(times, _smooth3(e1))
     de2 = _central_diff(times, _smooth3(e2))
-    e_thin  = [a + b for a, b in zip(de1, de2)]
+    e_thin   = [a + b for a, b in zip(de1, de2)]
     e_thin_s = _smooth3(_smooth3(e_thin))
+    n = len(times)
 
-    neck_idx = _inflection_index(times, e1)
+    # Restrict to the increasing portion only: stop at the global peak
+    k_peak = max(range(n), key=lambda i: e_thin_s[i])
+
+    # Seed the stable/unstable split from the inflection of ė_thin itself
+    neck_idx = _inflection_index(times[:k_peak + 1], e_thin_s[:k_peak + 1])
     t_neck   = times[neck_idx] if neck_idx is not None else None
 
     result = dict(e_thin=e_thin, e_thin_s=e_thin_s,
-                  neck_idx=neck_idx, t_neck=t_neck,
+                  k_peak=k_peak, neck_idx=neck_idx, t_neck=t_neck,
                   stable=None, unstable=None, t_vh=None)
 
     if neck_idx is None or neck_idx < 6:
@@ -178,7 +189,7 @@ def _volk_hora_onset(times, e1, e2):
     s_start = max(2, neck_idx // 5)
     s_end   = max(s_start + 3, int(neck_idx * 0.85))
     u_start = neck_idx
-    u_end   = len(times)
+    u_end   = k_peak + 1       # never exceed the peak
 
     if s_end - s_start < 3 or u_end - u_start < 3:
         return result
@@ -193,8 +204,8 @@ def _volk_hora_onset(times, e1, e2):
 
     if abs(m2 - m1) > 1e-15:
         t_int = (b2 - b1) / (m1 - m2)
-        t0, t1_last = times[0], times[-1]
-        if t0 < t_int < t1_last * 1.05:
+        t0, t_pk = times[0], times[k_peak]
+        if t0 < t_int <= t_pk * 1.05:
             result['t_vh'] = t_int
 
     return result
@@ -393,7 +404,12 @@ def _page_volk_hora(pdf, sp, lims, label, vh):
     if vh['t_neck'] is not None:
         ls = ':' if vh['t_vh'] is not None else '--'
         ax.axvline(vh['t_neck'], color='red', linewidth=1.2, linestyle=ls,
-                   label='Inflection seed  t = %.4f s' % vh['t_neck'])
+                   label=u'\u0117_thin inflection seed  t = %.4f s' % vh['t_neck'])
+
+    # Peak of ė_thin — right boundary of the valid V&H window
+    t_pk = times[vh['k_peak']]
+    ax.axvline(t_pk, color='grey', linewidth=1.0, linestyle=':',
+               label=u'\u0117_thin peak (window end)  t = %.4f s' % t_pk)
 
     # Forming-limit time from CSV (cross-check)
     if 'volk_hora' in lims:
