@@ -45,9 +45,21 @@ _test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
 _ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
 _pip_punch2_id = _os.environ.get('PIP_PUNCH2_ID', 'PUNCH_21') if TEST_TYPE == 'pip' else None
 _pip_suffix    = '_p2{}'.format(_pip_punch2_id).replace('PUNCH_', '') if _pip_punch2_id else ''
-JOB_NAME  = '{}_W{}_t{}_ang{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
-CAE_NAME  = '{}_W{}_t{}_ang{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
-INP_NAME  = '{}_W{}_t{}_ang{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix)
+
+# Mass-scaling suffix: only non-empty when MASS_SCALING_DT is explicitly overridden
+# via env, so default runs keep their existing naming convention.
+_ms_dt_env = _os.environ.get('MASS_SCALING_DT', '')
+_ms_suffix = ''
+if _ms_dt_env:
+    import math as _math
+    _ms_val  = float(_ms_dt_env)
+    _ms_exp  = int(_math.floor(_math.log10(_ms_val)))
+    _ms_mant = int(round(_ms_val / 10 ** _ms_exp))
+    _ms_suffix = '_ms%de%d' % (_ms_mant, abs(_ms_exp))
+
+JOB_NAME  = '{}_W{}_t{}_ang{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
+CAE_NAME  = '{}_W{}_t{}_ang{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
+INP_NAME  = '{}_W{}_t{}_ang{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix)
 OUTPUT_DIR = JOB_NAME   # subdirectory created per simulation run
 
 # ── Common geometry — shared across all test types ────────────
@@ -136,8 +148,10 @@ STEP_TIME = PUNCH_DISPLACEMENT / 2.0            # s  — 2 mm/s (ISO 12004-2: 0.
 
 # ── Mass scaling ──────────────────────────────────────────────
 USE_MASS_SCALING = True
-MASS_SCALING_DT  = 2.0e-5   # s — increased from 1e-5: v reduced 5→2 mm/s so ALLKE/ALLIE
-                             #scales as DT²×v²; 2e-5 keeps ratio well below 5% threshold
+MASS_SCALING_DT  = float(_os.environ.get('MASS_SCALING_DT', 2.0e-5))
+# Default 2e-5 s: v=2 mm/s keeps ALLKE/ALLIE well below 5% threshold.
+# Override via env: MASS_SCALING_DT=5e-5 ./deploy.sh
+# When overridden the suffix _msXeY is appended to JOB_NAME automatically.
 
 # ── Friction ──────────────────────────────────────────────────
 FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface (nakazima/marciniak)
