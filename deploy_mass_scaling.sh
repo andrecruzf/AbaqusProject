@@ -53,6 +53,7 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \
     "$SCRIPT_DIR/plot_flc.py" \
+    "$SCRIPT_DIR/plot_mass_scaling.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 scp -r "$SCRIPT_DIR/modules" \
@@ -63,6 +64,7 @@ echo ""
 # ── Build + submit one job per DT value ───────────────────────
 JOB_IDS=()
 JOB_NAMES=()
+SOLVER_IDS=()   # solver IDs only — used for the final aggregation dependency
 
 for DT in "${DT_VALUES[@]}"; do
 
@@ -109,9 +111,30 @@ print('_ms%de%d' % (mant, abs(exp)))
 
     JOB_IDS+=("${JOB_ID}:${PLOT_ID}")
     JOB_NAMES+=("$JOB_NAME")
+    SOLVER_IDS+=("${JOB_ID}")
     echo "  Solver: ${JOB_ID}   Plot: ${PLOT_ID}"
     echo ""
 done
+
+# ── Final mass-scaling comparison plot (depends on ALL solvers) ───────────────
+DEPENDENCY_STR=$(IFS=':'; echo "afterok:${SOLVER_IDS[*]}")
+ALL_DIRS=$(IFS=' '; echo "${EULER_DIR}/${JOB_NAMES[*]// / ${EULER_DIR}/}")
+MS_PDF="${EULER_DIR}/mass_scaling_${_test_cap}_W${WIDTH}_t${_t}_ang${_ang}.pdf"
+
+echo "  Submitting mass-scaling comparison plot (after all solvers) ..."
+AGG_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
+    "cd ${EULER_DIR} && sbatch \
+     --dependency=${DEPENDENCY_STR} \
+     --job-name=ms_compare_${_test_cap}_W${WIDTH} \
+     --output=ms_compare_${_test_cap}_W${WIDTH}_%j.out \
+     --error=ms_compare_${_test_cap}_W${WIDTH}_%j.err \
+     --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4G --time=00:10:00 \
+     --parsable \
+     --wrap='module load stack/2024-06 && module load python/3.11.6 && \
+             python3 ${EULER_DIR}/plot_mass_scaling.py ${ALL_DIRS} \
+             --output ${MS_PDF}'")
+echo "  Comparison plot job: ${AGG_ID}"
+echo ""
 
 echo "=============================================="
 echo "  All jobs submitted:"
@@ -119,6 +142,9 @@ for i in "${!JOB_NAMES[@]}"; do
     IFS=':' read -r SID PID <<< "${JOB_IDS[$i]}"
     printf "  %-45s  solver %-10s  plot %s\n" "${JOB_NAMES[$i]}" "$SID" "$PID"
 done
+printf "  %-45s  comparison %s\n" "(all DT values)" "$AGG_ID"
+echo ""
+echo "  Output: ${MS_PDF}"
 echo ""
 echo "  Monitor:"
 echo "    ssh ${EULER_USER}@${EULER_HOST} 'squeue --me'"
