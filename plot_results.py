@@ -21,9 +21,11 @@ Pages
 2. Volk-Hora detection  thinning rate vs time+frame, two-line fit, necking marked
 3. Merklein detection   sliding-window R2 of strain rate vs time+frame
 4. Method overlay       normalized detection signals + all onset markers
-5. EQPS history         EQPS vs time
-6. Damage history       d_dome_max vs time  (only if SDV6 data present)
-7. Energy ratio         ALLKE/ALLIE (%)  vs time  (only if energy_data.csv present)
+5. Strain ratio β       β = ε̇₂/ε̇₁ (instantaneous) and ε₂/ε₁ (cumulative) vs time
+6. Punch F-d            punch force vs stroke with onset markers  (if punch_fd.csv present)
+7. EQPS history         EQPS vs time
+8. Damage history       d_dome_max vs time  (only if SDV6 data present)
+9. Energy ratio         ALLKE/ALLIE (%)  vs time  (only if energy_data.csv present)
 """
 from __future__ import print_function
 import sys
@@ -286,6 +288,19 @@ def _read_forming_limits(out_dir):
     return lims
 
 
+def _read_punch_fd(out_dir):
+    path = os.path.join(out_dir, 'punch_fd.csv')
+    if not os.path.isfile(path):
+        return None
+    times, u3, rf3 = [], [], []
+    with open(path, 'r') as f:
+        for row in csv.DictReader(f):
+            times.append(float(row['total_time_s']))
+            u3.append(float(row['U3_mm']))
+            rf3.append(float(row['RF3_N']))
+    return dict(times=times, u3=u3, rf3=rf3)
+
+
 def _read_energy(out_dir):
     path = os.path.join(out_dir, 'energy_data.csv')
     if not os.path.isfile(path):
@@ -521,6 +536,131 @@ def _page_method_overlay(pdf, sp, lims, label, vh, mk):
     plt.close(fig)
 
 
+def _page_strain_ratio(pdf, sp, lims, label, vh, mk):
+    """
+    Page 5 — strain ratio β evolution.
+
+    Shows both:
+      β_rate  = ε̇₂/ε̇₁  instantaneous (from smoothed derivatives) — path direction
+      β_total = ε₂/ε₁   cumulative    — overall path slope
+
+    Reference horizontal lines at β = -0.5 (uniaxial), 0 (plane strain), 1 (equibiaxial).
+    Dual x-axis: simulation time (bottom) and frame index (top).
+    """
+    times = sp['times']
+    e1    = sp['e1']
+    e2    = sp['e2']
+
+    # Smoothed strain rate components
+    de1 = _smooth3(_central_diff(times, _smooth3(_smooth3(e1))))
+    de2 = _smooth3(_central_diff(times, _smooth3(_smooth3(e2))))
+
+    de1_max = max(abs(v) for v in de1) or 1.0
+    de1_thr = 0.05 * de1_max   # skip frames where strain rate is near zero
+    e1_max  = max(abs(v) for v in e1) or 1.0
+    e1_thr  = 0.03 * e1_max
+
+    beta_rate  = [de2[i] / de1[i] if abs(de1[i]) > de1_thr else None
+                  for i in range(len(times))]
+    beta_total = [e2[i]  / e1[i]  if abs(e1[i])  > e1_thr  else None
+                  for i in range(len(times))]
+
+    CLIP = 2.5   # y-axis clip to avoid huge spikes near zero denominator
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    t_br = [times[i] for i, v in enumerate(beta_rate)  if v is not None and abs(v) <= CLIP]
+    v_br = [v         for v in beta_rate                if v is not None and abs(v) <= CLIP]
+    t_bt = [times[i] for i, v in enumerate(beta_total) if v is not None and abs(v) <= CLIP]
+    v_bt = [v         for v in beta_total               if v is not None and abs(v) <= CLIP]
+
+    if t_br:
+        ax.plot(t_br, v_br, color='#2ca02c', linewidth=1.2, alpha=0.6,
+                label=u'\u03b2_rate = \u0117\u2082/\u0117\u2081  (instantaneous)')
+    if t_bt:
+        ax.plot(t_bt, v_bt, color='#ff7f0e', linewidth=2.0,
+                label=u'\u03b2_total = \u03b5\u2082/\u03b5\u2081  (cumulative)')
+
+    # Reference stress-state lines
+    for val, lbl_r in [(-0.5, u'\u03b2 = \u22120.5  uniaxial'),
+                        ( 0.0, u'\u03b2 = 0  plane strain'),
+                        ( 1.0, u'\u03b2 = 1  equibiaxial')]:
+        ax.axhline(val, color='grey', linewidth=0.8, linestyle='--', alpha=0.6,
+                   label=lbl_r)
+
+    # Onset verticals
+    _VLINES = [
+        (vh['t_vh'],       '#2ca02c', 'V&H onset'),
+        (mk['t_onset'],    '#1f77b4', 'Merklein onset'),
+    ]
+    if 'fracture' in lims:
+        _VLINES.append((lims['fracture']['t'], '#d62728', 'Fracture'))
+    for t_v, col, lbl_v in _VLINES:
+        if t_v is not None:
+            ax.axvline(t_v, color=col, linewidth=1.5, linestyle='--',
+                       label='%s  t = %.4f s' % (lbl_v, t_v))
+
+    ax.set_xlim(times[0], times[-1])
+    ax.set_ylim(-CLIP, CLIP)
+    _add_frame_axis(ax, times)
+    ax.set_xlabel('Simulation time  (s)', fontsize=12)
+    ax.set_ylabel(u'\u03b2  strain ratio  (\u2013)', fontsize=12)
+    ax.set_title(u'Strain ratio \u03b2 = \u03b5\u2082/\u03b5\u2081 evolution — %s' % label, fontsize=13)
+    ax.legend(fontsize=8, loc='upper right', ncol=2)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _page_punch_fd(pdf, fd, lims, label):
+    """
+    Page 6 — punch force vs stroke with necking/fracture onset markers.
+
+    U3 convention: sign is inferred from the dominant direction (whichever
+    has larger absolute value becomes the positive stroke).  Force is shown
+    as |RF3| in kN.  Onset times are mapped to (stroke, force) by nearest
+    frame lookup.
+    """
+    times = fd['times']
+    u3    = fd['u3']
+    rf3   = fd['rf3']
+
+    # Stroke: positive = forward punch travel
+    u3_at_max = max(u3, key=abs)
+    sign   = 1.0 if u3_at_max >= 0 else -1.0
+    stroke = [sign * u          for u in u3]
+    force  = [abs(r) / 1000.0  for r in rf3]   # N → kN
+
+    def _nearest(t_target):
+        idx = min(range(len(times)), key=lambda i: abs(times[i] - t_target))
+        return stroke[idx], force[idx]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(stroke, force, color='#1f77b4', linewidth=1.8, label='Punch F-d')
+
+    _MARKS = {
+        'fracture':  ('#d62728', 'X', 11, 'Fracture'),
+        'volk_hora': ('#ff7f0e', 'D',  9, 'Volk-Hora onset'),
+        'sdv6':      ('#9467bd', 's',  9, 'SDV6 onset'),
+    }
+    for key, (col, mk, ms, lbl_m) in _MARKS.items():
+        if key in lims:
+            s, f = _nearest(lims[key]['t'])
+            ax.plot(s, f, marker=mk, color=col, linestyle='None',
+                    markersize=ms, zorder=5,
+                    label='%s  (d = %.2f mm, F = %.2f kN)' % (lbl_m, s, f))
+
+    ax.set_xlabel('Punch stroke  (mm)', fontsize=12)
+    ax.set_ylabel('Punch force  (kN)', fontsize=12)
+    ax.set_title('Punch force\u2013displacement — %s' % label, fontsize=13)
+    ax.legend(fontsize=9, loc='upper right')
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 def _page_eqps(pdf, sp, lims, label):
     """Page 5 — EQPS history."""
     times = sp['times']
@@ -617,6 +757,7 @@ def process_directory(out_dir):
     label = os.path.basename(os.path.abspath(out_dir))
     sp    = _read_strain_path(out_dir)
     lims  = _read_forming_limits(out_dir)
+    fd    = _read_punch_fd(out_dir)
     en    = _read_energy(out_dir)
 
     if sp is None:
@@ -632,17 +773,21 @@ def process_directory(out_dir):
 
     print('  V&H onset:      %s' % ('t = %.4f s' % vh['t_vh']   if vh['t_vh']   else 'not found'))
     print('  Merklein onset: %s' % ('t = %.4f s' % mk['t_onset'] if mk['t_onset'] else 'not found'))
+    print('  Punch F-d:      %s' % ('%d points' % len(fd['times']) if fd else 'not found'))
 
     out_pdf = os.path.join(out_dir, 'postproc_plots.pdf')
     n_pages = 0
     with PdfPages(out_pdf) as pdf:
-        _page_strain_path(pdf, sp, lims, label);             n_pages += 1
-        _page_volk_hora(pdf, sp, lims, label, vh);           n_pages += 1
-        _page_merklein(pdf, sp, lims, label, mk);            n_pages += 1
-        _page_method_overlay(pdf, sp, lims, label, vh, mk);  n_pages += 1
-        _page_eqps(pdf, sp, lims, label);                    n_pages += 1
-        if _page_damage(pdf, sp, lims, label):               n_pages += 1
-        if _page_energy(pdf, en, label):                     n_pages += 1
+        _page_strain_path(pdf, sp, lims, label);              n_pages += 1
+        _page_volk_hora(pdf, sp, lims, label, vh);            n_pages += 1
+        _page_merklein(pdf, sp, lims, label, mk);             n_pages += 1
+        _page_method_overlay(pdf, sp, lims, label, vh, mk);   n_pages += 1
+        _page_strain_ratio(pdf, sp, lims, label, vh, mk);     n_pages += 1
+        if fd is not None:
+            _page_punch_fd(pdf, fd, lims, label);             n_pages += 1
+        _page_eqps(pdf, sp, lims, label);                     n_pages += 1
+        if _page_damage(pdf, sp, lims, label):                n_pages += 1
+        if _page_energy(pdf, en, label):                      n_pages += 1
 
     print('  postproc_plots.pdf -> %s  (%d pages)' % (out_pdf, n_pages))
 

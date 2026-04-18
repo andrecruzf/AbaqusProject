@@ -3,7 +3,7 @@
 plot_flc.py — Aggregate forming limit curve from multiple specimen directories.
 
 Usage:
-    python plot_flc.py <dir1> <dir2> ... [--output <path.pdf>]
+    python plot_flc.py <dir1> <dir2> ... [--output <path.pdf>] [--experimental <csv>]
 
 Each directory must contain:
     forming_limits.csv  (method, eps1_major, eps2_minor, EQPS, D, time_s)
@@ -11,9 +11,14 @@ Each directory must contain:
 
 Specimen width is inferred from the directory name (e.g. Nakazima_W50_... → W50).
 
+Optional:
+    --experimental <csv>   CSV with reference/experimental FLC points to overlay.
+                           Expected columns: eps2_minor, eps1_major
+                           (extra columns such as subdir, fracture_type are ignored)
+
 Output (one PDF, default: FLC_combined.pdf in cwd):
-    Page 1  FLC — fracture limit strains
-    Page 2  FLC — Volk-Hora necking strains      (if data present)
+    Page 1  FLC — fracture limit strains          (+ experimental overlay if provided)
+    Page 2  FLC — Volk-Hora necking strains       (if data present)
     Page 3  FLC — SDV6/damage necking strains     (if data present)
     Page 4  All methods overlaid + strain paths   (if >1 method present)
     Page 5  PEPS FLC — EQPS at necking vs β      (Volk-Hora, if data present)
@@ -43,6 +48,34 @@ _METHOD_STYLE = {
     'volk_hora': ('D',  8, 'Volk-Hora necking'),
     'sdv6':      ('s',  8, 'SDV6 necking'),
 }
+
+
+def _read_experimental(path):
+    """
+    Read a reference/experimental FLC CSV.
+    Required columns: eps2_minor, eps1_major.
+    Returns list of (e2, e1) tuples, or empty list on failure.
+    """
+    if path is None or not os.path.isfile(path):
+        return []
+    pts = []
+    with open(path, 'r') as f:
+        for row in csv.DictReader(f):
+            try:
+                pts.append((float(row['eps2_minor']), float(row['eps1_major'])))
+            except (KeyError, ValueError):
+                pass
+    return pts
+
+
+def _draw_experimental(ax, exp_pts, label='Reference / experimental'):
+    """Overlay experimental FLC points on an existing axes."""
+    if not exp_pts:
+        return
+    e2 = [p[0] for p in exp_pts]
+    e1 = [p[1] for p in exp_pts]
+    ax.plot(e2, e1, marker='*', color='black', linestyle='None',
+            markersize=12, zorder=6, label=label)
 
 
 def _width_label(d):
@@ -158,9 +191,10 @@ def _peps_flc_page(pdf, dirs, colors, method):
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-def plot_flc(dirs, output_path):
+def plot_flc(dirs, output_path, exp_pts=None):
     dirs   = sorted(dirs, key=_width_int)
     colors = [_WIDTH_COLORS[i % len(_WIDTH_COLORS)] for i in range(len(dirs))]
+    exp_pts = exp_pts or []
 
     has = {m: False for m in _METHOD_STYLE}
     for d in dirs:
@@ -179,6 +213,7 @@ def plot_flc(dirs, output_path):
             fig, ax = _base_axes('Forming Limit Curve — fracture')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'fracture')
+            _draw_experimental(ax, exp_pts)
             ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
@@ -186,6 +221,7 @@ def plot_flc(dirs, output_path):
             fig, ax = _base_axes('Forming Limit Curve — Volk-Hora necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'volk_hora')
+            _draw_experimental(ax, exp_pts, label='Reference (fracture)')
             ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
@@ -193,6 +229,7 @@ def plot_flc(dirs, output_path):
             fig, ax = _base_axes('Forming Limit Curve — SDV6/damage necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'sdv6')
+            _draw_experimental(ax, exp_pts, label='Reference (fracture)')
             ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
@@ -210,6 +247,7 @@ def plot_flc(dirs, output_path):
                     ax.plot(pt['e2'], pt['e1'], marker=mk, color=col,
                             linestyle='None', markersize=ms, zorder=3,
                             label='%s %s' % (_width_label(d), lbl_m))
+            _draw_experimental(ax, exp_pts)
             ax.legend(fontsize=7, ncol=2, loc='upper right', framealpha=0.8)
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
@@ -228,12 +266,16 @@ if __name__ == '__main__':
         print('Usage: python plot_flc.py <dir1> <dir2> ... [--output <path.pdf>]')
         sys.exit(1)
 
-    output = 'FLC_combined.pdf'
-    dirs   = []
+    output  = 'FLC_combined.pdf'
+    exp_csv = None
+    dirs    = []
     i = 0
     while i < len(args):
         if args[i] == '--output' and i + 1 < len(args):
             output = args[i + 1]
+            i += 2
+        elif args[i] == '--experimental' and i + 1 < len(args):
+            exp_csv = args[i + 1]
             i += 2
         else:
             dirs.append(args[i])
@@ -244,4 +286,8 @@ if __name__ == '__main__':
         print('ERROR: no valid directories provided.')
         sys.exit(1)
 
-    plot_flc(dirs, output)
+    exp_pts = _read_experimental(exp_csv)
+    if exp_pts:
+        print('Experimental: %d points from %s' % (len(exp_pts), exp_csv))
+
+    plot_flc(dirs, output, exp_pts=exp_pts)

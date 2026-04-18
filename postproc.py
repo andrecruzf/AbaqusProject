@@ -414,6 +414,9 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     # ── 8. Write energy_data.csv ──────────────────────────────
     _write_energy_csv(odb, out_dir)
 
+    # ── 9. Write punch_fd.csv ─────────────────────────────────
+    _write_punch_fd_csv(odb, out_dir)
+
     odb.close()
     print('=' * 60)
     return out_csv
@@ -462,6 +465,54 @@ def _write_energy_csv(odb, out_dir):
         writer.writerows(rows)
 
     print('  Energy data     -> %s' % out_csv)
+
+
+def _write_punch_fd_csv(odb, out_dir):
+    """
+    Extract punch U3 (displacement) and RF3 (reaction force) history output
+    and write punch_fd.csv.
+
+    Searches all history regions across all steps for those that contain both
+    U3 and RF3.  If multiple regions qualify (PiP: two punches), picks the
+    one with the largest stroke range.  Time is accumulated across steps so
+    the x-axis is continuous.
+    """
+    out_csv = os.path.join(out_dir, 'punch_fd.csv')
+    t_offset = 0.0
+    # candidates: region_name -> list of [step_name, t_abs, u3, rf3]
+    candidates = {}
+
+    for step in odb.steps.values():
+        for reg_name, region in step.historyRegions.items():
+            ho = region.historyOutputs.keys()
+            if 'U3' not in ho or 'RF3' not in ho:
+                continue
+            u3_data  = region.historyOutputs['U3'].data
+            rf3_data = region.historyOutputs['RF3'].data
+            if reg_name not in candidates:
+                candidates[reg_name] = []
+            for (t, u3), (_, rf3) in zip(u3_data, rf3_data):
+                candidates[reg_name].append([step.name, t_offset + t, u3, rf3])
+        t_offset += step.timePeriod
+
+    if not candidates:
+        print('  WARNING: no history region with U3+RF3 found — punch_fd.csv not written.')
+        return
+
+    def _u3_range(rows):
+        u3s = [r[2] for r in rows]
+        return max(u3s) - min(u3s)
+
+    best = max(candidates.keys(), key=lambda n: _u3_range(candidates[n]))
+    rows = candidates[best]
+    print('  Punch F-d: region "%s"  (%d points)' % (best, len(rows)))
+
+    with open(out_csv, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['step_name', 'total_time_s', 'U3_mm', 'RF3_N'])
+        writer.writerows(rows)
+
+    print('  Punch F-d data  -> %s' % out_csv)
 
 
 if __name__ == '__main__':
