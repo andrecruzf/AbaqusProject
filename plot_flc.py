@@ -148,7 +148,7 @@ def _peps_flc_page(pdf, dirs, colors, method):
     ax.set_ylabel('EQPS at necking  (\u2013)', fontsize=12)
     ax.set_title('Path-independent FLC (PEPS) — %s' % _LABELS.get(method, method),
                  fontsize=13)
-    ax.legend(fontsize=8, ncol=1, loc='best')
+    ax.legend(fontsize=8, ncol=1, loc='upper right')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
@@ -179,21 +179,21 @@ def plot_flc(dirs, output_path):
             fig, ax = _base_axes('Forming Limit Curve — fracture')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'fracture')
-            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper left')
+            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
         if has['volk_hora']:
             fig, ax = _base_axes('Forming Limit Curve — Volk-Hora necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'volk_hora')
-            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper left')
+            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
         if has['sdv6']:
             fig, ax = _base_axes('Forming Limit Curve — SDV6/damage necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'sdv6')
-            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper left')
+            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
         if sum(has.values()) > 1:
@@ -210,7 +210,7 @@ def plot_flc(dirs, output_path):
                     ax.plot(pt['e2'], pt['e1'], marker=mk, color=col,
                             linestyle='None', markersize=ms, zorder=3,
                             label='%s %s' % (_width_label(d), lbl_m))
-            ax.legend(fontsize=7, ncol=2, loc='upper left', framealpha=0.8)
+            ax.legend(fontsize=7, ncol=2, loc='upper right', framealpha=0.8)
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
         # PEPS (path-independent) FLC pages
