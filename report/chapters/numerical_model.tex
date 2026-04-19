@@ -61,6 +61,10 @@ All simulations use a punch speed of 2\,mm/s, consistent with the upper bound sp
 
 Fixed mass scaling with a target stable time increment $\Delta t = 2 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation. The mass scaling value was chosen accounting for the reduced punch speed relative to earlier implementations: since ALLKE $\propto \Delta t^2 v^2$, reducing $v$ from 5\,mm/s to 2\,mm/s allows $\Delta t$ to be increased by a factor of 2.5 while maintaining the same energy ratio.
 
+\subsection{Mass Scaling Sensitivity Study}
+
+To validate the chosen increment $\Delta t = 2 \times 10^{-5}$\,s, a dedicated sensitivity study was performed using \texttt{deploy\_mass\_scaling.sh}. One representative geometry (Nakazima W100, $t = 1.85$\,mm) was simulated with four values: $\Delta t \in \{1\times10^{-5},\, 2\times10^{-5},\, 5\times10^{-5},\, 1\times10^{-4}\}$\,s. Each value produces an independent output directory (suffix \texttt{\_ms2e5}, etc.); after all solver jobs complete a comparison job runs \texttt{plot\_mass\_scaling.py} and writes a two-page PDF overlaying the ALLKE/ALLIE ratio and absolute energies for all DT values. The 5\,\% quasi-static threshold is drawn as a reference line on the ratio plot. The selected $\Delta t = 2 \times 10^{-5}$\,s was confirmed to keep the peak ratio well below this threshold while remaining computationally efficient.
+
 \section{Output Requests}
 
 Field outputs are requested at regular intervals and include:
@@ -79,7 +83,8 @@ The entire workflow is automated via a set of Python and shell scripts deployed 
 
 \begin{enumerate}
   \item \texttt{config.py} — Central parameter file: test type, specimen width, thickness, friction coefficients, VUMAT constants, forming speed, output directory.
-  \item \texttt{deploy\_all.sh} — Pushes scripts to Euler, builds all models on the login node, and submits all solver jobs via SLURM.
+  \item \texttt{deploy\_all.sh} — Pushes all scripts to Euler via \texttt{scp}, then launches \texttt{submit\_all.sh} in a detached \texttt{tmux} session on the login node. The local terminal is freed immediately; all model building and job submission proceed remotely.
+  \item \texttt{submit\_all.sh} (runs on Euler) — Loads the Abaqus module, loops over all specimen widths, calls \texttt{abaqus cae noGUI=build\_model.py} for each, and submits the corresponding solver job. After all solver jobs are queued, the FLC aggregation job is submitted with an \texttt{afterok} dependency on all solver IDs. Output is logged to \texttt{submit\_all.log}.
   \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model (\texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job}) and write the \texttt{.inp} file.
   \item Abaqus/Explicit solver — Runs the simulation on the compute node (24 CPUs, \texttt{mp\_mode=threads}).
   \item \texttt{postproc.py} — Extracts principal strains and EQPS at failure $\to$ \texttt{strain\_path.csv}; plots ALLKE/ALLIE vs.\ time $\to$ \texttt{energy\_ratio.png}.
