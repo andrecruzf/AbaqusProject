@@ -436,10 +436,13 @@ def _write_energy_csv(odb, out_dir):
     for step in odb.steps.values():
         ke_data = ie_data = None
         for region in step.historyRegions.values():
-            ho = region.historyOutputs.keys()
-            if 'ALLKE' in ho and 'ALLIE' in ho:
-                ke_data = region.historyOutputs['ALLKE'].data
-                ie_data = region.historyOutputs['ALLIE'].data
+            ho = region.historyOutputs
+            # Key may be 'ALLKE', 'ALLKE  Whole Model', etc. — search by prefix.
+            ke_key = next((k for k in ho.keys() if k.startswith('ALLKE')), None)
+            ie_key = next((k for k in ho.keys() if k.startswith('ALLIE')), None)
+            if ke_key and ie_key:
+                ke_data = ho[ke_key].data
+                ie_data = ho[ie_key].data
                 break
 
         if ke_data is None:

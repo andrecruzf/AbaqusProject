@@ -131,6 +131,8 @@ def _inject_output_requests(inp_file, cfg):
         '** HISTORY OUTPUT\n'
         '** \n'
         + history_block +
+        '*Energy Output\n'
+        'ALLKE, ALLIE\n'
         '*End Step\n'
     )
 
