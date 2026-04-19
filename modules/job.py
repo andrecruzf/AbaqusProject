@@ -55,7 +55,9 @@ def save_and_export(cfg):
         print('  WARNING: VUMAT not found at %s — copy it manually.' % vumat_src)
 
     _write_build_env(cfg.JOB_NAME, out_dir)
-    _update_cluster_script(cfg.JOB_NAME, out_dir)
+    # _update_cluster_script skipped — deploy_mass_scaling.sh passes JOB_NAME
+    # via --export so patching run_cluster.sh is both unnecessary and causes
+    # race conditions when multiple builds run concurrently.
 
 
 def _write_build_env(job_name, out_dir):
