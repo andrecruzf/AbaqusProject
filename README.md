@@ -15,11 +15,12 @@ detection, FLC aggregation) and diagnostic plotting.
 4. [Local repository setup](#local-repository-setup)
 5. [Configuring a run](#configuring-a-run)
 6. [Running the pipeline](#running-the-pipeline)
-7. [Monitoring jobs](#monitoring-jobs)
-8. [Retrieving results](#retrieving-results)
-9. [Re-running post-processing only](#re-running-post-processing-only)
-10. [Project structure](#project-structure)
-11. [Output files reference](#output-files-reference)
+7. [Mass scaling sensitivity study](#mass-scaling-sensitivity-study----deploy_mass_scalingsh)
+8. [Monitoring jobs](#monitoring-jobs)
+9. [Retrieving results](#retrieving-results)
+10. [Re-running post-processing only](#re-running-post-processing-only)
+11. [Project structure](#project-structure)
+12. [Output files reference](#output-files-reference)
 
 ---
 
@@ -201,8 +202,9 @@ What it does:
 
 ### Full FLC sweep — `deploy_all.sh`
 
-Builds and submits all seven specimen widths in one go. The FLC aggregation
-job is submitted with `afterok` on all seven solver jobs.
+Pushes all source files to Euler, then launches `submit_all.sh` in a
+**tmux session** (`deploy`) on the login node. The local terminal is freed
+immediately — all building and job submission happens remotely.
 
 ```bash
 # Use defaults from config.py
@@ -224,6 +226,37 @@ Arguments (all optional, positional):
 | 3 | orientation (deg) | `config.MATERIAL_ORIENTATION_ANGLE` |
 | 4+ | widths | 20 50 80 90 100 120 200 |
 
+`submit_all.sh` runs on Euler and:
+1. Loads the `abaqus/2023` module
+2. For each width: builds the model with `abaqus cae noGUI=build_model.py`, submits the solver job via `sbatch`
+3. After all solver jobs are queued: submits the FLC aggregation job with `afterok` dependency on all solver IDs
+
+All output is captured to `$EULER_DIR/submit_all.log`.
+
+### Mass scaling sensitivity study — `deploy_mass_scaling.sh`
+
+Runs one geometry with multiple `MASS_SCALING_DT` values to check that the
+chosen time increment keeps the simulation quasi-static (ALLKE/ALLIE < 5 %).
+
+```bash
+# Syntax
+./deploy_mass_scaling.sh <width> <test_type> <thickness> <orientation> <dt1> [dt2 ...]
+
+# Example: four DT values for Nakazima W100
+./deploy_mass_scaling.sh 100 nakazima 1.85 0 1e-5 2e-5 5e-5 1e-4
+```
+
+Each `DT` value produces its own output directory (`_ms2e5`, `_ms5e5`, …).
+After all solver jobs complete, a comparison job runs `plot_mass_scaling.py`
+and writes a two-page PDF:
+
+| Page | Content |
+|------|---------|
+| 1 | ALLKE/ALLIE ratio (%) vs time — all DT values overlaid, 5 % threshold line |
+| 2 | Absolute ALLKE and ALLIE vs time — all DT values overlaid |
+
+Output PDF: `mass_scaling_<TestType>_W<W>_t<t>_ang<ang>.pdf` in `$EULER_DIR`.
+
 ---
 
 ## Monitoring jobs
@@ -235,7 +268,14 @@ ssh YOUR_ETH_USERNAME@euler.ethz.ch 'squeue --me'
 # Watch specific jobs (IDs printed by deploy script)
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'squeue -j 12345,12346'
 
-# Tail the solver log (job must be running)
+# Attach to the running deploy_all tmux session (live output)
+ssh YOUR_ETH_USERNAME@euler.ethz.ch
+tmux attach -t deploy
+
+# Tail the submission log without keeping SSH open
+ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/submit_all.log'
+
+# Tail a solver log (job must be running)
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/Nakazima_W50_t1p5_ang0_12345.out'
 ```
 
@@ -323,11 +363,15 @@ AbaqusProject/
 ├── postproc_movie.py          ← Abaqus Python: renders EQPS animation
 ├── plot_results.py            ← Python+matplotlib: per-specimen PDF
 ├── plot_flc.py                ← Python+matplotlib: FLC aggregation PDF
+├── plot_mass_scaling.py       ← Python+matplotlib: mass-scaling sensitivity PDF
 │
 ├── deploy.sh                  ← single-specimen deploy (push + build + submit)
-├── deploy_all.sh              ← full-width FLC sweep deploy
+├── deploy_all.sh              ← full-width FLC sweep deploy (launches submit_all.sh via tmux)
+├── deploy_mass_scaling.sh     ← mass-scaling sensitivity sweep (one geometry, multiple DT values)
+├── submit_all.sh              ← runs ON Euler: builds models + submits all solver jobs
 ├── run_cluster.sh             ← SLURM: solver + postproc (run on cluster)
 ├── run_flc.sh                 ← SLURM: plot jobs (afterok solver)
+├── run_mass_scaling_plot.sh   ← SLURM: mass-scaling comparison plot (afterok all solvers)
 ├── submit_postproc.sh         ← re-run post-processing without re-solving
 ├── postproc_single.sh         ← interactive postproc on login node
 │
@@ -347,6 +391,7 @@ AbaqusProject/
 | `energy_data.csv` | Energy balance per frame: `step_name`, `total_time_s`, `ALLKE`, `ALLIE`, `is_step_boundary` |
 | `postproc_plots.pdf` | Per-specimen diagnostic plots (strain path, Volk-Hora two-line fit, EQPS history, damage, energy ratio) |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths (fracture, Volk-Hora, SDV6, PEPS pages) |
+| `mass_scaling_<TestType>_W<W>_t<t>_ang<ang>.pdf` | Mass-scaling sensitivity report: ALLKE/ALLIE ratio and absolute energies across DT values (2 pages) |
 | `<job>_movie.webm` | EQPS field animation from fracture step |
 
 ### Diagnostic plot pages
