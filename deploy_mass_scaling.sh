@@ -49,6 +49,7 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/run_flc.sh" \
+    "$SCRIPT_DIR/run_mass_scaling_plot.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \
@@ -126,13 +127,8 @@ AGG_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
     "cd ${EULER_DIR} && sbatch \
      --dependency=${DEPENDENCY_STR} \
      --job-name=ms_compare_${_test_cap}_W${WIDTH} \
-     --output=ms_compare_${_test_cap}_W${WIDTH}_%j.out \
-     --error=ms_compare_${_test_cap}_W${WIDTH}_%j.err \
-     --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4G --time=00:10:00 \
-     --parsable \
-     --wrap='module load stack/2024-06 && module load python/3.11.6 && \
-             python3 ${EULER_DIR}/plot_mass_scaling.py ${ALL_DIRS} \
-             --output ${MS_PDF}'")
+     --export=ALL,MS_DIRS='${ALL_DIRS}',MS_PDF='${MS_PDF}' \
+     --parsable run_mass_scaling_plot.sh")
 echo "  Comparison plot job: ${AGG_ID}"
 echo ""
 
