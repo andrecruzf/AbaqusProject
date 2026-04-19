@@ -104,4 +104,7 @@ Three independent criteria are implemented in \texttt{postproc.py} to extract a 
   \item \textbf{SDV6 damage criterion.} The dome-zone maximum damage variable $D(t)$ (SDV6 from the HC VUMAT) is monitored frame by frame. Necking onset is taken as the inflection of this curve: $\operatorname{argmax}\,\ddot{D}(t)$. This criterion is disabled if SDV6 is absent from the ODB.
 \end{enumerate}
 
-All three limit points are overlaid on the FLC diagram produced by \texttt{plot\_flc.py}, allowing a direct comparison across criteria.
+  \item \textbf{Min-Stoughton spatial curvature criterion~\cite{Min2017}.} At each frame, the major strain field $\varepsilon_1(r)$ across all dome-zone elements is fitted to a quadratic $\varepsilon_1 = a + br + cr^2$ (least-squares, no external libraries). The curvature at the apex is $\kappa(t) = 2c$. Necking onset is taken as the inflection of the curvature history: $\operatorname{argmax}\,\ddot{\kappa}(t)$. With approximately 1\,mm elements and a 15\,mm dome radius, around 10--20 integration points per frame contribute to the fit. The method degrades gracefully if fewer than three dome-zone elements are available, returning N/A rather than a spurious result.
+\end{enumerate}
+
+All four limit points are overlaid on the FLC diagram produced by \texttt{plot\_flc.py}, allowing a direct comparison across criteria.

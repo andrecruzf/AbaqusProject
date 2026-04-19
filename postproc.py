@@ -10,7 +10,7 @@ From pipeline (run_cluster.sh):
 
 Output:
     <odb_dir>/strain_path.csv      columns: time_s, eps1_major, eps2_minor, EQPS, D, fracture_type
-    <odb_dir>/forming_limits.csv   one row per method: fracture / sdv6 / volk_hora
+    <odb_dir>/forming_limits.csv   one row per method: fracture / sdv6 / volk_hora / min_stoughton
 
 Algorithm:
     1. Build the dome zone: all elements whose undeformed centroid lies within
@@ -25,10 +25,13 @@ Algorithm:
     4. Extract the full (eps1_major, eps2_minor, EQPS, D) history of that element
        up to fracture. Also collect dome-zone max SDV6 per frame.
        Principal strains are computed from the LE tensor (eigenvalues).
-    5. Necking onset — two independent methods:
-         SDV6/damage : inflection of dome-max D(t)  →  argmax d²D/dt²
-         Volk-Hora   : inflection of critical-element ε₁(t)  →  argmax d²ε₁/dt²
-       Both use a 3-point smoothing pass before differentiation.
+    5. Necking onset — three independent methods:
+         SDV6/damage   : inflection of dome-max D(t)  →  argmax d²D/dt²
+         Volk-Hora     : inflection of critical-element ε₁(t)  →  argmax d²ε₁/dt²
+         Min-Stoughton : spatial curvature κ(t) = d²ε₁/dr²|_{r=0} fitted from
+                         all dome-zone elements at each frame (quadratic fit);
+                         onset = argmax d²κ/dt²
+       All three use a 3-point smoothing pass before differentiation.
 
 Environment variables:
     R_DOME : override dome radius in mm (default = PUNCH_RADIUS / 2 = 25 mm).
@@ -40,6 +43,43 @@ import math
 
 
 # ── Necking-detection helpers ─────────────────────────────────────────────────
+
+def _quadratic_curvature(r_vals, eps1_vals):
+    """
+    Fit ε₁ = a + b·r + c·r² to dome-zone (r, ε₁) pairs using normal equations
+    and return κ = 2c (curvature at apex r=0).  Returns 0.0 if fewer than 3
+    points or if the system is ill-conditioned.
+    """
+    n = len(r_vals)
+    if n < 3:
+        return 0.0
+    r2 = [r * r for r in r_vals]
+    r3 = [r * r * r for r in r_vals]
+    r4 = [r * r * r * r for r in r_vals]
+    s0 = float(n)
+    s1 = sum(r_vals);  s2 = sum(r2);  s3 = sum(r3);  s4 = sum(r4)
+    sy0 = sum(eps1_vals)
+    sy1 = sum(r * e for r, e in zip(r_vals, eps1_vals))
+    sy2 = sum(r2_ * e for r2_, e in zip(r2, eps1_vals))
+    # Solve 3×3 normal equations via Gaussian elimination (no numpy needed)
+    A = [[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]]
+    b = [sy0, sy1, sy2]
+    for i in range(3):
+        pivot = max(range(i, 3), key=lambda k: abs(A[k][i]))
+        A[i], A[pivot] = A[pivot], A[i]
+        b[i], b[pivot] = b[pivot], b[i]
+        if abs(A[i][i]) < 1e-14:
+            return 0.0
+        for k in range(i + 1, 3):
+            f = A[k][i] / A[i][i]
+            for j in range(i, 3):
+                A[k][j] -= f * A[i][j]
+            b[k] -= f * b[i]
+    x = [0.0] * 3
+    for i in range(2, -1, -1):
+        x[i] = b[i] - sum(A[i][j] * x[j] for j in range(i + 1, 3))
+        x[i] /= A[i][i]
+    return 2.0 * x[2]   # κ = 2c
 
 def _smooth3(values):
     """3-point centred moving-average; end-points are left unchanged."""
@@ -159,7 +199,8 @@ def _build_dome_set(odb, r_dome):
                for n in inst.nodes}
 
     r_sq = r_dome * r_dome
-    dome_labels = set()
+    dome_labels  = set()
+    dome_radii   = {}   # label → centroid radius (mm)
     for elem in inst.elements:
         xs = [node_xy[n][0] for n in elem.connectivity if n in node_xy]
         ys = [node_xy[n][1] for n in elem.connectivity if n in node_xy]
@@ -167,11 +208,13 @@ def _build_dome_set(odb, r_dome):
             continue
         cx = sum(xs) / len(xs)
         cy = sum(ys) / len(ys)
-        if cx * cx + cy * cy < r_sq:
+        r_sq_elem = cx * cx + cy * cy
+        if r_sq_elem < r_sq:
             dome_labels.add(elem.label)
+            dome_radii[elem.label] = math.sqrt(r_sq_elem)
 
     print('  Dome zone   : R < %.1f mm  (%d elements)' % (r_dome, len(dome_labels)))
-    return dome_labels, inst.name
+    return dome_labels, inst.name, dome_radii
 
 
 def extract_strain_path(odb_path, out_csv=None, r_dome=None):
@@ -201,7 +244,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     print('  Frames : %d' % n_frames)
 
     # ── 1. Build dome zone ────────────────────────────────────
-    dome_labels, inst_name = _build_dome_set(odb, r_dome)
+    dome_labels, inst_name, dome_radii = _build_dome_set(odb, r_dome)
 
     # ── 2. Find first failure frame in dome zone ──────────────
     fracture_type     = 'dome'
@@ -296,14 +339,15 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                     break
             break
 
-    # ── 4. Extract LE + EQPS + SDV6 history for critical element ─────
-    # Also collect dome-zone max SDV6 per frame for the SDV6 necking method.
-    # All three lists share the same index (entries added only when LE is valid).
-    records     = []   # (t, eps1, eps2, eqps, d_crit, fracture_type)
-    times_list  = []   # frame times aligned with records
-    d_dome_list = []   # dome-zone max SDV6, aligned with records
+    # ── 4. Extract LE + EQPS + SDV6 history ──────────────────────────────────
+    # Critical-element history → records / times_list / d_dome_list
+    # Dome-zone spatial ε₁ profile at each frame → kappa_list (Min-Stoughton)
+    records     = []   # (t, eps1, eps2, eqps, d_crit, fracture_type, d_dome)
+    times_list  = []
+    d_dome_list = []
+    kappa_list  = []   # spatial curvature κ(t) = d²ε₁/dr²|r=0, one per frame
 
-    sdv6_in_odb = True   # will be set False if SDV6 absent from first frame
+    sdv6_in_odb = True
 
     for fi in range(failure_frame_idx):
         frame    = frames[fi]
@@ -314,10 +358,20 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         d_crit   = 0.0
         d_dome   = 0.0
 
+        # Single pass over LE: collect critical-element strains AND dome profile
+        dome_r_frame  = []   # radial positions of dome elements this frame
+        dome_e1_frame = []   # corresponding ε₁ values (IP=1)
         for val in frame.fieldOutputs['LE'].values:
-            if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
+            is_crit = (val.elementLabel == crit_label and
+                       val.integrationPoint == crit_ip)
+            if is_crit:
                 eps1, eps2 = _principal_strains_from_LE(val)
-                break
+            if (dome_labels is not None and
+                    val.elementLabel in dome_labels and
+                    val.integrationPoint == 1):
+                e1, _ = _principal_strains_from_LE(val)
+                dome_r_frame.append(dome_radii[val.elementLabel])
+                dome_e1_frame.append(e1)
 
         for val in frame.fieldOutputs['SDV1'].values:
             if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
@@ -341,18 +395,23 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                             d_crit, fracture_type, d_dome))
             times_list.append(t)
             d_dome_list.append(d_dome)
+            kappa_list.append(_quadratic_curvature(dome_r_frame, dome_e1_frame))
 
     # ── 5. Find necking onset frames ──────────────────────────
     eps1_hist = [r[1] for r in records]
 
     neck_sdv6_idx = None
     neck_vh_idx   = None
+    neck_ms_idx   = None
 
     if sdv6_in_odb and any(d > 0.0 for d in d_dome_list):
         neck_sdv6_idx = _inflection_index(times_list, d_dome_list)
 
     if eps1_hist:
         neck_vh_idx = _inflection_index(times_list, eps1_hist)
+
+    if kappa_list and any(k != 0.0 for k in kappa_list):
+        neck_ms_idx = _inflection_index(times_list, kappa_list)
 
     # Convenience: limit strains at each frame of interest
     def _lim(idx):
@@ -365,23 +424,31 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     lim_frac = _lim(len(records) - 1)
     lim_sdv6 = _lim(neck_sdv6_idx)
     lim_vh   = _lim(neck_vh_idx)
+    lim_ms   = _lim(neck_ms_idx)
 
     # Print summary
     print('')
-    print('  %-12s  %7s  %7s  %7s  %7s' % ('Method', 't (s)', 'eps1', 'eps2', 'D'))
-    print('  ' + '-' * 52)
+    print('  %-14s  %7s  %7s  %7s  %7s' % ('Method', 't (s)', 'eps1', 'eps2', 'D'))
+    print('  ' + '-' * 54)
     if lim_vh:
-        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f' % (
               'Volk-Hora', lim_vh[4], lim_vh[0], lim_vh[1], lim_vh[3]))
     else:
-        print('  %-12s  %s' % ('Volk-Hora', 'N/A (< 5 data points)'))
+        print('  %-14s  %s' % ('Volk-Hora', 'N/A (< 5 data points)'))
+    if lim_ms:
+        n_dome_pts = len([k for k in kappa_list if k != 0.0])
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f  (κ from %d dome pts/frame)' % (
+              'Min-Stoughton', lim_ms[4], lim_ms[0], lim_ms[1], lim_ms[3],
+              n_dome_pts // max(len(kappa_list), 1)))
+    else:
+        print('  %-14s  %s' % ('Min-Stoughton', 'N/A (insufficient dome profile)'))
     if lim_sdv6:
-        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f' % (
               'SDV6/damage', lim_sdv6[4], lim_sdv6[0], lim_sdv6[1], lim_sdv6[3]))
     else:
-        print('  %-12s  %s' % ('SDV6/damage', 'N/A'))
+        print('  %-14s  %s' % ('SDV6/damage', 'N/A'))
     if lim_frac:
-        print('  %-12s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f' % (
               'Fracture', lim_frac[4], lim_frac[0], lim_frac[1], lim_frac[3]))
     print('')
 
@@ -400,6 +467,9 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         if lim_vh:
             writer.writerow(['volk_hora',
                              lim_vh[0], lim_vh[1], lim_vh[2], lim_vh[3], lim_vh[4]])
+        if lim_ms:
+            writer.writerow(['min_stoughton',
+                             lim_ms[0], lim_ms[1], lim_ms[2], lim_ms[3], lim_ms[4]])
     print('  Forming limits -> %s' % limits_csv)
 
     # ── 7. Write strain_path.csv ──────────────────────────────
