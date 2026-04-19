@@ -149,7 +149,8 @@ STEP_TIME = PUNCH_DISPLACEMENT / 2.0            # s  — 2 mm/s (ISO 12004-2: 0.
 
 # ── Mass scaling ──────────────────────────────────────────────
 USE_MASS_SCALING = True
-MASS_SCALING_DT  = 2.0e-5   # s — fixed; v=2 mm/s keeps ALLKE/ALLIE well below 5%
+# Default 2e-5 s; overridable via env for mass-scaling sensitivity sweeps.
+MASS_SCALING_DT  = float(_os.environ.get('MASS_SCALING_DT', 2.0e-5))
 
 # ── Friction ──────────────────────────────────────────────────
 FR_PUNCH = 0   # Coulomb coefficient — punch / blank interface (nakazima/marciniak)
