@@ -20,7 +20,7 @@ IMPORTANT:
 from abaqus import mdb
 from abaqusConstants import (
     CARTESIAN, AXIS_1, STACK_3, DISCRETE,
-    RELAX_STIFFNESS, ON, OFF, FROM_SECTION
+    RELAX_STIFFNESS, ON, FROM_SECTION
 )
 import math
 

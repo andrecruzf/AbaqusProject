@@ -41,7 +41,6 @@ from modules.material import define_material
 from modules.step     import create_step
 from modules.contact  import define_contact
 from modules.boundary import apply_bcs
-from modules.output   import define_output
 from modules.job      import save_and_export
 
 

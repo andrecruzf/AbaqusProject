@@ -19,7 +19,7 @@ The XSYMM, YSYMM, and EDGE nsets are defined in the geometry .inp files
 and imported with the specimen part.
 """
 from abaqus import mdb
-from abaqusConstants import SET, XSYMM, YSYMM, ON
+from abaqusConstants import SET
 
 
 def apply_bcs(cfg):

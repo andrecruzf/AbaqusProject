@@ -13,7 +13,6 @@ Output (one PDF):
     Page 1  ALLKE/ALLIE ratio (%) vs time — all DT values overlaid
     Page 2  Absolute ALLKE and ALLIE vs time — all DT values overlaid
 """
-from __future__ import print_function
 import sys
 import os
 import csv

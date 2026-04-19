@@ -14,7 +14,6 @@ Output:
 Supports Nakazima, Marciniak (single punch) and PiP (two punches).
 Display setup is detected automatically from ODB instance names.
 """
-from __future__ import print_function
 from abaqus import *
 from abaqusConstants import *
 import __main__
@@ -27,7 +26,7 @@ import sys
 # Mirror print() to a log file (Abaqus CAE swallows stdout in noGUI mode).
 _LOG_PATH = '/tmp/postproc_movie_out.txt'
 try:
-    _log_fh = open(_LOG_PATH, 'w', 0)
+    _log_fh = open(_LOG_PATH, 'w')
 
     class _Tee(object):
         def __init__(self, a, b):
@@ -69,7 +68,6 @@ def _resolve_odb_path():
 
 # ── Display setup — one punch (Nakazima / Marciniak) ──────────────
 def _setup_single_punch():
-    import displayGroupOdbToolset as dgo
     session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
     leaf = dgo.LeafFromConstraintNames(name=("RigidBody_DIE-1        1",
         "RigidBody_MATRIX-1        1", "RigidBody_PUNCH-1        1", ),
@@ -115,7 +113,6 @@ def _setup_single_punch():
 
 # ── Display setup — two punches (PiP) ─────────────────────────────
 def _setup_two_punches():
-    import displayGroupOdbToolset as dgo
     session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
     leaf = dgo.LeafFromConstraintNames(name=("RigidBody_DIE-1        1",
         "RigidBody_MATRIX-1        1", "RigidBody_PUNCH1-1        1",

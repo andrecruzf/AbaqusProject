@@ -27,7 +27,6 @@ Pages
 8. Damage history       d_dome_max vs time  (only if SDV6 data present)
 9. Energy ratio         ALLKE/ALLIE (%)  vs time  (only if energy_data.csv present)
 """
-from __future__ import print_function
 import sys
 import os
 import csv

@@ -17,7 +17,7 @@ After rotation:
   Blank holder contact face at global z=0 (blank bottom / ZMIN).
 """
 from abaqus import mdb
-from abaqusConstants import CARTESIAN, ON, OFF
+from abaqusConstants import CARTESIAN, ON
 
 
 _TOOL_NAMES = {'Matrix', 'Die', 'Punch', 'Punch1', 'Punch2'}

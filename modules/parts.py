@@ -17,10 +17,7 @@ that the revolution axis aligns with global Z.
    X    →    X   (unchanged)
 """
 from abaqus import mdb
-from abaqusConstants import (
-    THREE_D, ANALYTIC_RIGID_SURFACE, DEFORMABLE_BODY,
-    STANDALONE, CLOCKWISE, OFF
-)
+from abaqusConstants import THREE_D, ANALYTIC_RIGID_SURFACE, STANDALONE, CLOCKWISE
 import math, os
 
 

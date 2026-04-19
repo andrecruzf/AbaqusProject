@@ -24,7 +24,6 @@ Output (one PDF, default: FLC_combined.pdf in cwd):
     Page 5  PEPS FLC — EQPS at necking vs β      (Volk-Hora, if data present)
     Page 6  PEPS FLC — EQPS at necking vs β      (SDV6, if data present)
 """
-from __future__ import print_function
 import sys
 import os
 import csv

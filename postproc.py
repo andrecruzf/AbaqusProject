@@ -33,7 +33,6 @@ Algorithm:
 Environment variables:
     R_DOME : override dome radius in mm (default = PUNCH_RADIUS / 2 = 25 mm).
 """
-from __future__ import print_function
 import sys
 import os
 import csv
