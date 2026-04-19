@@ -48,11 +48,10 @@ def save_and_export(cfg):
     # Copy VUMAT into output directory so the cluster job is self-contained
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     vumat_src = os.path.join(project_root, cfg.VUMAT_PATH)
-    if os.path.isfile(vumat_src):
-        shutil.copy2(vumat_src, os.path.join(out_dir, os.path.basename(cfg.VUMAT_PATH)))
-        print('  Copied %s → %s/' % (os.path.basename(cfg.VUMAT_PATH), out_dir))
-    else:
-        print('  WARNING: VUMAT not found at %s — copy it manually.' % vumat_src)
+    if not os.path.isfile(vumat_src):
+        raise IOError('VUMAT not found at %s — cannot build model.' % vumat_src)
+    shutil.copy2(vumat_src, os.path.join(out_dir, os.path.basename(cfg.VUMAT_PATH)))
+    print('  Copied %s → %s/' % (os.path.basename(cfg.VUMAT_PATH), out_dir))
 
     _write_build_env(cfg.JOB_NAME, out_dir)
 
@@ -140,9 +139,7 @@ def _inject_output_requests(inp_file, cfg):
         replaced += 1
 
     if replaced == 0:
-        print('  WARNING _inject_output_requests: "** OUTPUT REQUESTS" not found — '
-              'output NOT replaced.')
-        return
+        raise RuntimeError('_inject_output_requests: "** OUTPUT REQUESTS" marker not found in %s.' % inp_file)
 
     with open(inp_file, 'w') as f:
         f.write(content)
@@ -278,9 +275,7 @@ def _inject_initial_conditions(inp_file, cfg):
             break
 
     if insert_at is None:
-        print('  WARNING _inject_initial_conditions: *Step not found — '
-              'initial conditions NOT injected.')
-        return
+        raise RuntimeError('_inject_initial_conditions: *Step not found in %s.' % inp_file)
 
     lines.insert(insert_at, ic_block)
     with open(inp_file, 'w') as f:

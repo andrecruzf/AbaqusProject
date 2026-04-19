@@ -179,27 +179,21 @@ def _apply_symmetry_bcs(cfg, m, a):
 
     # Symmetry plane at X=0 (U1=UR2=UR3=0) — nodes are in the 'YSYMM' nset
     region = _get_region(a, inst, 'YSYMM')
-    if region is not None:
-        n_nodes = len(region.nodes)
-        m.XsymmBC(name='BC_Sym_X', createStepName='Initial', region=region)
-        print('  BC_Sym_X: XsymmBC on "YSYMM" set (x=0 nodes, %d nodes)' % n_nodes)
-        if n_nodes == 0:
-            print('  WARNING: BC_Sym_X region has 0 nodes — '
-                  'check that YSYMM set survived mesh regeneration.')
-    else:
-        print('  WARNING: "YSYMM" set not found — BC_Sym_X (x=0 plane) NOT applied.')
+    if region is None:
+        raise RuntimeError('"YSYMM" set not found on Specimen-1 — BC_Sym_X (x=0 plane) cannot be applied.')
+    if len(region.nodes) == 0:
+        raise RuntimeError('"YSYMM" set has 0 nodes — check that the set survived mesh regeneration.')
+    m.XsymmBC(name='BC_Sym_X', createStepName='Initial', region=region)
+    print('  BC_Sym_X: XsymmBC on "YSYMM" set (%d nodes)' % len(region.nodes))
 
     # Symmetry plane at Y=0 (U2=UR1=UR3=0) — nodes are in the 'XSYMM' nset
     region = _get_region(a, inst, 'XSYMM')
-    if region is not None:
-        n_nodes = len(region.nodes)
-        m.YsymmBC(name='BC_Sym_Y', createStepName='Initial', region=region)
-        print('  BC_Sym_Y: YsymmBC on "XSYMM" set (y=0 nodes, %d nodes)' % n_nodes)
-        if n_nodes == 0:
-            print('  WARNING: BC_Sym_Y region has 0 nodes — '
-                  'check that XSYMM set survived mesh regeneration.')
-    else:
-        print('  WARNING: "XSYMM" set not found — BC_Sym_Y (y=0 plane) NOT applied.')
+    if region is None:
+        raise RuntimeError('"XSYMM" set not found on Specimen-1 — BC_Sym_Y (y=0 plane) cannot be applied.')
+    if len(region.nodes) == 0:
+        raise RuntimeError('"XSYMM" set has 0 nodes — check that the set survived mesh regeneration.')
+    m.YsymmBC(name='BC_Sym_Y', createStepName='Initial', region=region)
+    print('  BC_Sym_Y: YsymmBC on "XSYMM" set (%d nodes)' % len(region.nodes))
 
 
 def _apply_edge_bc(cfg, m, a):

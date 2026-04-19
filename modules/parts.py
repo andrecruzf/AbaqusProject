@@ -689,9 +689,8 @@ def _ensure_surface_elsets(inp_path, part):
 
     for set_name in sorted(missing):
         if set_name not in parsed:
-            print('  WARNING: could not parse "%s" from %s — '
-                  'ZMIN/ZMAX surface creation will fail.' % (set_name, inp_path))
-            continue
+            raise RuntimeError('Could not parse elset "%s" from %s — '
+                               'required for ZMIN/ZMAX contact surfaces.' % (set_name, inp_path))
         elem_labels = list(parsed[set_name])
         elems = part.elements.sequenceFromLabels(elem_labels)
         part.Set(name=set_name, elements=elems)
@@ -860,9 +859,8 @@ def _rebuild_contact_surfaces(cfg, part):
     def _make_surface(by_face, surf_name, z_desc):
         total = sum(len(v) for v in by_face.values())
         if total == 0:
-            print('  WARNING _rebuild_contact_surfaces: no elements found '
-                  'at %s — %s not created.' % (z_desc, surf_name))
-            return
+            raise RuntimeError('_rebuild_contact_surfaces: no elements found '
+                               'at %s — %s cannot be created.' % (z_desc, surf_name))
         kwargs = {}
         face_kw = {1:'face1Elements', 2:'face2Elements', 3:'face3Elements',
                    4:'face4Elements', 5:'face5Elements', 6:'face6Elements'}
@@ -983,7 +981,7 @@ def create_tool_rp_and_surfaces(cfg):
             print('  Surface "Outer" created on %s (%d face(s))'
                   % (tool_name, len(p.faces)))
         except Exception as e:
-            print('  WARNING surface "%s": %s' % (tool_name, e))
+            raise RuntimeError('Surface "Outer" creation failed on %s: %s' % (tool_name, e))
 
     print('  RPs, Sets and tool surfaces: OK')
 
