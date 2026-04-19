@@ -92,8 +92,16 @@ The entire workflow is automated via a set of Python and shell scripts deployed 
   \item \texttt{flc\_plot.py} — Aggregates all \texttt{strain\_path.csv} files across widths and plots the FLC $\to$ \texttt{flc\_diagram.png}.
 \end{enumerate}
 
-\section{Failure Detection}
+\section{Failure and Necking Detection}
 
-The failure frame is identified as the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within a radius $R_\mathrm{dome}$ of the punch axis ($X = Y = 0$), set to 15\% of the punch diameter per ISO~12004-2. If the first deletion occurs outside the dome zone, the fracture is classified as a \textit{base fracture} and the corresponding FLC point is excluded from the curve.
+Three independent criteria are implemented in \texttt{postproc.py} to extract a forming-limit point from each simulation, written as separate rows in \texttt{forming\_limits.csv}:
 
-At the pre-failure frame, the element with the maximum SDV1 (EQPS) in the dome zone is identified as the critical element. Its major and minor principal strains, computed analytically from the LE tensor eigenvalues, define one point on the FLC.
+\begin{enumerate}
+  \item \textbf{Fracture (HC criterion).} The failure frame is the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within $R_\mathrm{dome}$ of the punch axis, set to 15\,\% of the punch diameter per ISO~12004-2~\cite{ISO120042}. If the first deletion occurs outside this zone the run is flagged as a \textit{base fracture} and excluded from the FLC. The critical element is the one with maximum SDV1 (EQPS) in the dome zone at the pre-failure frame; its principal strains are computed analytically from the LE tensor eigenvalues.
+
+  \item \textbf{Volk-Hora time-dependent criterion~\cite{VolkHora2011}.} Necking onset is identified from the inflection of the major strain history $\varepsilon_1(t)$ at the critical element: the onset frame is $\operatorname{argmax}\,\ddot{\varepsilon}_1(t)$. This criterion is purely time-dependent and does not rely on spatial strain gradients, making it directly applicable to FE history output.
+
+  \item \textbf{SDV6 damage criterion.} The dome-zone maximum damage variable $D(t)$ (SDV6 from the HC VUMAT) is monitored frame by frame. Necking onset is taken as the inflection of this curve: $\operatorname{argmax}\,\ddot{D}(t)$. This criterion is disabled if SDV6 is absent from the ODB.
+\end{enumerate}
+
+All three limit points are overlaid on the FLC diagram produced by \texttt{plot\_flc.py}, allowing a direct comparison across criteria.
