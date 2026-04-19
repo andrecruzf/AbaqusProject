@@ -62,6 +62,11 @@ scp -r "$SCRIPT_DIR/modules" \
 echo "  Done."
 echo ""
 
+# ── Pre-clean all stale lock files for this geometry ──────────
+echo "  Cleaning stale lock files ..."
+ssh "${EULER_USER}@${EULER_HOST}" \
+    "find /cluster/scratch/${EULER_USER} -name '*.lck' -path '*${_test_cap}_W${WIDTH}_t${_t}_ang${_ang}*' -delete 2>/dev/null; echo '  done'"
+
 # ── Build + submit one job per DT value ───────────────────────
 JOB_IDS=()
 JOB_NAMES=()
