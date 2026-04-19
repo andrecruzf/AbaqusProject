@@ -98,10 +98,6 @@ print('_ms%de%d' % (mant, abs(exp)))
          MASS_SCALING_DT=${DT} \
          abaqus cae noGUI=build_model.py"
 
-    # Remove stale lock file if present (left by cancelled/failed previous runs)
-    ssh "${EULER_USER}@${EULER_HOST}" \
-        "rm -f /cluster/scratch/${EULER_USER}/${JOB_NAME}/${JOB_NAME}.lck" 2>/dev/null || true
-
     echo "  Submitting solver ..."
     # JOB_NAME and OUTPUT_SUBDIR are passed explicitly with the _ms suffix so
     # each DT value produces its own output directory, independent of config.py.

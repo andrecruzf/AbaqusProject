@@ -14,7 +14,7 @@ History output:
              tracked element from the geometry .inp
 """
 from abaqus import mdb
-from abaqusConstants import MODEL, DEFAULT, EXCLUDE
+from abaqusConstants import DEFAULT, EXCLUDE
 
 
 def define_output(cfg):
@@ -68,17 +68,6 @@ def define_output(cfg):
 
     # ── History output — tracked element (ELOUT) ──────────────
     _add_history_elout(cfg, m, a, step=first_step)
-
-    # ── History output — whole-model energy (ALLKE, ALLIE) ───
-    try:
-        m.HistoryOutputRequest(
-            name='HO_Energy',
-            createStepName=first_step,
-            variables=('ALLKE', 'ALLIE'),
-            region=MODEL)
-        print('  HO_Energy: ALLKE, ALLIE on whole model')
-    except Exception as e:
-        print('  WARNING HO_Energy: %s' % e)
 
     print('--- Output done ---')
 

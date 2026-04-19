@@ -55,9 +55,6 @@ def save_and_export(cfg):
         print('  WARNING: VUMAT not found at %s — copy it manually.' % vumat_src)
 
     _write_build_env(cfg.JOB_NAME, out_dir)
-    # _update_cluster_script skipped — deploy_mass_scaling.sh passes JOB_NAME
-    # via --export so patching run_cluster.sh is both unnecessary and causes
-    # race conditions when multiple builds run concurrently.
 
 
 def _write_build_env(job_name, out_dir):
@@ -68,20 +65,6 @@ def _write_build_env(job_name, out_dir):
         f.write('JOB_NAME="%s"\n' % job_name)
         f.write('OUTPUT_SUBDIR="%s"\n' % os.path.basename(out_dir))
     print('  Written last_build.env (JOB_NAME=%s)' % job_name)
-
-
-def _update_cluster_script(job_name, out_dir):
-    script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'run_cluster.sh')
-    if not os.path.isfile(script):
-        return
-    import re
-    with open(script, 'r') as f:
-        content = f.read()
-    content = re.sub(r'^JOB_NAME=.*$',      'JOB_NAME="%s"' % job_name,                  content, flags=re.MULTILINE)
-    content = re.sub(r'^OUTPUT_SUBDIR=.*$', 'OUTPUT_SUBDIR="%s"' % os.path.basename(out_dir), content, flags=re.MULTILINE)
-    with open(script, 'w') as f:
-        f.write(content)
-    print('  Updated run_cluster.sh: JOB_NAME=%s, OUTPUT_SUBDIR=%s' % (job_name, os.path.basename(out_dir)))
 
 
 def _inject_output_requests(inp_file, cfg):
@@ -166,26 +149,6 @@ def _inject_output_requests(inp_file, cfg):
 
     print('  Injected custom output requests (%d step(s), 100 intervals, SDV, TRIAX, SP, MISES, LEP)'
           % replaced)
-
-
-def _inject_extra_output_vars(inp_file):
-    extra = ', TRIAX, SP, MISES, LEP'
-    with open(inp_file, 'r') as f:
-        lines = f.readlines()
-    new_lines = []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        new_lines.append(line)
-        if line.strip().lower().startswith('*element output'):
-            i += 1
-            if i < len(lines):
-                new_lines.append(lines[i].rstrip() + extra + '\n')
-                i += 1
-                continue
-        i += 1
-    with open(inp_file, 'w') as f:
-        f.writelines(new_lines)
 
 
 def _inject_mass_scaling(inp_file, dt):
