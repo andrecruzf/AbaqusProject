@@ -28,13 +28,21 @@ Algorithm:
     5. Necking onset — three independent methods:
          SDV6/damage   : inflection of dome-max D(t)  →  argmax d²D/dt²
          Volk-Hora     : inflection of critical-element ε₁(t)  →  argmax d²ε₁/dt²
-         Min-Stoughton : spatial curvature κ(t) = d²ε₁/dr²|_{r=0} fitted from
-                         all dome-zone elements at each frame (quadratic fit);
-                         onset = argmax d²κ/dt²
-       All three use a 3-point smoothing pass before differentiation.
+         Min-Stoughton : 3-D curvature method (Min et al. 2017, IJMS 123:238–252)
+                         Outer-surface (ZMAX) nodes in the dome zone are read from
+                         U field output each frame.  Deformed positions are
+                         transformed to (D, R^out) coordinates, where D is arc
+                         length from the apex and R^out is the distance from the
+                         current punch-centre O′.  Reference-frame subtraction and
+                         a superimposed artificial curvature (SAC) stabilise the
+                         circle fit.  Onset: C_pm(K) > C_pm_P(K) + SAC/10 for
+                         8 consecutive frames (C_pm_P from rolling linear regression).
+       SDV6 and Volk-Hora use a 3-point smoothing pass + inflection criterion.
 
 Environment variables:
-    R_DOME : override dome radius in mm (default = PUNCH_RADIUS / 2 = 25 mm).
+    R_DOME       : override dome radius in mm (default = PUNCH_RADIUS/2 = 25 mm).
+    PUNCH_RADIUS : punch hemisphere radius in mm (default 50).
+    MS_SAC       : Min-Stoughton SAC value in mm⁻¹ (default 5e-4).
 """
 import sys
 import os
@@ -44,32 +52,14 @@ import math
 
 # ── Necking-detection helpers ─────────────────────────────────────────────────
 
-def _quadratic_curvature(r_vals, eps1_vals):
-    """
-    Fit ε₁ = a + b·r + c·r² to dome-zone (r, ε₁) pairs using normal equations
-    and return κ = 2c (curvature at apex r=0).  Returns 0.0 if fewer than 3
-    points or if the system is ill-conditioned.
-    """
-    n = len(r_vals)
-    if n < 3:
-        return 0.0
-    r2 = [r * r for r in r_vals]
-    r3 = [r * r * r for r in r_vals]
-    r4 = [r * r * r * r for r in r_vals]
-    s0 = float(n)
-    s1 = sum(r_vals);  s2 = sum(r2);  s3 = sum(r3);  s4 = sum(r4)
-    sy0 = sum(eps1_vals)
-    sy1 = sum(r * e for r, e in zip(r_vals, eps1_vals))
-    sy2 = sum(r2_ * e for r2_, e in zip(r2, eps1_vals))
-    # Solve 3×3 normal equations via Gaussian elimination (no numpy needed)
-    A = [[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]]
-    b = [sy0, sy1, sy2]
+def _solve3(A, b):
+    """Gaussian elimination for a 3×3 system Ax=b. Returns x or None if singular."""
     for i in range(3):
         pivot = max(range(i, 3), key=lambda k: abs(A[k][i]))
         A[i], A[pivot] = A[pivot], A[i]
         b[i], b[pivot] = b[pivot], b[i]
         if abs(A[i][i]) < 1e-14:
-            return 0.0
+            return None
         for k in range(i + 1, 3):
             f = A[k][i] / A[i][i]
             for j in range(i, 3):
@@ -79,7 +69,86 @@ def _quadratic_curvature(r_vals, eps1_vals):
     for i in range(2, -1, -1):
         x[i] = b[i] - sum(A[i][j] * x[j] for j in range(i + 1, 3))
         x[i] /= A[i][i]
-    return 2.0 * x[2]   # κ = 2c
+    return x
+
+
+def _circle_curvature(d_vals, r_vals):
+    """
+    Fit a circle to (D, R) data using linear least squares.
+
+    Linearisation: D² + R² = A·D + B·R + C
+    Normal equations give [A, B, C]; circle centre = (A/2, B/2),
+    radius ρ = sqrt((A/2)² + (B/2)² + C).
+    Returns 1/ρ, or 0.0 if fewer than 3 points or ill-conditioned.
+    """
+    n = len(d_vals)
+    if n < 3:
+        return 0.0
+    sD   = sum(d_vals);         sR   = sum(r_vals)
+    sD2  = sum(d*d for d in d_vals)
+    sR2  = sum(r*r for r in r_vals)
+    sDR  = sum(d*r for d, r in zip(d_vals, r_vals))
+    rhs0 = sum(d*(d*d + r*r) for d, r in zip(d_vals, r_vals))
+    rhs1 = sum(r*(d*d + r*r) for d, r in zip(d_vals, r_vals))
+    rhs2 = sum(d*d + r*r      for d, r in zip(d_vals, r_vals))
+    mat  = [[sD2, sDR, sD],
+            [sDR, sR2, sR],
+            [sD,  sR,  float(n)]]
+    sol = _solve3(mat, [rhs0, rhs1, rhs2])
+    if sol is None:
+        return 0.0
+    a = sol[0] / 2.0
+    b = sol[1] / 2.0
+    rho_sq = a*a + b*b + sol[2]
+    if rho_sq < 1e-14:
+        return 0.0
+    return 1.0 / math.sqrt(rho_sq)
+
+
+def _ms_onset_index(c_pm_list, sac, m_idx=0, n_consec=8):
+    """
+    Min-Stoughton onset criterion (Min et al. 2017, Section 2.1):
+    Find the first frame K > m_idx where C_pm(k) > C_pm_P(k) + Δ for
+    n_consec consecutive frames, where:
+      C_pm_P(K) = linear-regression prediction at K from data [m_idx+1 .. K-1]
+      Δ = sac / 10
+    Returns record index K, or None if the criterion is never satisfied.
+    """
+    n = len(c_pm_list)
+    delta = sac / 10.0
+    start = m_idx + 2      # need at least one data point before predicting
+    if start + n_consec > n:
+        return None
+
+    # Running sums for linear regression y ~ a + b*k over k in [m_idx+1 .. i-1]
+    k0  = m_idx + 1
+    sk  = float(k0);  sk2 = float(k0 * k0)
+    sc  = c_pm_list[k0];  skc = float(k0) * c_pm_list[k0]
+    cnt = 1
+
+    consec   = 0
+    onset_k  = None
+    for i in range(start, n):
+        denom = cnt * sk2 - sk * sk
+        if denom > 1e-30:
+            b_reg = (cnt * skc - sk * sc) / denom
+            a_reg = (sc - b_reg * sk) / cnt
+            c_pred = a_reg + b_reg * i
+        else:
+            c_pred = sc / cnt
+
+        if c_pm_list[i] > c_pred + delta:
+            consec += 1
+            if consec >= n_consec and onset_k is None:
+                onset_k = i - n_consec + 1
+        else:
+            consec = 0
+
+        sk  += i;  sk2 += i * i
+        sc  += c_pm_list[i];  skc += i * c_pm_list[i]
+        cnt += 1
+
+    return onset_k
 
 def _smooth3(values):
     """3-point centred moving-average; end-points are left unchanged."""
@@ -139,6 +208,10 @@ def _inflection_index(times, values, start_frac=0.1):
 # ── Dome zone radius ──────────────────────────────────────────────────────────
 R_DOME_DEFAULT = float(os.environ.get('R_DOME', 25.0))   # mm
 
+# ── Min-Stoughton constants ───────────────────────────────────────────────────
+_MS_SAC    = float(os.environ.get('MS_SAC',      5.0e-4))  # mm⁻¹ (paper: 5e-4 for Nakazima)
+_R_PUNCH   = float(os.environ.get('PUNCH_RADIUS', 50.0))   # mm   (hemisphere radius)
+
 # Instance names to try for the blank in the ODB assembly
 _INST_NAMES = ('SPECIMEN-1', 'Specimen-1', 'BLANK-1', 'Blank-1')
 
@@ -183,8 +256,15 @@ def _principal_strains_from_LE(val):
 
 def _build_dome_set(odb, r_dome):
     """
-    Build the set of element labels whose undeformed centroid lies within
-    r_dome mm of the punch axis (X=Y=0).  Returns (dome_labels, inst_name).
+    Build dome-zone element set and outer-surface node set.
+
+    Returns:
+        dome_labels      set of element labels with centroid r < r_dome
+        inst_name        name of the specimen instance
+        dome_radii       {label → centroid radius (mm)}
+        dome_zmax_nodes  {node_label → (x_ref, y_ref, z_ref)} for ZMAX-face
+                         nodes within r_dome — used by Min-Stoughton
+        t0               initial blank thickness (mm) inferred from z-extent
     """
     inst = None
     for name in _INST_NAMES:
@@ -193,14 +273,29 @@ def _build_dome_set(odb, r_dome):
             break
     if inst is None:
         print('  WARNING: specimen instance not found — no dome filtering.')
-        return None, None
+        return None, None, {}, {}, 0.0
 
-    node_xy = {n.label: (n.coordinates[0], n.coordinates[1])
-               for n in inst.nodes}
+    # Build node position maps once
+    node_coords = {n.label: n.coordinates for n in inst.nodes}
+    node_xy     = {lbl: (c[0], c[1]) for lbl, c in node_coords.items()}
 
-    r_sq = r_dome * r_dome
-    dome_labels  = set()
-    dome_radii   = {}   # label → centroid radius (mm)
+    # Initial thickness from z-extent
+    z_vals = [c[2] for c in node_coords.values()]
+    z_min  = min(z_vals);  z_max = max(z_vals)
+    t0     = z_max - z_min
+    z_tol  = max(1e-3, t0 * 0.01)   # tolerance for ZMAX identification
+
+    # ZMAX-face nodes within dome radius
+    r_sq            = r_dome * r_dome
+    dome_zmax_nodes = {}
+    for lbl, c in node_coords.items():
+        if abs(c[2] - z_max) < z_tol:
+            if c[0]*c[0] + c[1]*c[1] < r_sq:
+                dome_zmax_nodes[lbl] = (c[0], c[1], c[2])
+
+    # Dome-zone elements (centroid within r_dome)
+    dome_labels = set()
+    dome_radii  = {}
     for elem in inst.elements:
         xs = [node_xy[n][0] for n in elem.connectivity if n in node_xy]
         ys = [node_xy[n][1] for n in elem.connectivity if n in node_xy]
@@ -213,8 +308,10 @@ def _build_dome_set(odb, r_dome):
             dome_labels.add(elem.label)
             dome_radii[elem.label] = math.sqrt(r_sq_elem)
 
-    print('  Dome zone   : R < %.1f mm  (%d elements)' % (r_dome, len(dome_labels)))
-    return dome_labels, inst.name, dome_radii
+    print('  Dome zone   : R < %.1f mm  (%d elements,  %d ZMAX nodes)'
+          % (r_dome, len(dome_labels), len(dome_zmax_nodes)))
+    print('  Blank t0    : %.4f mm' % t0)
+    return dome_labels, inst.name, dome_radii, dome_zmax_nodes, t0
 
 
 def extract_strain_path(odb_path, out_csv=None, r_dome=None):
@@ -244,7 +341,8 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     print('  Frames : %d' % n_frames)
 
     # ── 1. Build dome zone ────────────────────────────────────
-    dome_labels, inst_name, dome_radii = _build_dome_set(odb, r_dome)
+    dome_labels, inst_name, dome_radii, dome_zmax_nodes, t0 = \
+        _build_dome_set(odb, r_dome)
 
     # ── 2. Find first failure frame in dome zone ──────────────
     fracture_type     = 'dome'
@@ -339,15 +437,19 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                     break
             break
 
-    # ── 4. Extract LE + EQPS + SDV6 history ──────────────────────────────────
-    # Critical-element history → records / times_list / d_dome_list
-    # Dome-zone spatial ε₁ profile at each frame → kappa_list (Min-Stoughton)
+    # ── 4. Extract LE + EQPS + SDV6 history + Min-Stoughton C_pm ────────────
     records     = []   # (t, eps1, eps2, eqps, d_crit, fracture_type, d_dome)
     times_list  = []
     d_dome_list = []
-    kappa_list  = []   # spatial curvature κ(t) = d²ε₁/dr²|r=0, one per frame
+    c_pm_list   = []   # Min-Stoughton C_pm per record (0.0 if not available)
 
-    sdv6_in_odb = True
+    sdv6_in_odb  = True
+    ms_available = bool(dome_zmax_nodes)   # False if no ZMAX nodes found
+
+    # Reference frame for Min-Stoughton: ~20% into the forming process
+    m_ref_fi     = max(1, failure_frame_idx // 5)
+    r_out_ref    = None   # {node_label → R^out} at reference frame
+    m_record_idx = 0      # record index corresponding to reference frame
 
     for fi in range(failure_frame_idx):
         frame    = frames[fi]
@@ -358,20 +460,10 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         d_crit   = 0.0
         d_dome   = 0.0
 
-        # Single pass over LE: collect critical-element strains AND dome profile
-        dome_r_frame  = []   # radial positions of dome elements this frame
-        dome_e1_frame = []   # corresponding ε₁ values (IP=1)
         for val in frame.fieldOutputs['LE'].values:
-            is_crit = (val.elementLabel == crit_label and
-                       val.integrationPoint == crit_ip)
-            if is_crit:
+            if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
                 eps1, eps2 = _principal_strains_from_LE(val)
-            if (dome_labels is not None and
-                    val.elementLabel in dome_labels and
-                    val.integrationPoint == 1):
-                e1, _ = _principal_strains_from_LE(val)
-                dome_r_frame.append(dome_radii[val.elementLabel])
-                dome_e1_frame.append(e1)
+                break
 
         for val in frame.fieldOutputs['SDV1'].values:
             if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
@@ -389,13 +481,75 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
             sdv6_in_odb = False
             print('  WARNING: SDV6 not found in ODB — SDV6 necking method disabled.')
 
+        # ── Min-Stoughton: deformed outer-surface geometry ───────────────────
+        # Requires U field output stored on outer-surface (ZMAX) dome nodes.
+        c_pm = 0.0
+        if ms_available and 'U' in frame.fieldOutputs.keys():
+            # Collect deformed (r, z) of ZMAX dome nodes
+            node_def = {}   # label → (r_def, z_def)
+            for val in frame.fieldOutputs['U'].values:
+                if val.nodeLabel in dome_zmax_nodes:
+                    xr, yr, zr = dome_zmax_nodes[val.nodeLabel]
+                    xd = xr + val.data[0]
+                    yd = yr + val.data[1]
+                    zd = zr + val.data[2]
+                    node_def[val.nodeLabel] = (math.sqrt(xd*xd + yd*yd), zd)
+
+            if len(node_def) >= 3 and eps1 is not None:
+                # Pole: node closest to punch axis (smallest r_def)
+                z_p = min(node_def.values(), key=lambda p: p[0])[1]
+                # Current thickness at pole (Eq. 3: simplified, ignoring elastic vol.)
+                t_p = t0 * math.exp(max(-10.0, -eps1 - eps2))
+                # Punch-centre O′ (Eq. 2)
+                z_o = z_p - _R_PUNCH - t_p
+
+                # R^out for each node: distance from deformed point to O′
+                r_out_k = {}
+                for lbl, (rd, zd) in node_def.items():
+                    r_out_k[lbl] = math.sqrt(rd*rd + (zd - z_o)*(zd - z_o))
+
+                # Store reference at frame m_ref_fi (or first available after it)
+                if r_out_ref is None and fi >= m_ref_fi:
+                    r_out_ref = dict(r_out_k)
+
+                if r_out_ref is not None:
+                    # Sort nodes by r_def to walk the radial arc from apex
+                    nodes_path = sorted(node_def.keys(),
+                                        key=lambda n: node_def[n][0])
+                    d_pts = []   # (D_arc, R^out'') pairs for circle fit
+                    d_arc = 0.0
+                    prev  = None
+                    for lbl in nodes_path:
+                        if lbl not in r_out_ref:
+                            continue
+                        pos = node_def[lbl]
+                        if prev is not None:
+                            d_arc += math.sqrt((pos[0]-prev[0])**2 +
+                                               (pos[1]-prev[1])**2)
+                        prev = pos
+                        r_prime = r_out_k[lbl] - r_out_ref[lbl]  # Eq. 6
+                        # SAC: R^out'' = R^out' + SAC/2 * D²
+                        r_sac = r_prime + 0.5 * _MS_SAC * d_arc * d_arc
+                        d_pts.append((d_arc, r_sac))
+
+                    if len(d_pts) >= 3:
+                        d_list = [p[0] for p in d_pts]
+                        r_list = [p[1] for p in d_pts]
+                        c_raw  = _circle_curvature(d_list, r_list)
+                        c_pm   = max(0.0, c_raw - _MS_SAC)
+        elif ms_available and fi == 0 and 'U' not in frame.fieldOutputs.keys():
+            print('  WARNING: U field not in ODB — Min-Stoughton disabled.')
+            ms_available = False
+
         if eps1 is not None:
             records.append((t, eps1, eps2,
                             eqps_val if eqps_val is not None else 0.0,
                             d_crit, fracture_type, d_dome))
             times_list.append(t)
             d_dome_list.append(d_dome)
-            kappa_list.append(_quadratic_curvature(dome_r_frame, dome_e1_frame))
+            c_pm_list.append(c_pm)
+            if r_out_ref is not None and m_record_idx == 0 and fi >= m_ref_fi:
+                m_record_idx = len(records) - 1
 
     # ── 5. Find necking onset frames ──────────────────────────
     eps1_hist = [r[1] for r in records]
@@ -410,8 +564,8 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     if eps1_hist:
         neck_vh_idx = _inflection_index(times_list, eps1_hist)
 
-    if kappa_list and any(k != 0.0 for k in kappa_list):
-        neck_ms_idx = _inflection_index(times_list, kappa_list)
+    if c_pm_list and any(c > 0.0 for c in c_pm_list):
+        neck_ms_idx = _ms_onset_index(c_pm_list, _MS_SAC, m_idx=m_record_idx)
 
     # Convenience: limit strains at each frame of interest
     def _lim(idx):
@@ -436,10 +590,9 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     else:
         print('  %-14s  %s' % ('Volk-Hora', 'N/A (< 5 data points)'))
     if lim_ms:
-        n_dome_pts = len([k for k in kappa_list if k != 0.0])
-        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f  (κ from %d dome pts/frame)' % (
-              'Min-Stoughton', lim_ms[4], lim_ms[0], lim_ms[1], lim_ms[3],
-              n_dome_pts // max(len(kappa_list), 1)))
+        n_active = len([c for c in c_pm_list if c > 0.0])
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f  (%d frames with C_pm > 0)' % (
+              'Min-Stoughton', lim_ms[4], lim_ms[0], lim_ms[1], lim_ms[3], n_active))
     else:
         print('  %-14s  %s' % ('Min-Stoughton', 'N/A (insufficient dome profile)'))
     if lim_sdv6:

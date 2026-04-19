@@ -94,7 +94,7 @@ The entire workflow is automated via a set of Python and shell scripts deployed 
 
 \section{Failure and Necking Detection}
 
-Three independent criteria are implemented in \texttt{postproc.py} to extract a forming-limit point from each simulation, written as separate rows in \texttt{forming\_limits.csv}:
+Four independent criteria are implemented in \texttt{postproc.py} to extract a forming-limit point from each simulation, written as separate rows in \texttt{forming\_limits.csv}:
 
 \begin{enumerate}
   \item \textbf{Fracture (HC criterion).} The failure frame is the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within $R_\mathrm{dome}$ of the punch axis, set to 15\,\% of the punch diameter per ISO~12004-2~\cite{ISO120042}. If the first deletion occurs outside this zone the run is flagged as a \textit{base fracture} and excluded from the FLC. The critical element is the one with maximum SDV1 (EQPS) in the dome zone at the pre-failure frame; its principal strains are computed analytically from the LE tensor eigenvalues.
@@ -102,9 +102,17 @@ Three independent criteria are implemented in \texttt{postproc.py} to extract a 
   \item \textbf{Volk-Hora time-dependent criterion~\cite{VolkHora2011}.} Necking onset is identified from the inflection of the major strain history $\varepsilon_1(t)$ at the critical element: the onset frame is $\operatorname{argmax}\,\ddot{\varepsilon}_1(t)$. This criterion is purely time-dependent and does not rely on spatial strain gradients, making it directly applicable to FE history output.
 
   \item \textbf{SDV6 damage criterion.} The dome-zone maximum damage variable $D(t)$ (SDV6 from the HC VUMAT) is monitored frame by frame. Necking onset is taken as the inflection of this curve: $\operatorname{argmax}\,\ddot{D}(t)$. This criterion is disabled if SDV6 is absent from the ODB.
-\end{enumerate}
 
-  \item \textbf{Min-Stoughton spatial curvature criterion~\cite{Min2017}.} At each frame, the major strain field $\varepsilon_1(r)$ across all dome-zone elements is fitted to a quadratic $\varepsilon_1 = a + br + cr^2$ (least-squares, no external libraries). The curvature at the apex is $\kappa(t) = 2c$. Necking onset is taken as the inflection of the curvature history: $\operatorname{argmax}\,\ddot{\kappa}(t)$. With approximately 1\,mm elements and a 15\,mm dome radius, around 10--20 integration points per frame contribute to the fit. The method degrades gracefully if fewer than three dome-zone elements are available, returning N/A rather than a spurious result.
+  \item \textbf{Min--Stoughton surface-curvature criterion~\cite{Min2017}.} Following Min et al.\ (2017), necking onset is detected from the evolution of the deformed outer-surface geometry rather than from the strain field. At each frame the outer-surface (ZMAX-face) nodes within the dome zone are read from the nodal displacement field \texttt{U}. Their deformed positions are transformed to polar coordinates $(D,\,R^\mathrm{out})$, where $D$ is the arc length from the dome apex and $R^\mathrm{out}$ is the distance from the instantaneous punch-centre $O'$:
+  \begin{equation}
+    O' = \bigl(0,\;0,\;Z_P - R_\mathrm{punch} - t_P\bigr), \qquad
+    t_P = t_0\,\exp(-\varepsilon_1 - \varepsilon_2),
+  \end{equation}
+  where $Z_P$ is the deformed $z$-coordinate of the apex node and $t_P$ is the current thickness computed from volume conservation. A reference profile $R^\mathrm{out}_M$ recorded at $\approx\!20\,\%$ of the forming history is subtracted (Eq.~6 of~\cite{Min2017}), and a superimposed artificial curvature (SAC) is added to stabilise the circle fit near zero:
+  \begin{equation}
+    R'' = \bigl(R^\mathrm{out} - R^\mathrm{out}_M\bigr) + \tfrac{1}{2}\,\mathrm{SAC}\cdot D^2.
+  \end{equation}
+  A circle is fitted to the $(D,\,R'')$ point cloud by linear least squares, yielding the punch-curvature measure $C_{pm} = 1/\rho - \mathrm{SAC}$. Necking onset is declared at the first frame $K$ where $C_{pm}(k) > C_{pm,P}(k) + \mathrm{SAC}/10$ holds for eight consecutive frames, with $C_{pm,P}$ obtained from a rolling linear regression over all frames prior to $K$. The default $\mathrm{SAC} = 5\times10^{-4}$\,mm$^{-1}$ follows the value reported for Nakazima tests in~\cite{Min2017}. The method returns N/A if fewer than three dome-zone nodes are available or if \texttt{U} is absent from the ODB.
 \end{enumerate}
 
 All four limit points are overlaid on the FLC diagram produced by \texttt{plot\_flc.py}, allowing a direct comparison across criteria.
