@@ -78,6 +78,7 @@ scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/plot_results.py" \
     "$SCRIPT_DIR/plot_flc.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
+    "$SCRIPT_DIR/submit_all.sh" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 
 # ── Push modules directory ────────────────────────────────────────────────────
@@ -96,61 +97,24 @@ fi
 echo "  Done."
 echo ""
 
-# ── Build each model + submit solver job ──────────────────────────────────────
-JOB_IDS=()
-OUTPUT_DIRS=()
+# ── Launch build+submit loop on Euler via tmux ────────────────────────────────
+_pip_id_arg="${PIP_PUNCH2_ID:-none}"
 
-for W in "${WIDTHS[@]}"; do
-    echo "----------------------------------------------"
-    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}"
-    OUTPUT_SUBDIR="$JOB_NAME"
-
-    echo "  Building ${JOB_NAME} on login node ..."
-    ssh "${EULER_USER}@${EULER_HOST}" \
-        "cd ${EULER_DIR} && module load abaqus/2023 && \
-         TEST_TYPE=${TEST_TYPE} \
-         SPECIMEN_WIDTH=${W} \
-         BLANK_THICKNESS=${THICKNESS} \
-         MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
-         PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
-         abaqus cae noGUI=build_model.py"
-
-    echo "  Submitting solver job ..."
-    JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-        "cd ${EULER_DIR} && sbatch \
-         --job-name=${JOB_NAME} \
-         --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},R_DOME=${DEFAULT_R_DOME} \
-         --parsable run_cluster.sh")
-
-    JOB_IDS+=("$JOB_ID")
-    OUTPUT_DIRS+=("$OUTPUT_SUBDIR")
-    echo "  ${JOB_NAME} → SLURM job ${JOB_ID}"
-    echo ""
-done
+echo "  Launching submit_all.sh on Euler in tmux session 'deploy' ..."
+ssh "${EULER_USER}@${EULER_HOST}" "
+    tmux kill-session -t deploy 2>/dev/null || true
+    tmux new-session -d -s deploy \
+        'bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${DEFAULT_R_DOME} ${_pip_id_arg} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
+         > ${EULER_DIR}/submit_all.log 2>&1'
+"
 
 echo "=============================================="
-echo "  All jobs submitted."
-echo "  Sim jobs    : ${JOB_IDS[*]}"
-
-if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
-    # ── Submit FLC aggregation job (runs after all solver jobs succeed) ──────────
-    DEPENDENCY="afterok:$(IFS=:; echo "${JOB_IDS[*]}")"
-    DIRS_STR="$(IFS=:; echo "${OUTPUT_DIRS[*]}")"
-
-    echo "----------------------------------------------"
-    echo "  Submitting FLC aggregation job ..."
-    echo "  Dependency  : ${DEPENDENCY}"
-    FLC_JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-        "cd ${EULER_DIR} && sbatch \
-         --dependency=${DEPENDENCY} \
-         --job-name=FLC_${TEST_TYPE}_ang${_ang} \
-         --export=ALL,OUTPUT_DIRS=${DIRS_STR},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
-         --parsable run_flc.sh")
-    echo "  FLC job     : ${FLC_JOB_ID} (held until all solver jobs complete)"
-    echo "  FLC diagram : ${EULER_DIR}/${FLC_OUTDIR}/flc_diagram.png"
-else
-    echo "  FLC job     : skipped (test=${TEST_TYPE}, custom_widths=${CUSTOM_WIDTHS})"
-fi
-
-echo "  Monitor     : ssh ${EULER_USER}@${EULER_HOST} 'squeue --me'"
+echo "  Scripts pushed. Submission running on Euler."
+echo ""
+echo "  Attach to watch live:"
+echo "    ssh ${EULER_USER}@${EULER_HOST}"
+echo "    tmux attach -t deploy"
+echo ""
+echo "  Or tail the log (no SSH needed to keep open):"
+echo "    ssh ${EULER_USER}@${EULER_HOST} 'tail -f ${EULER_DIR}/submit_all.log'"
 echo "=============================================="
