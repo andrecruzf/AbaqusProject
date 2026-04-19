@@ -139,7 +139,7 @@ else:
 # ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter
 # from the dome apex → 0.15 × 100 mm = 15 mm.
 # Overridable via R_DOME env var.
-R_DOME = float(_os.environ.get('R_DOME', 0.15 * PUNCH_RADIUS * 2.0))
+R_DOME = 0.15 * PUNCH_RADIUS * 2.0  # ISO 12004-2: 15% of punch diameter
 
 
 # ── Forming parameters ────────────────────────────────────────
