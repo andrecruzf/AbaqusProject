@@ -87,9 +87,10 @@ The entire workflow is automated via a set of Python and shell scripts deployed 
   \item \texttt{submit\_all.sh} (runs on Euler) — Loads the Abaqus module, loops over all specimen widths, calls \texttt{abaqus cae noGUI=build\_model.py} for each, and submits the corresponding solver job. After all solver jobs are queued, the FLC aggregation job is submitted with an \texttt{afterok} dependency on all solver IDs. Output is logged to \texttt{submit\_all.log}.
   \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model (\texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job}) and write the \texttt{.inp} file.
   \item Abaqus/Explicit solver — Runs the simulation on the compute node (24 CPUs, \texttt{mp\_mode=threads}).
-  \item \texttt{postproc.py} — Extracts principal strains and EQPS at failure $\to$ \texttt{strain\_path.csv}; plots ALLKE/ALLIE vs.\ time $\to$ \texttt{energy\_ratio.png}.
+  \item \texttt{postproc.py} — Extracts principal strains, EQPS, and SDV6 damage at the critical dome element $\to$ \texttt{strain\_path.csv}, \texttt{forming\_limits.csv}, \texttt{energy\_data.csv}, \texttt{punch\_fd.csv}. Runs inside Abaqus Python (ODB access).
+  \item \texttt{plot\_results.py} — Generates a per-specimen diagnostic PDF (\texttt{postproc\_plots.pdf}) from the CSV files: strain path in FLD space, Volk-Hora two-line fit on thinning rate, Merklein $\ddot{\varepsilon}_1$ criterion, strain ratio $\beta$ evolution, punch force--displacement, EQPS history, SDV6 damage history, and ALLKE/ALLIE energy ratio.
   \item \texttt{postproc\_movie.py} — Renders a SDV1 (EQPS) animation $\to$ \texttt{.webm}.
-  \item \texttt{flc\_plot.py} — Aggregates all \texttt{strain\_path.csv} files across widths and plots the FLC $\to$ \texttt{flc\_diagram.png}.
+  \item \texttt{plot\_flc.py} — Aggregates all \texttt{forming\_limits.csv} files across widths and plots the FLC $\to$ \texttt{FLC\_<type>.pdf}.
 \end{enumerate}
 
 \section{Failure and Necking Detection}
@@ -99,7 +100,7 @@ Four independent criteria are implemented in \texttt{postproc.py} to extract a f
 \begin{enumerate}
   \item \textbf{Fracture (HC criterion).} The failure frame is the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within $R_\mathrm{dome}$ of the punch axis, set to 15\,\% of the punch diameter per ISO~12004-2~\cite{ISO120042}. If the first deletion occurs outside this zone the run is flagged as a \textit{base fracture} and excluded from the FLC. The critical element is the one with maximum SDV1 (EQPS) in the dome zone at the pre-failure frame; its principal strains are computed analytically from the LE tensor eigenvalues.
 
-  \item \textbf{Volk-Hora time-dependent criterion~\cite{VolkHora2011}.} Necking onset is identified from the inflection of the major strain history $\varepsilon_1(t)$ at the critical element: the onset frame is $\operatorname{argmax}\,\ddot{\varepsilon}_1(t)$. This criterion is purely time-dependent and does not rely on spatial strain gradients, making it directly applicable to FE history output.
+  \item \textbf{Volk-Hora time-dependent criterion~\cite{VolkHora2011}.} Necking onset is identified from the thinning-rate history $\dot{\varepsilon}_\mathrm{thin}(t) = \dot{\varepsilon}_1 + \dot{\varepsilon}_2$ at the critical element. The signal is doubly smoothed and split at its inflection into a \textit{stable} phase (low, approximately linear increase) and an \textit{unstable} phase (rapid acceleration). A linear function is fitted to each phase; the intersection of the two lines is taken as the necking onset time. This criterion is purely time-dependent and does not rely on spatial strain gradients, making it directly applicable to FE history output.
 
   \item \textbf{SDV6 damage criterion.} The dome-zone maximum damage variable $D(t)$ (SDV6 from the HC VUMAT) is monitored frame by frame. Necking onset is taken as the inflection of this curve: $\operatorname{argmax}\,\ddot{D}(t)$. This criterion is disabled if SDV6 is absent from the ODB.
 

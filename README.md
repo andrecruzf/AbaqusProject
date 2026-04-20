@@ -369,6 +369,7 @@ AbaqusProject/
 ├── deploy_all.sh              ← full-width FLC sweep deploy (launches submit_all.sh via tmux)
 ├── deploy_mass_scaling.sh     ← mass-scaling sensitivity sweep (one geometry, multiple DT values)
 ├── submit_all.sh              ← runs ON Euler: builds models + submits all solver jobs
+├── submit_one.sh              ← runs ON Euler: build + submit for a single specimen
 ├── run_cluster.sh             ← SLURM: solver + postproc (run on cluster)
 ├── run_flc.sh                 ← SLURM: plot jobs (afterok solver)
 ├── run_mass_scaling_plot.sh   ← SLURM: mass-scaling comparison plot (afterok all solvers)
@@ -389,20 +390,24 @@ AbaqusProject/
 | `strain_path.csv` | Time history at critical dome element: `time_s`, `eps1_major`, `eps2_minor`, `EQPS`, `D`, `fracture_type`, `d_dome_max` |
 | `forming_limits.csv` | Limit strains per method: `method` (`fracture`/`volk_hora`/`sdv6`), `eps1_major`, `eps2_minor`, `EQPS`, `D`, `time_s` |
 | `energy_data.csv` | Energy balance per frame: `step_name`, `total_time_s`, `ALLKE`, `ALLIE`, `is_step_boundary` |
-| `postproc_plots.pdf` | Per-specimen diagnostic plots (strain path, Volk-Hora two-line fit, EQPS history, damage, energy ratio) |
+| `postproc_plots.pdf` | Per-specimen diagnostic plots (8 pages: strain path, Volk-Hora, Merklein, strain ratio β, punch F-d, EQPS, damage, energy ratio) |
+| `punch_fd.csv` | Punch force–displacement history: `total_time_s`, `U3_mm`, `RF3_N` |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths (fracture, Volk-Hora, SDV6, PEPS pages) |
 | `mass_scaling_<TestType>_W<W>_t<t>_ang<ang>.pdf` | Mass-scaling sensitivity report: ALLKE/ALLIE ratio and absolute energies across DT values (2 pages) |
 | `<job>_movie.webm` | EQPS field animation from fracture step |
 
-### Diagnostic plot pages
+### Diagnostic plot pages (`postproc_plots.pdf`)
 
 | Page | Content |
 |------|---------|
 | 1 | Strain path in FLD space (ε₁ vs ε₂) with fracture/necking limit markers |
-| 2 | Volk-Hora thinning rate + stable/unstable linear fits + necking onset |
-| 3 | EQPS history with vertical lines at necking/fracture |
-| 4 | Dome-zone max damage vs time (only if SDV6 data present) |
-| 5 | ALLKE/ALLIE energy ratio — quasi-static validity check |
+| 2 | Volk-Hora: thinning rate ε̇_thin + stable/unstable linear fits (extended to intersection) |
+| 3 | Merklein: smoothed ε̈₁ with maximum = necking onset |
+| 4 | Strain ratio β = ε₂/ε₁ — instantaneous (red dashed) and cumulative (blue) |
+| 5 | Punch force–displacement with necking/fracture markers *(if punch_fd.csv present)* |
+| 6 | EQPS history with vertical lines at necking/fracture |
+| 7 | Dome-zone max damage vs time *(only if SDV6 data present)* |
+| 8 | ALLKE/ALLIE energy ratio — quasi-static validity check *(if energy_data.csv present)* |
 
 ### FLC PDF pages
 
