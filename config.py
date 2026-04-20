@@ -143,11 +143,11 @@ R_DOME = 0.15 * PUNCH_RADIUS * 2.0  # ISO 12004-2: 15% of punch diameter
 
 
 # ── Forming parameters ────────────────────────────────────────
-PUNCH_DISPLACEMENT = 37.0                        # mm — matches Lennart reference (parameter_naka.inp)
+PUNCH_DISPLACEMENT = 45                        # mm — increased from 37 to ensure fracture on wide specimens (W200)
 STEP_TIME = PUNCH_DISPLACEMENT / 2.0            # s  — 2 mm/s (ISO 12004-2: 0.5–2 mm/s)
 # Check ALLKE/ALLIE < 5 % in post-processing to validate quasi-static assumption.
 
-# ── Mass scaling ──────────────────────────────────────────────
+# ── Mass scaling ────────────────────────────────────────
 USE_MASS_SCALING = True
 # Default 2e-5 s; overridable via env for mass-scaling sensitivity sweeps.
 MASS_SCALING_DT  = float(_os.environ.get('MASS_SCALING_DT', 2.0e-5))

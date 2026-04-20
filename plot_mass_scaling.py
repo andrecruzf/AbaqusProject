@@ -104,7 +104,7 @@ def plot_mass_scaling(dirs, output_path):
         ax.set_ylabel('ALLKE / ALLIE  (%)', fontsize=12)
         ax.set_title('Mass-scaling sensitivity — kinetic/internal energy ratio',
                      fontsize=13)
-        ax.set_ylim(0, max(max_ratio * 1.15, 6.0))
+        ax.set_ylim(0, 10)
         ax.legend(fontsize=9, loc='upper right')
         ax.grid(True, alpha=0.3)
         plt.tight_layout()

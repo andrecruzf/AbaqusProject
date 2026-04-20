@@ -27,7 +27,6 @@ DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}');
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.R_DOME)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
-PIP_PUNCH_CAE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH_CAE', '') or '')")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
@@ -85,14 +84,11 @@ scp "$SCRIPT_DIR/config.py" \
 scp -r "$SCRIPT_DIR/modules" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 
-# ── Push inner punch CAE if PiP with file-based punch ────────────────────────
-if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
-    if [ -f "$SCRIPT_DIR/$PIP_PUNCH_CAE" ]; then
-        echo "  Pushing inner punch CAE: ${PIP_PUNCH_CAE} ..."
-        scp "$SCRIPT_DIR/$PIP_PUNCH_CAE" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/${PIP_PUNCH_CAE}"
-    else
-        echo "  WARNING: punch CAE not found locally: $SCRIPT_DIR/$PIP_PUNCH_CAE"
-    fi
+# ── Push PiP geometry directories ────────────────────────────────────────────
+if [ "$TEST_TYPE" = "pip" ]; then
+    echo "  Pushing PiP_Punches and PiP_Geometries ..."
+    scp -r "$SCRIPT_DIR/PiP_Punches" "$SCRIPT_DIR/PiP_Geometries" \
+        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 fi
 echo "  Done."
 echo ""

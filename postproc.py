@@ -575,7 +575,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         r = records[idx]
         return r[1], r[2], r[3], r[4], r[0]
 
-    lim_frac = _lim(len(records) - 1)
+    lim_frac = _lim(len(records) - 1) if fracture_type == 'dome' else None
     lim_sdv6 = _lim(neck_sdv6_idx)
     lim_vh   = _lim(neck_vh_idx)
     lim_ms   = _lim(neck_ms_idx)

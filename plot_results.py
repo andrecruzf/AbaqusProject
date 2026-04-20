@@ -122,25 +122,25 @@ def _inflection_index(times, values, start_frac=0.1):
     return best_i
 
 
-def _add_frame_axis(ax, times):
-    """
-    Add a secondary x-axis on top of *ax* showing frame indices.
-    Must be called after data is plotted (so xlim is set) but before tight_layout.
-    """
+def _add_frame_axis(ax, times, position='bottom'):
+    """Add a secondary x-axis showing frame indices (default: bottom)."""
     n = len(times)
     t0, t1 = times[0], times[-1]
     ax2 = ax.twiny()
     ax2.set_xlim(ax.get_xlim())
-    # Pick ~5 evenly spaced frame ticks
     frame_step = max(1, n // 5)
     frame_ticks = list(range(0, n, frame_step))
     if n - 1 not in frame_ticks:
         frame_ticks.append(n - 1)
-    # Convert frame index to time value
     time_of_tick = [t0 + (t1 - t0) * fi / max(1, n - 1) for fi in frame_ticks]
     ax2.set_xticks(time_of_tick)
     ax2.set_xticklabels([str(fi) for fi in frame_ticks], fontsize=9)
     ax2.set_xlabel('Frame index  (–)', fontsize=10)
+    if position == 'bottom':
+        ax2.xaxis.set_ticks_position('bottom')
+        ax2.xaxis.set_label_position('bottom')
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['bottom'].set_position(('outward', 50))
     return ax2
 
 
@@ -210,56 +210,28 @@ def _volk_hora_onset(times, e1, e2):
     return result
 
 
-def _merklein_onset(times, e1, window_frac=0.12):
+def _merklein_onset(times, e1):
     """
-    Merklein necking criterion: sliding-window R² of major strain rate.
-
-    For each frame k a linear function is fitted to the major strain rate
-    eps_dot_1 over a symmetric window of width ~window_frac * N.
-    High R² means the strain rate evolves smoothly (stable).
-    The onset frame is where R² drops most steeply (inflection of the R² curve).
+    Merklein necking criterion: maximum of ε̈₁ (second derivative of major strain rate).
 
     Returns a dict:
-      de1       — major strain rate (smoothed)
-      r2        — R² series (None outside valid window)
-      k_onset   — onset frame index (None if not found)
+      de1       — smoothed major strain rate
+      dde1      — smoothed second derivative of major strain rate
+      k_onset   — frame index of ε̈₁ maximum (None if not found)
       t_onset   — onset time (None if not found)
     """
-    n = len(times)
-    e1_s = _smooth3(_smooth3(e1))
-    de1  = _central_diff(times, e1_s)
-    de1_s = _smooth3(de1)
-
-    W = max(3, int(n * window_frac))
-    r2 = [None] * n
-    for k in range(W, n - W):
-        xs = times[k - W: k + W + 1]
-        ys = de1_s[k - W: k + W + 1]
-        slope, intercept = _linear_fit(xs, ys)
-        y_pred = [slope * x + intercept for x in xs]
-        r2[k] = _r2_score(ys, y_pred)
-
-    # Onset = frame with steepest drop in R² (most negative d(R²)/dt)
-    start = int(n * 0.08)
-    end   = int(n * 0.92)
-    valid_k  = [k for k in range(start, end) if r2[k] is not None]
-    if len(valid_k) < 5:
-        return dict(de1=de1_s, r2=r2, k_onset=None, t_onset=None)
-
-    r2_vals = [r2[k] for k in valid_k]
-    r2_sm   = _smooth3(_smooth3(r2_vals))
-    dr2     = _central_diff([times[k] for k in valid_k], r2_sm)
-
-    # Restrict search to after 20% of signal to avoid early noise
-    search_start = max(0, int(len(valid_k) * 0.20))
-    dr2_search = dr2[search_start:]
-    if not dr2_search:
-        return dict(de1=de1_s, r2=r2, k_onset=None, t_onset=None)
-
-    min_idx  = dr2_search.index(min(dr2_search)) + search_start
-    k_onset  = valid_k[min_idx]
-
-    return dict(de1=de1_s, r2=r2, k_onset=k_onset, t_onset=times[k_onset])
+    n      = len(times)
+    e1_s   = _smooth3(_smooth3(e1))
+    de1    = _central_diff(times, e1_s)
+    de1_s  = _smooth3(_smooth3(de1))
+    dde1   = _central_diff(times, de1_s)
+    dde1_s = _smooth3(_smooth3(dde1))
+    start  = int(n * 0.10)
+    search = dde1_s[start:]
+    if not search:
+        return dict(de1=de1_s, dde1=dde1_s, k_onset=None, t_onset=None)
+    k_onset = search.index(max(search)) + start
+    return dict(de1=de1_s, dde1=dde1_s, k_onset=k_onset, t_onset=times[k_onset])
 
 
 # ── CSV readers ────────────────────────────────────────────────────────────────
@@ -330,7 +302,14 @@ def _read_energy(out_dir):
 
 # ── Individual plot pages ──────────────────────────────────────────────────────
 
-def _page_strain_path(pdf, sp, lims, label):
+def _strain_at_time(sp, t):
+    """Return (e1, e2) from sp at the frame nearest to time t."""
+    times = sp['times']
+    idx = min(range(len(times)), key=lambda i: abs(times[i] - t))
+    return sp['e1'][idx], sp['e2'][idx]
+
+
+def _page_strain_path(pdf, sp, lims, label, mk=None):
     """Page 1 — strain path in FLD space (ε₂ on x, ε₁ on y)."""
     fig, ax = plt.subplots(figsize=(8, 7))
 
@@ -343,13 +322,20 @@ def _page_strain_path(pdf, sp, lims, label):
         'volk_hora': ('D', '#ff7f0e', 'Volk-Hora (necking)',   9),
         'sdv6':      ('s', '#9467bd', 'SDV6/damage (necking)', 9),
     }
-    for key, (mk, col, lbl, ms) in _MARKERS.items():
+    for key, (mkr, col, lbl, ms) in _MARKERS.items():
         if key in lims:
             pt = lims[key]
-            ax.plot(pt['e2'], pt['e1'], marker=mk, color=col, linestyle='None',
+            ax.plot(pt['e2'], pt['e1'], marker=mkr, color=col, linestyle='None',
                     markersize=ms,
                     label=u'%s  (\u03b5\u2081=%.3f, \u03b5\u2082=%.3f)' % (lbl, pt['e1'], pt['e2']),
                     zorder=5)
+
+    if mk is not None and mk.get('t_onset') is not None:
+        e1_mk, e2_mk = _strain_at_time(sp, mk['t_onset'])
+        ax.plot(e2_mk, e1_mk, marker='^', color='#1f77b4', linestyle='None',
+                markersize=9,
+                label=u'Merklein (necking)  (\u03b5\u2081=%.3f, \u03b5\u2082=%.3f)' % (e1_mk, e2_mk),
+                zorder=5)
 
     ax.axvline(0, color='black', linewidth=0.5, linestyle=':')
     ax.axhline(0, color='black', linewidth=0.5, linestyle=':')
@@ -364,31 +350,22 @@ def _page_strain_path(pdf, sp, lims, label):
 
 
 def _page_volk_hora(pdf, sp, lims, label, vh):
-    """
-    Page 2 — Volk-Hora thinning rate with two-line fit.
-    Dual x-axis: simulation time (bottom) and frame index (top).
-    vh is the dict returned by _volk_hora_onset().
-    """
-    times   = sp['times']
-    e_thin  = vh['e_thin']
+    """Page 2 — Volk-Hora thinning rate with two-line fit."""
+    times    = sp['times']
     e_thin_s = vh['e_thin_s']
+    t_pk     = times[vh['k_peak']]
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(times, e_thin, color='#2ca02c', linewidth=1.2, alpha=0.5,
-            label=u'\u0117\u209c\u02b0\u1d35\u207f (raw)')
     ax.plot(times, e_thin_s, color='#2ca02c', linewidth=2.0,
             label=u'\u0117\u209c\u02b0\u1d35\u207f = \u0117\u2081 + \u0117\u2082  (smoothed)')
 
-    # Two-line fit
+    t_right = max(t_pk, vh['t_vh']) if vh['t_vh'] is not None else t_pk
+
     if vh['stable'] is not None and vh['unstable'] is not None:
         m1, b1, s_start, s_end = vh['stable']
         m2, b2, u_start, u_end = vh['unstable']
-
-        half_s = (times[s_end - 1] - times[s_start]) * 0.4
-        half_u = (times[u_end - 1] - times[u_start]) * 0.3
-        t_sp = [times[s_start] - half_s, times[s_end - 1] + half_s]
-        t_up = [times[u_start] - half_u, times[u_end - 1]]
-
+        t_sp = [times[0], t_right]
+        t_up = [times[0], t_right]
         ax.plot(t_sp, [m1 * t + b1 for t in t_sp],
                 '--', color='#1f77b4', linewidth=1.8, label='Stable fit')
         ax.plot(t_up, [m2 * t + b2 for t in t_up],
@@ -397,90 +374,44 @@ def _page_volk_hora(pdf, sp, lims, label, vh):
     if vh['t_vh'] is not None:
         m1, b1 = vh['stable'][:2]
         y_int = m1 * vh['t_vh'] + b1
-        ax.plot(vh['t_vh'], max(y_int, 0.0), 'k^', markersize=11, zorder=5,
+        ax.plot(vh['t_vh'], y_int, 'k^', markersize=11, zorder=5,
                 label=u'V&H onset  t = %.4f s' % vh['t_vh'])
 
-    if vh['t_neck'] is not None:
-        ls = ':' if vh['t_vh'] is not None else '--'
-        ax.axvline(vh['t_neck'], color='red', linewidth=1.2, linestyle=ls,
-                   label=u'\u0117_thin inflection seed  t = %.4f s' % vh['t_neck'])
-
-    # Peak of ė_thin — right boundary of the valid V&H window
-    t_pk = times[vh['k_peak']]
-    ax.axvline(t_pk, color='grey', linewidth=1.0, linestyle=':',
-               label=u'\u0117_thin peak (window end)  t = %.4f s' % t_pk)
-
-    # Forming-limit time from CSV (cross-check)
-    if 'volk_hora' in lims:
-        ax.axvline(lims['volk_hora']['t'], color='#ff7f0e', linewidth=1.0,
-                   linestyle=':', label='forming_limits.csv  t = %.4f s' % lims['volk_hora']['t'])
-
-    ax.set_xlim(times[0], times[-1])
+    ax.set_xlim(times[0], t_right)
+    ax.set_ylim(-0.05, 1.5 * max(e_thin_s))
     _add_frame_axis(ax, times)
     ax.set_xlabel('Simulation time  (s)', fontsize=12)
     ax.set_ylabel(u'\u0117\u209c\u02b0\u1d35\u207f = \u0117\u2081 + \u0117\u2082 = \u2212\u0117\u2083  (s\u207b\u00b9)',
                   fontsize=12)
     ax.set_title('Volk-Hora thinning rate — %s' % label, fontsize=13)
-    ax.legend(fontsize=9, loc='upper right')
+    ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
     plt.close(fig)
 
 
-def _page_merklein(pdf, sp, lims, label, mk):
-    """
-    Page 3 — Merklein R² of major strain rate (sliding window).
-    Dual x-axis: simulation time (bottom) and frame index (top).
-    mk is the dict returned by _merklein_onset().
-    """
+def _page_merklein(pdf, sp, lims, label, mk, vh=None):
+    """Page 3 — Merklein criterion: ε̈₁ maximum as necking onset."""
     times  = sp['times']
-    de1    = mk['de1']
-    r2     = mk['r2']
+    dde1   = mk['dde1']
+    t_pk   = times[vh['k_peak']] if vh is not None else times[-1]
 
-    # Mask None entries for plotting
-    t_r2  = [times[i] for i, v in enumerate(r2) if v is not None]
-    v_r2  = [v         for v in r2 if v is not None]
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(times, dde1, color='#1f77b4', linewidth=1.8,
+            label=u'\u03b5\u0308\u2081  smoothed')
 
-    fig, ax1 = plt.subplots(figsize=(10, 6))
-    color_de1 = '#8c564b'
-    color_r2  = '#1f77b4'
-
-    # Left y-axis: major strain rate
-    ax1.plot(times, de1, color=color_de1, linewidth=1.5,
-             label=u'\u0117\u2081  major strain rate  (s\u207b\u00b9)')
-    ax1.set_ylabel(u'\u0117\u2081  major strain rate  (s\u207b\u00b9)', fontsize=12,
-                   color=color_de1)
-    ax1.tick_params(axis='y', labelcolor=color_de1)
-
-    # Right y-axis: R²
-    ax2_r = ax1.twinx()
-    ax2_r.plot(t_r2, v_r2, color=color_r2, linewidth=2.0,
-               label=u'R\u00b2  (sliding-window linear fit of \u0117\u2081)')
-    ax2_r.set_ylabel(u'R\u00b2  (sliding window)  (\u2013)', fontsize=12,
-                     color=color_r2)
-    ax2_r.tick_params(axis='y', labelcolor=color_r2)
-    ax2_r.set_ylim(-0.05, 1.05)
-
-    # Onset marker
     if mk['t_onset'] is not None:
-        ax1.axvline(mk['t_onset'], color='black', linewidth=1.5, linestyle='--',
-                    label='Merklein onset  t = %.4f s' % mk['t_onset'])
+        ax.axvline(mk['t_onset'], color='black', linewidth=1.5, linestyle='--',
+                   label=u'Merklein onset  t = %.4f s' % mk['t_onset'])
 
-    if 'fracture' in lims:
-        ax1.axvline(lims['fracture']['t'], color='grey', linewidth=1.0,
-                    linestyle=':', label='Fracture  t = %.4f s' % lims['fracture']['t'])
-
-    ax1.set_xlim(times[0], times[-1])
-    _add_frame_axis(ax1, times)
-    ax1.set_xlabel('Simulation time  (s)', fontsize=12)
-    ax1.set_title('Merklein criterion — R\u00b2 of strain rate — %s' % label, fontsize=13)
-
-    # Combine legends from both axes
-    lines1, labs1 = ax1.get_legend_handles_labels()
-    lines2, labs2 = ax2_r.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labs1 + labs2, fontsize=9, loc='upper right')
-    ax1.grid(True, alpha=0.3)
+    ax.set_xlim(times[0], t_pk)
+    _add_frame_axis(ax, times)
+    ax.set_xlabel('Simulation time  (s)', fontsize=12)
+    ax.set_ylabel(u'\u03b5\u0308\u2081  (s\u207b\u00b2)', fontsize=12)
+    ax.set_title(u'Merklein criterion \u2014 \u03b5\u0308\u2081 maximum \u2014 %s' % label, fontsize=13)
+    ax.legend(fontsize=9, loc='upper left')
+    ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
     plt.close(fig)
@@ -552,35 +483,20 @@ def _page_method_overlay(pdf, sp, lims, label, vh, mk):
 
 
 def _page_strain_ratio(pdf, sp, lims, label, vh, mk):
-    """
-    Page 5 — strain ratio β evolution.
-
-    Shows both:
-      β_rate  = ε̇₂/ε̇₁  instantaneous (from smoothed derivatives) — path direction
-      β_total = ε₂/ε₁   cumulative    — overall path slope
-
-    Reference horizontal lines at β = -0.5 (uniaxial), 0 (plane strain), 1 (equibiaxial).
-    Dual x-axis: simulation time (bottom) and frame index (top).
-    """
+    """Page 5 — strain ratio β evolution (instantaneous and cumulative)."""
     times = sp['times']
     e1    = sp['e1']
     e2    = sp['e2']
 
-    # Smoothed strain rate components
     de1 = _smooth3(_central_diff(times, _smooth3(_smooth3(e1))))
     de2 = _smooth3(_central_diff(times, _smooth3(_smooth3(e2))))
 
-    de1_max = max(abs(v) for v in de1) or 1.0
-    de1_thr = 0.05 * de1_max   # skip frames where strain rate is near zero
-    e1_max  = max(abs(v) for v in e1) or 1.0
-    e1_thr  = 0.03 * e1_max
+    CLIP = 2.5
 
-    beta_rate  = [de2[i] / de1[i] if abs(de1[i]) > de1_thr else None
+    beta_rate  = [de2[i] / de1[i] if abs(de1[i]) > 1e-10 else None
                   for i in range(len(times))]
-    beta_total = [e2[i]  / e1[i]  if abs(e1[i])  > e1_thr  else None
+    beta_total = [e2[i]  / e1[i]  if abs(e1[i])  > 1e-10 else None
                   for i in range(len(times))]
-
-    CLIP = 2.5   # y-axis clip to avoid huge spikes near zero denominator
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -590,37 +506,22 @@ def _page_strain_ratio(pdf, sp, lims, label, vh, mk):
     v_bt = [v         for v in beta_total               if v is not None and abs(v) <= CLIP]
 
     if t_br:
-        ax.plot(t_br, v_br, color='#2ca02c', linewidth=1.2, alpha=0.6,
-                label=u'\u03b2_rate = \u0117\u2082/\u0117\u2081  (instantaneous)')
+        ax.plot(t_br, v_br, color='#d62728', linewidth=1.2, linestyle='--',
+                label=u'\u03b2  instantaneous')
     if t_bt:
-        ax.plot(t_bt, v_bt, color='#ff7f0e', linewidth=2.0,
-                label=u'\u03b2_total = \u03b5\u2082/\u03b5\u2081  (cumulative)')
+        ax.plot(t_bt, v_bt, color='#1f77b4', linewidth=2.0,
+                label=u'\u03b2  cumulative')
 
-    # Reference stress-state lines
-    for val, lbl_r in [(-0.5, u'\u03b2 = \u22120.5  uniaxial'),
-                        ( 0.0, u'\u03b2 = 0  plane strain'),
-                        ( 1.0, u'\u03b2 = 1  equibiaxial')]:
-        ax.axhline(val, color='grey', linewidth=0.8, linestyle='--', alpha=0.6,
-                   label=lbl_r)
-
-    # Onset verticals
-    _VLINES = [
-        (vh['t_vh'],       '#2ca02c', 'V&H onset'),
-        (mk['t_onset'],    '#1f77b4', 'Merklein onset'),
-    ]
-    if 'fracture' in lims:
-        _VLINES.append((lims['fracture']['t'], '#d62728', 'Fracture'))
-    for t_v, col, lbl_v in _VLINES:
-        if t_v is not None:
-            ax.axvline(t_v, color=col, linewidth=1.5, linestyle='--',
-                       label='%s  t = %.4f s' % (lbl_v, t_v))
+    ax.axhline(-0.5, color='grey', linewidth=0.8, linestyle=':',  label='Uniaxial ref.')
+    ax.axhline( 0.0, color='grey', linewidth=0.8, linestyle='--', label='Plane strain ref.')
+    ax.axhline( 1.0, color='grey', linewidth=0.8, linestyle='-.', label='Equibiaxial ref.')
 
     ax.set_xlim(times[0], times[-1])
     ax.set_ylim(-CLIP, CLIP)
     _add_frame_axis(ax, times)
     ax.set_xlabel('Simulation time  (s)', fontsize=12)
     ax.set_ylabel(u'\u03b2  strain ratio  (\u2013)', fontsize=12)
-    ax.set_title(u'Strain ratio \u03b2 = \u03b5\u2082/\u03b5\u2081 evolution — %s' % label, fontsize=13)
+    ax.set_title(u'Strain ratio \u03b2 = \u03b5\u2082/\u03b5\u2081 evolution \u2014 %s' % label, fontsize=13)
     ax.legend(fontsize=8, loc='upper right', ncol=2)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
@@ -669,7 +570,7 @@ def _page_punch_fd(pdf, fd, lims, label):
     ax.set_xlabel('Punch stroke  (mm)', fontsize=12)
     ax.set_ylabel('Punch force  (kN)', fontsize=12)
     ax.set_title('Punch force\u2013displacement — %s' % label, fontsize=13)
-    ax.legend(fontsize=9, loc='upper right')
+    ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
@@ -699,7 +600,7 @@ def _page_eqps(pdf, sp, lims, label):
     ax.set_ylabel('EQPS  (\u2013)', fontsize=12)
     ax.set_title('Equivalent plastic strain history — %s' % label, fontsize=13)
     if lims:
-        ax.legend(fontsize=9, loc='upper right')
+        ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
@@ -729,7 +630,7 @@ def _page_damage(pdf, sp, lims, label):
     ax.set_xlabel('Time  (s)', fontsize=12)
     ax.set_ylabel('D_max  (\u2013)', fontsize=12)
     ax.set_title('Dome-zone damage history (SDV6) — %s' % label, fontsize=13)
-    ax.legend(fontsize=9, loc='upper right')
+    ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     pdf.savefig(fig)
@@ -759,7 +660,7 @@ def _page_energy(pdf, en, label):
                  fontsize=13)
     ax.legend(fontsize=10, loc='upper right')
     ax.grid(True, alpha=0.3)
-    ax.set_ylim(0, max(max_ratio * 1.2, 6.0))
+    ax.set_ylim(0, 10)
     plt.tight_layout()
     pdf.savefig(fig)
     plt.close(fig)
@@ -793,10 +694,9 @@ def process_directory(out_dir):
     out_pdf = os.path.join(out_dir, 'postproc_plots.pdf')
     n_pages = 0
     with PdfPages(out_pdf) as pdf:
-        _page_strain_path(pdf, sp, lims, label);              n_pages += 1
+        _page_strain_path(pdf, sp, lims, label, mk);          n_pages += 1
         _page_volk_hora(pdf, sp, lims, label, vh);            n_pages += 1
-        _page_merklein(pdf, sp, lims, label, mk);             n_pages += 1
-        _page_method_overlay(pdf, sp, lims, label, vh, mk);   n_pages += 1
+        _page_merklein(pdf, sp, lims, label, mk, vh);         n_pages += 1
         _page_strain_ratio(pdf, sp, lims, label, vh, mk);     n_pages += 1
         if fd is not None:
             _page_punch_fd(pdf, fd, lims, label);             n_pages += 1
