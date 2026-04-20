@@ -10,7 +10,7 @@ From pipeline (run_cluster.sh):
 
 Output:
     <odb_dir>/strain_path.csv      columns: time_s, eps1_major, eps2_minor, EQPS, D, fracture_type
-    <odb_dir>/forming_limits.csv   one row per method: fracture / sdv6 / volk_hora / min_stoughton
+    <odb_dir>/forming_limits.csv   one row per method: fracture / sdv6 / volk_hora / min_stoughton / pham_sigvant
 
 Algorithm:
     1. Build the dome zone: all elements whose undeformed centroid lies within
@@ -37,12 +37,16 @@ Algorithm:
                          a superimposed artificial curvature (SAC) stabilise the
                          circle fit.  Onset: C_pm(K) > C_pm_P(K) + SAC/10 for
                          8 consecutive frames (C_pm_P from rolling linear regression).
+         Pham-Sigvant CoV : CoV = std(ε̇₁)/mean(ε̇₁) over a D5=5mm ROI centred on
+                         the critical element; onset = global min of smoothed CoV.
+                         (Pham, Sigvant et al., IDDRG 2023)
        SDV6 and Volk-Hora use a 3-point smoothing pass + inflection criterion.
 
 Environment variables:
     R_DOME       : override dome radius in mm (default = PUNCH_RADIUS/2 = 25 mm).
     PUNCH_RADIUS : punch hemisphere radius in mm (default 50).
     MS_SAC       : Min-Stoughton SAC value in mm⁻¹ (default 5e-4).
+    COV_R        : Pham-Sigvant ROI radius in mm (default 2.5 = D5/2).
 """
 import sys
 import os
@@ -211,6 +215,10 @@ R_DOME_DEFAULT = float(os.environ.get('R_DOME', 25.0))   # mm
 # ── Min-Stoughton constants ───────────────────────────────────────────────────
 _MS_SAC    = float(os.environ.get('MS_SAC',      5.0e-4))  # mm⁻¹ (paper: 5e-4 for Nakazima)
 _R_PUNCH   = float(os.environ.get('PUNCH_RADIUS', 50.0))   # mm   (hemisphere radius)
+
+# ── Pham-Sigvant CoV constants ────────────────────────────────────────────────
+# ROI diameter D5 = 5 mm (Pham & Sigvant, IDDRG 2023) → radius 2.5 mm
+_R_COV = float(os.environ.get('COV_R', 2.5))  # mm
 
 # Instance names to try for the blank in the ODB assembly
 _INST_NAMES = ('SPECIMEN-1', 'Specimen-1', 'BLANK-1', 'Blank-1')
@@ -437,11 +445,42 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
                     break
             break
 
+    # ── 3b. Build CoV ROI: elements within _R_COV of critical element centroid ──
+    cov_labels = set()
+    crit_cx = crit_cy = 0.0
+    for name in _INST_NAMES:
+        if name not in odb.rootAssembly.instances.keys():
+            continue
+        inst_obj = odb.rootAssembly.instances[name]
+        node_xy2 = {n.label: (n.coordinates[0], n.coordinates[1])
+                    for n in inst_obj.nodes}
+        for elem in inst_obj.elements:
+            if elem.label == crit_label:
+                xs = [node_xy2[n][0] for n in elem.connectivity if n in node_xy2]
+                ys = [node_xy2[n][1] for n in elem.connectivity if n in node_xy2]
+                if xs:
+                    crit_cx = sum(xs) / len(xs)
+                    crit_cy = sum(ys) / len(ys)
+                break
+        r_cov_sq = _R_COV * _R_COV
+        for elem in inst_obj.elements:
+            xs = [node_xy2[n][0] for n in elem.connectivity if n in node_xy2]
+            ys = [node_xy2[n][1] for n in elem.connectivity if n in node_xy2]
+            if not xs:
+                continue
+            cx = sum(xs) / len(xs)
+            cy = sum(ys) / len(ys)
+            if (cx - crit_cx)**2 + (cy - crit_cy)**2 < r_cov_sq:
+                cov_labels.add(elem.label)
+        break
+    print('  CoV ROI     : R < %.1f mm of crit. elem.  (%d elements)' % (_R_COV, len(cov_labels)))
+
     # ── 4. Extract LE + EQPS + SDV6 history + Min-Stoughton C_pm ────────────
     records     = []   # (t, eps1, eps2, eqps, d_crit, fracture_type, d_dome)
     times_list  = []
     d_dome_list = []
     c_pm_list   = []   # Min-Stoughton C_pm per record (0.0 if not available)
+    cov_roi_e1  = []   # CoV: {elem_label → eps1} per record
 
     sdv6_in_odb  = True
     ms_available = bool(dome_zmax_nodes)   # False if no ZMAX nodes found
@@ -460,10 +499,13 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         d_crit   = 0.0
         d_dome   = 0.0
 
+        cov_e1_frame = {}
         for val in frame.fieldOutputs['LE'].values:
             if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
                 eps1, eps2 = _principal_strains_from_LE(val)
-                break
+            if val.elementLabel in cov_labels and val.integrationPoint == 1:
+                e1_v, _ = _principal_strains_from_LE(val)
+                cov_e1_frame[val.elementLabel] = e1_v
 
         for val in frame.fieldOutputs['SDV1'].values:
             if val.elementLabel == crit_label and val.integrationPoint == crit_ip:
@@ -548,6 +590,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
             times_list.append(t)
             d_dome_list.append(d_dome)
             c_pm_list.append(c_pm)
+            cov_roi_e1.append(cov_e1_frame)
             if r_out_ref is not None and m_record_idx == 0 and fi >= m_ref_fi:
                 m_record_idx = len(records) - 1
 
@@ -557,6 +600,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     neck_sdv6_idx = None
     neck_vh_idx   = None
     neck_ms_idx   = None
+    neck_cov_idx  = None
 
     if sdv6_in_odb and any(d > 0.0 for d in d_dome_list):
         neck_sdv6_idx = _inflection_index(times_list, d_dome_list)
@@ -566,6 +610,36 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
 
     if c_pm_list and any(c > 0.0 for c in c_pm_list):
         neck_ms_idx = _ms_onset_index(c_pm_list, _MS_SAC, m_idx=m_record_idx)
+
+    # Pham-Sigvant CoV: compute ε̇₁ per ROI element via central differences,
+    # then CoV = std(ε̇₁) / mean(ε̇₁) per frame; onset = global min of smoothed CoV.
+    n_rec = len(records)
+    if n_rec >= 5 and cov_labels:
+        cov_list = [None] * n_rec
+        for i in range(1, n_rec - 1):
+            dt = times_list[i + 1] - times_list[i - 1]
+            if dt < 1e-12:
+                continue
+            e1_rates = []
+            for lbl in cov_labels:
+                e1_prev = cov_roi_e1[i - 1].get(lbl)
+                e1_next = cov_roi_e1[i + 1].get(lbl)
+                if e1_prev is not None and e1_next is not None:
+                    e1_rates.append((e1_next - e1_prev) / dt)
+            if len(e1_rates) < 3:
+                continue
+            mu = sum(e1_rates) / len(e1_rates)
+            if abs(mu) < 1e-10:
+                continue
+            sigma = math.sqrt(sum((r - mu) ** 2 for r in e1_rates) / len(e1_rates))
+            cov_list[i] = sigma / abs(mu)
+
+        valid_pairs = [(i, v) for i, v in enumerate(cov_list) if v is not None]
+        if len(valid_pairs) >= 5:
+            idxs, vals = zip(*valid_pairs)
+            vals_sm = _smooth3(_smooth3(list(vals)))
+            min_pos = vals_sm.index(min(vals_sm))
+            neck_cov_idx = idxs[min_pos]
 
     # Convenience: limit strains at each frame of interest
     def _lim(idx):
@@ -579,6 +653,7 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
     lim_sdv6 = _lim(neck_sdv6_idx)
     lim_vh   = _lim(neck_vh_idx)
     lim_ms   = _lim(neck_ms_idx)
+    lim_cov  = _lim(neck_cov_idx)
 
     # Print summary
     print('')
@@ -595,6 +670,11 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
               'Min-Stoughton', lim_ms[4], lim_ms[0], lim_ms[1], lim_ms[3], n_active))
     else:
         print('  %-14s  %s' % ('Min-Stoughton', 'N/A (insufficient dome profile)'))
+    if lim_cov:
+        print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f' % (
+              'Pham-Sigvant', lim_cov[4], lim_cov[0], lim_cov[1], lim_cov[3]))
+    else:
+        print('  %-14s  %s' % ('Pham-Sigvant', 'N/A'))
     if lim_sdv6:
         print('  %-14s  %7.3f  %7.4f  %7.4f  %7.4f' % (
               'SDV6/damage', lim_sdv6[4], lim_sdv6[0], lim_sdv6[1], lim_sdv6[3]))
@@ -623,6 +703,9 @@ def extract_strain_path(odb_path, out_csv=None, r_dome=None):
         if lim_ms:
             writer.writerow(['min_stoughton',
                              lim_ms[0], lim_ms[1], lim_ms[2], lim_ms[3], lim_ms[4]])
+        if lim_cov:
+            writer.writerow(['pham_sigvant',
+                             lim_cov[0], lim_cov[1], lim_cov[2], lim_cov[3], lim_cov[4]])
     print('  Forming limits -> %s' % limits_csv)
 
     # ── 7. Write strain_path.csv ──────────────────────────────
