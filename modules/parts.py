@@ -17,7 +17,7 @@ that the revolution axis aligns with global Z.
    X    →    X   (unchanged)
 """
 from abaqus import mdb
-from abaqusConstants import THREE_D, ANALYTIC_RIGID_SURFACE, STANDALONE, CLOCKWISE
+from abaqusConstants import THREE_D, ANALYTIC_RIGID_SURFACE, STANDALONE, CLOCKWISE, SIDE1, REVERSE
 import math, os
 
 
@@ -35,44 +35,62 @@ def _cae_path(cfg):
     return os.path.join(cfg.INP_DIR, 'W%d.cae' % cfg.SPECIMEN_WIDTH)
 
 
+def _add_dome_zone_set(cfg, part):
+    """
+    Create DOME_ZONE: all elements (all through-thickness layers) whose
+    centroid falls within R_DOME of the punch axis.  Used by
+    *TERMINATE ANALYSIS to stop the simulation on first dome-zone failure.
+    """
+    import math as _math
+    try:
+        r_dome = cfg.R_DOME
+        node_coords = {n.label: n.coordinates for n in part.nodes}
+        labels = []
+        for elem in part.elements:
+            xs = [node_coords[nl][0] for nl in elem.connectivity if nl in node_coords]
+            ys = [node_coords[nl][1] for nl in elem.connectivity if nl in node_coords]
+            if not xs:
+                continue
+            r = _math.sqrt((sum(xs)/len(xs))**2 + (sum(ys)/len(ys))**2)
+            if r <= r_dome:
+                labels.append(elem.label)
+        if not labels:
+            print('  WARNING _add_dome_zone_set: no elements within R_DOME=%.1f mm.' % r_dome)
+            return
+        elems = part.elements.sequenceFromLabels(labels)
+        part.Set(name='DOME_ZONE', elements=elems)
+        print('  DOME_ZONE set : %d elements within R_DOME=%.1f mm' % (len(labels), r_dome))
+    except Exception as e:
+        print('  WARNING _add_dome_zone_set: %s' % e)
+
+
 def _add_elout_set(cfg, part):
     """
-    Create the ELOUT element set on *part* by reading the element label from
-    the geometry .inp file.
-
-    ELOUT is defined in the .inp as a single-element set at the punch apex.
-    When the specimen is imported from a .cae file this set is absent — the
-    .cae only carries the geometry/mesh, not the named sets defined in .inp.
-    Parsing the label here ensures it propagates to the ODB and is available
-    in postproc.py without any extra lookup.
+    Create the ELOUT element set: the element on the top face (z ≈ BLANK_THICKNESS)
+    whose centroid is closest to the punch apex (r = 0).
     """
-    import re
-    inp = _inp_path(cfg)
-    if not os.path.isfile(inp):
-        print('  WARNING _add_elout_set: .inp not found (%s) — ELOUT skipped.' % inp)
-        return
-
-    label = None
-    with open(inp, 'r') as f:
-        in_elout = False
-        for line in f:
-            if re.match(r'\*Elset.*elset\s*=\s*ELOUT', line, re.IGNORECASE):
-                in_elout = True
-                continue
-            if in_elout:
-                stripped = line.strip().rstrip(',')
-                if stripped.isdigit():
-                    label = int(stripped)
-                break
-
-    if label is None:
-        print('  WARNING _add_elout_set: could not parse ELOUT label from %s.' % inp)
-        return
-
+    import math as _math
     try:
-        elems = part.elements.sequenceFromLabels([label])
+        t = cfg.BLANK_THICKNESS
+        node_coords = {n.label: n.coordinates for n in part.nodes}
+        best_label = None
+        best_r2 = float('inf')
+        for elem in part.elements:
+            zs = [node_coords[nl][2] for nl in elem.connectivity if nl in node_coords]
+            if not zs or (sum(zs) / len(zs)) < t * 0.5:
+                continue
+            xs = [node_coords[nl][0] for nl in elem.connectivity if nl in node_coords]
+            ys = [node_coords[nl][1] for nl in elem.connectivity if nl in node_coords]
+            r2 = (sum(xs) / len(xs)) ** 2 + (sum(ys) / len(ys)) ** 2
+            if r2 < best_r2:
+                best_r2 = r2
+                best_label = elem.label
+        if best_label is None:
+            print('  WARNING _add_elout_set: no top-face element found — ELOUT skipped.')
+            return
+        elems = part.elements.sequenceFromLabels([best_label])
         part.Set(name='ELOUT', elements=elems)
-        print('  ELOUT set  : element %d  (from %s)' % (label, os.path.basename(inp)))
+        print('  ELOUT set  : element %d  (apex r=%.3f mm)' % (best_label, _math.sqrt(best_r2)))
     except Exception as e:
         print('  WARNING _add_elout_set: %s' % e)
 
@@ -575,20 +593,45 @@ def import_specimen_cae(cfg):
     feature_name = 'Solid extrude-1'
     feat_names = [f for f in spec.features.keys()]
     if feature_name in feat_names:
+        # Delete all existing edge seeds before regenerating so that the
+        # factor-scaled seeds applied by _apply_mesh_zones() are not silently
+        # overridden (seedPart() skips edges that already have finer seeds).
+        try:
+            spec.deleteSeeds(spec.edges)
+        except Exception:
+            pass
         spec.features[feature_name].setValues(depth=cfg.BLANK_THICKNESS)
         spec.regenerate()
+        _apply_mesh_zones(cfg, spec)
+        n_before = len(spec.elements)
         spec.generateMesh()
+        print('  Mesh generated: %d elements  (factor=%.4g)'
+              % (len(spec.elements), getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)))
         print('  Extrusion depth set to %.4f mm — geometry + mesh updated.'
               % cfg.BLANK_THICKNESS)
     else:
-        # Fallback: feature not found (e.g. truly orphan mesh) — scale nodes
-        print('  Feature "%s" not found (orphan mesh?) — falling back to '
-              'node scaling.' % feature_name)
+        # Fallback: truly orphan mesh — no parametric feature to reseed, so
+        # element count is fixed.  Apply coordinate scaling instead:
+        #   1. scale x,y by MESH_REFINEMENT_FACTOR (larger factor → physically
+        #      larger elements; blank XY dimensions scale proportionally)
+        #   2. scale z to BLANK_THICKNESS
+        print('  Feature "%s" not found — truly orphan mesh, using coordinate '
+              'scaling.' % feature_name)
+        factor = getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)
+        if abs(factor - 1.0) > 1e-6:
+            nodes = spec.nodes
+            new_coords = [(n.coordinates[0] * factor,
+                           n.coordinates[1] * factor,
+                           n.coordinates[2]) for n in nodes]
+            spec.editNode(nodes=nodes, coordinates=new_coords)
+            print('  In-plane scaled by x%.4f  (element count unchanged, '
+                  'blank XY dims scale by same factor)' % factor)
         _scale_specimen_thickness(cfg, spec)
 
     _rebuild_contact_surfaces(cfg, spec)
     _verify_symmetry_sets(spec)
     _add_elout_set(cfg, spec)
+    _add_dome_zone_set(cfg, spec)
 
 
 def import_specimen(cfg):
@@ -641,8 +684,19 @@ def import_specimen(cfg):
     print('  Specimen imported from: %s  (part: "%s")' % (path, spec_name))
     print('  Sets available: %s' % sorted(m.parts[spec_name].sets.keys()))
     _ensure_surface_elsets(path, m.parts[spec_name])
-    _scale_specimen_thickness(cfg, m.parts[spec_name])
-    _add_elout_set(cfg, m.parts[spec_name])
+    spec_part = m.parts[spec_name]
+    factor = getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)
+    if abs(factor - 1.0) > 1e-6:
+        nodes = spec_part.nodes
+        new_coords = [(n.coordinates[0] * factor,
+                       n.coordinates[1] * factor,
+                       n.coordinates[2]) for n in nodes]
+        spec_part.editNode(nodes=nodes, coordinates=new_coords)
+        print('  In-plane scaled by x%.4f  (element count unchanged, '
+              'blank XY dims scale by same factor)' % factor)
+    _scale_specimen_thickness(cfg, spec_part)
+    _add_elout_set(cfg, spec_part)
+    _add_dome_zone_set(cfg, spec_part)
 
 
 def _ensure_surface_elsets(inp_path, part):
@@ -981,6 +1035,171 @@ def create_tool_rp_and_surfaces(cfg):
             raise RuntimeError('Surface "Outer" creation failed on %s: %s' % (tool_name, e))
 
     print('  RPs, Sets and tool surfaces: OK')
+
+
+# ─────────────────────────────────────────────────────────────
+# Mesh zone partitioning and seeding
+# ─────────────────────────────────────────────────────────────
+
+def _apply_mesh_zones(cfg, part):
+    """
+    Partition the blank into concentric radial zones and apply MESH_ZONES seeding.
+
+    For each zone boundary radius (ascending order):
+      1. Sketch a full circle on the top face at that radius → creates a quarter-arc
+         edge that splits the face into an inner disc and an outer annulus.
+      2. Extrude that arc edge downward through the solid cell
+         (PartitionCellByExtrudeEdge) → creates a cylindrical partition that also
+         splits the bottom face.
+    After all partitions the boundary edges are split at every zone radius, so
+    each segment can be seeded independently.
+
+    Seeding:
+      • seedPart sets the global (coarsest) size from the last MESH_ZONES entry.
+      • Each edge is then seeded to the size of its radial zone (finer overrides).
+
+    Caller must call part.generateMesh() afterwards.
+    Falls back gracefully if any individual partition step fails.
+    """
+    m      = mdb.models[cfg.MODEL_NAME]
+    zones  = cfg.MESH_ZONES
+    factor = getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)
+    t      = float(cfg.BLANK_THICKNESS)
+    eps_t  = max(0.01, t * 0.01)
+
+    if factor <= 0.0:
+        print('  WARNING _apply_mesh_zones: factor=%.4f <= 0, skipped.' % factor)
+        return
+
+    # Max specimen radius from nodes (regenerated geometry) or vertices (orphan).
+    node_list = list(part.nodes)
+    if node_list:
+        r_max = max(math.sqrt(n.coordinates[0]**2 + n.coordinates[1]**2)
+                    for n in node_list)
+    else:
+        r_max = max(math.sqrt(v.pointOn[0][0]**2 + v.pointOn[0][1]**2)
+                    for v in part.vertices)
+
+    # Only partition zone boundaries that fit inside the specimen.
+    zone_radii = [z[0] for z in zones[:-1] if z[0] < r_max - 0.5]
+
+    # ── Radial face + cell partitions ────────────────────────────────────────
+    # Skip if the part already has partition features (e.g. W50/W80 .cae files
+    # store their own zone partitions). Re-partitioning over existing partitions
+    # corrupts the geometry and causes generateMesh() to produce 0 elements.
+    existing_partitions = any('Partition' in fn for fn in part.features.keys())
+    partitioned = []
+
+    if existing_partitions:
+        print('  Zone partitions already in feature tree — skipping partition step.')
+    else:
+        z_datum_id = part.DatumAxisByTwoPoint(
+            point1=(0.0, 0.0, 0.0),
+            point2=(0.0, 0.0, 1.0)
+        ).id
+
+    for r in zone_radii:
+        if existing_partitions:
+            partitioned.append(r)
+            continue
+        # Query point just inside the zone radius — on the right top face.
+        qx = r * 0.99 if r > 0.1 else 0.05
+        sk_name = '__zone_r%g__' % r
+        try:
+            face_seq = part.faces.findAt(((qx, 0.01, t),))
+            if not face_seq:
+                print('  WARNING zones: no face found at r=%.2f mm.' % r)
+                continue
+            face = face_seq[0]
+
+            transform = part.MakeSketchTransform(
+                sketchPlane=face,
+                sketchPlaneSide=SIDE1,
+                origin=(0.0, 0.0, t)
+            )
+            sk = m.ConstrainedSketch(name=sk_name, sheetSize=400.0, transform=transform)
+            sk.CircleByCenterPerimeter(center=(0.0, 0.0), point1=(r, 0.0))
+
+            indices_before = {e.index for e in part.edges}
+            part.PartitionFaceBySketch(faces=face_seq, sketch=sk)
+            del m.sketches[sk_name]
+            sk_name = None
+
+            # Find the new quarter-arc edge: at z≈t, radius≈r.
+            arc_edge = None
+            for e in part.edges:
+                if e.index in indices_before or not e.pointOn:
+                    continue
+                x, y, z_e = e.pointOn[0]
+                if abs(math.sqrt(x**2 + y**2) - r) < 0.5 and abs(z_e - t) < eps_t:
+                    arc_edge = e
+                    break
+
+            if arc_edge is None:
+                print('  WARNING zones: arc edge at r=%.2f mm not found.' % r)
+                continue
+
+            # Extrude the arc through the solid to partition the cell.
+            part.PartitionCellByExtrudeEdge(
+                cells=part.cells,
+                edges=[arc_edge],
+                line=part.datums[z_datum_id],
+                sense=REVERSE
+            )
+            partitioned.append(r)
+            print('  Zone partition r=%.1f mm: OK' % r)
+
+        except Exception as exc:
+            print('  WARNING zones: partition at r=%.2f mm failed: %s' % (r, exc))
+            if sk_name and sk_name in m.sketches.keys():
+                del m.sketches[sk_name]
+
+    # ── Seed edges ───────────────────────────────────────────────────────────
+    # Delete all stored edge seeds first — seedPart() will NOT override
+    # existing finer seeds, so without this the original CAE seeds always win.
+    # Pass part.edges positionally; the keyword form fails in Abaqus 2023 Python.
+    try:
+        part.deleteSeeds(part.edges)
+    except Exception:
+        pass
+
+    global_size = zones[-1][1] * factor
+    part.seedPart(size=global_size, deviationFactor=0.1, minSizeFactor=0.1)
+
+    t = cfg.BLANK_THICKNESS
+    n_t = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    thickness_seed = t / float(n_t)
+
+    zone_seeded = 0
+    thick_seeded = 0
+    for edge in part.edges:
+        if not edge.pointOn:
+            continue
+        x, y, z_ep = edge.pointOn[0]
+        # Thickness edges span z=0 to z=t; their midpoint is at z≈t/2.
+        if abs(z_ep - t * 0.5) < t * 0.4:
+            try:
+                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
+                thick_seeded += 1
+            except Exception:
+                pass
+            continue
+        r_e = math.sqrt(x**2 + y**2)
+        size = global_size
+        for r_zone, size_r, _size_c in zones:
+            if r_e <= r_zone + 0.01:
+                size = size_r * factor
+                break
+        if size < global_size - 1e-9:
+            try:
+                part.seedEdgeBySize([edge], size, deviationFactor=0.1)
+                zone_seeded += 1
+            except Exception:
+                pass
+
+    print('  Mesh seeds applied: global=%.3f mm, thickness=%.3f mm (%d seeds), '
+          '%d zone edges, %d thickness edges, factor=%.3f'
+          % (global_size, thickness_seed, n_t, zone_seeded, thick_seeded, factor))
 
 
 # ─────────────────────────────────────────────────────────────

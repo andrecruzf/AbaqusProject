@@ -183,7 +183,7 @@ def make_movie(odb_path, out_dir=None):
     odb = session.openOdb(name=odb_path, readOnly=True)
     vp  = session.viewports['Viewport: 1']
     vp.setValues(displayedObject=odb, width=280, height=210)
-    session.printOptions.setValues(vpDecorations=ON, vpBackground=ON)
+    session.printOptions.setValues(vpDecorations=OFF, vpBackground=ON)
     session.pngOptions.setValues(imageSize=(1280, 960))
 
     # ── Annotations ───────────────────────────────────────────
@@ -192,28 +192,10 @@ def make_movie(odb_path, out_dir=None):
         legendFont='-*-verdana-bold-r-normal-*-*-140-*-*-p-*-*-*',
         legendNumberFormat=ENGINEERING)
 
-    # ── Fixed contour range ────────────────────────────────────
-    sdv1_max = 0.0
-    try:
-        for step_name in odb.steps.keys():
-            step = odb.steps[step_name]
-            if not step.frames:
-                continue
-            frame = step.frames[-1]
-            if 'SDV1' not in frame.fieldOutputs.keys():
-                continue
-            for v in frame.fieldOutputs['SDV1'].values:
-                if v.data > sdv1_max:
-                    sdv1_max = v.data
-        if sdv1_max > 0.0:
-            vp.odbDisplay.contourOptions.setValues(
-                minAutoCompute=OFF, maxAutoCompute=OFF,
-                minValue=0.0, maxValue=sdv1_max)
-            print('  Contour range: 0 - %.4f (fixed)' % sdv1_max)
-        else:
-            print('  Contour range: auto')
-    except Exception as e:
-        print('  NOTE: contour range (%s)' % e)
+    # ── Per-frame auto color range — full spectrum at every frame ──
+    vp.odbDisplay.contourOptions.setValues(
+        minAutoCompute=ON, maxAutoCompute=ON)
+    print('  Contour range: per-frame auto')
 
     # ── Display setup — detect one vs two punches ──────────────
     inst_names = list(odb.rootAssembly.instances.keys())

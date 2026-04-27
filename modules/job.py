@@ -71,8 +71,10 @@ def _inject_output_requests(inp_file, cfg):
     Replace the default Abaqus output section (PRESELECT) with custom requests.
     For PiP, replaces the output block in BOTH steps.
 
-    Field : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 100 intervals
-    History: U3/RF3 on punch RP(s), RF3 on Die/Matrix RPs
+    Field  : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 100 intervals
+    History: U3/RF3 on punch RP(s), RF3 on Die/Matrix RPs, ALLKE/ALLIE,
+             + S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ on SPECIMEN-1.ELOUT
+               (apex element defined in the imported geometry .inp)
     """
     pip = _is_pip(cfg)
 
@@ -99,6 +101,8 @@ def _inject_output_requests(inp_file, cfg):
             'RF3\n'
         )
 
+    hist_time_interval = cfg.STEP_TIME / 100.0
+
     custom_output = (
         '** OUTPUT REQUESTS\n'
         '** \n'
@@ -117,6 +121,10 @@ def _inject_output_requests(inp_file, cfg):
         + history_block +
         '*Energy Output\n'
         'ALLKE, ALLIE\n'
+        '** Apex element history — \n'
+        '*Output, history, FREQUENCY=1000\n'
+        '*Element Output, elset=SPECIMEN-1.ELOUT\n'
+        'S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ\n'
         '*End Step\n'
     )
 
@@ -144,7 +152,7 @@ def _inject_output_requests(inp_file, cfg):
     with open(inp_file, 'w') as f:
         f.write(content)
 
-    print('  Injected custom output requests (%d step(s), 100 intervals, SDV, TRIAX, SP, MISES, LEP)'
+    print('  Injected custom output requests (%d step(s), 100 intervals, SDV, TRIAX, SP, MISES, LEP, ELOUT history)'
           % replaced)
 
 
@@ -160,7 +168,8 @@ def _inject_mass_scaling(inp_file, dt):
             i += 1
             if i < len(lines):
                 new_lines.append(lines[i])   # ", <time_period>" data line
-            new_lines.append('*Fixed Mass Scaling, TYPE=UNIFORM, DT=%g\n' % dt)
+            #new_lines.append('*Fixed Mass Scaling, TYPE=UNIFORM, DT=%g\n' % dt)
+            new_lines.append('*Variable Mass Scaling, TYPE=BELOW MIN, DT=%g, FREQUENCY=10\n' % dt)
         i += 1
     with open(inp_file, 'w') as f:
         f.writelines(new_lines)

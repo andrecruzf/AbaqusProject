@@ -30,7 +30,6 @@ PROJ_DIR="$SLURM_SUBMIT_DIR"
 TEST_TYPE=${TEST_TYPE:-$(python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(config.TEST_TYPE)")}
 THICKNESS=${BLANK_THICKNESS:-$(python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(config.BLANK_THICKNESS)")}
 ORIENTATION=${MATERIAL_ORIENTATION_ANGLE:-$(python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")}
-R_DOME=${R_DOME:-$(python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(config.R_DOME)")}
 
 _t=$(python3 -c "print(str(${THICKNESS}).replace('.','p'))")
 _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
@@ -43,7 +42,6 @@ echo "  run_postproc.sh"
 echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
-echo "  R_DOME      : ${R_DOME} mm"
 echo "  Widths      : ${WIDTHS}"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
@@ -60,13 +58,13 @@ for W in ${WIDTHS}; do
         continue
     fi
 
-    R_DOME=${R_DOME} abaqus python "${PROJ_DIR}/postproc.py" -- "$ODB"
+    abaqus python "${PROJ_DIR}/postproc.py" -- "$ODB"
 
     # Copy all CSVs back to project output dir for archiving
     OUT_DIR="${PROJ_DIR}/${JOB_NAME}"
     SCRATCH_DIR="/cluster/scratch/acruzfaria/${JOB_NAME}"
     if [ -d "$OUT_DIR" ]; then
-        for f in strain_path.csv forming_limits.csv energy_data.csv; do
+        for f in elout.csv global.csv strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
             [ -f "${SCRATCH_DIR}/${f}" ] \
                 && cp "${SCRATCH_DIR}/${f}" "$OUT_DIR/" \
                 && echo "  ${f} -> ${OUT_DIR}/" \

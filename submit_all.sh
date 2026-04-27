@@ -4,7 +4,7 @@
 #                   Runs ON Euler — do not run locally.
 #                   Launched by deploy_all.sh via SSH + tmux.
 #
-# Args: TEST_TYPE THICKNESS ORIENTATION R_DOME PIP_PUNCH2_ID CUSTOM_WIDTHS [WIDTHS...]
+# Args: TEST_TYPE THICKNESS ORIENTATION PIP_PUNCH2_ID CUSTOM_WIDTHS [WIDTHS...]
 #   PIP_PUNCH2_ID: pass "none" if empty
 # =============================================================
 
@@ -15,9 +15,10 @@ EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
 TEST_TYPE=$1
 THICKNESS=$2
 ORIENTATION=$3
-R_DOME=$4
-PIP_PUNCH2_ID=$5
+PIP_PUNCH2_ID=$4
 [ "$PIP_PUNCH2_ID" = "none" ] && PIP_PUNCH2_ID=""
+MESH_REFINEMENT_FACTOR=${5:-1}
+[ "$MESH_REFINEMENT_FACTOR" = "none" ] && MESH_REFINEMENT_FACTOR="1"
 CUSTOM_WIDTHS=$6
 shift 6
 WIDTHS=("$@")
@@ -31,6 +32,10 @@ if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
 else
     _pip_suffix=""
 fi
+_mr_suffix=$(python3 -c "
+v = float('${MESH_REFINEMENT_FACTOR}')
+print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
+")
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
 
 module load abaqus/2023
@@ -41,6 +46,7 @@ echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Widths      : ${WIDTHS[*]}"
+echo "  Mesh factor : ${MESH_REFINEMENT_FACTOR}"
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
 fi
@@ -55,7 +61,7 @@ OUTPUT_DIRS=()
 
 for W in "${WIDTHS[@]}"; do
     echo "----------------------------------------------"
-    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}"
+    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_mr_suffix}"
     OUTPUT_SUBDIR="$JOB_NAME"
 
     echo "  Building ${JOB_NAME} ..."
@@ -65,12 +71,13 @@ for W in "${WIDTHS[@]}"; do
     BLANK_THICKNESS=${THICKNESS} \
     MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
     PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
+    MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
     abaqus cae noGUI=build_model.py
 
     echo "  Submitting solver job ..."
     JOB_ID=$(cd "${EULER_DIR}" && sbatch \
         --job-name=${JOB_NAME} \
-        --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},R_DOME=${R_DOME} \
+        --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
         --parsable run_cluster.sh)
 
     JOB_IDS+=("$JOB_ID")

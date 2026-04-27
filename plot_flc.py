@@ -43,7 +43,7 @@ _WIDTH_COLORS = [
 ]
 
 _METHOD_STYLE = {
-    'fracture':  ('X', 11, 'Fracture limit'),
+    'fracture':  ('X', 4, 'Fracture limit'),
     'volk_hora': ('D',  8, 'Volk-Hora necking'),
     'sdv6':      ('s',  8, 'SDV6 necking'),
 }
@@ -103,19 +103,34 @@ def _read_limits(d):
 
 
 def _read_path(d):
-    path = os.path.join(d, 'strain_path.csv')
-    if not os.path.isfile(path):
-        return None, None
-    e1, e2 = [], []
-    with open(path, 'r') as f:
-        for row in csv.DictReader(f):
-            e1.append(float(row['eps1_major']))
-            e2.append(float(row['eps2_minor']))
-    return e1, e2
+    # Prefer ELOUT history (higher resolution); fall back to field-output strain_path.csv
+    for fname, k1, k2 in [('elout.csv', 'eps1_le', 'eps2_le'),
+                           ('strain_path.csv', 'eps1_major', 'eps2_minor')]:
+        path = os.path.join(d, fname)
+        if not os.path.isfile(path):
+            continue
+        e1, e2 = [], []
+        with open(path, 'r') as f:
+            for row in csv.DictReader(f):
+                try:
+                    e1.append(float(row[k1]))
+                    e2.append(float(row[k2]))
+                except (KeyError, ValueError):
+                    pass
+        if e1:
+            return e1, e2
+    return None, None
 
 
 def _base_axes(title):
     fig, ax = plt.subplots(figsize=(9, 7))
+
+    # Reference strain-state lines (light gray, behind data)
+    _L = 1.5
+    _rs = dict(color='lightgray', linewidth=0.9, linestyle='--', zorder=0)
+    ax.plot([-0.5*_L, 0], [_L, 0], **_rs)
+    ax.plot([0, _L],       [0, _L], **_rs)
+
     ax.axvline(0, color='black', linewidth=0.5, linestyle=':')
     ax.axhline(0, color='black', linewidth=0.5, linestyle=':')
     ax.set_xlabel(u'\u03b5\u2082  minor strain  (\u2013)', fontsize=12)
@@ -125,14 +140,40 @@ def _base_axes(title):
     return fig, ax
 
 
-def _draw_paths(ax, dirs, colors, alpha=0.15):
+def _data_limits(dirs, pad=0.20):
+    """Return (x0, x1, y0, y1) with symmetric x-axis around 0."""
+    all_e1, all_e2 = [], []
+    for d in dirs:
+        e1, e2 = _read_path(d)
+        if e1:
+            all_e1.extend(e1)
+            all_e2.extend(e2)
+
+    if not all_e1:
+        return None
+
+    # --- symmetric x-range around 0 ---
+    max_abs_e2 = max(abs(min(all_e2)), abs(max(all_e2))) + 1e-6
+    x0 = - (1 + pad) * max_abs_e2
+    x1 = + (1 + pad) * max_abs_e2
+
+    # --- normal y-range ---
+    e1_rng = max(all_e1) - min(all_e1) + 1e-6
+    y0 = min(0.0, min(all_e1)) - pad * e1_rng
+    y1 = max(all_e1) + pad * e1_rng
+
+    return (x0, x1, y0, y1)
+
+def _draw_paths(ax, dirs, colors, alpha=0.1, labeled=False):
     for d, col in zip(dirs, colors):
         e1, e2 = _read_path(d)
         if e1:
-            ax.plot(e2, e1, color=col, linewidth=1.0, alpha=alpha, zorder=1)
+            lbl = _width_label(d) if labeled else '_'
+            ax.plot(e2, e1, color=col, linewidth=1.5, alpha=alpha,
+                    zorder=1, label=lbl)
 
 
-def _draw_method(ax, dirs, colors, method):
+def _draw_method(ax, dirs, colors, method, labeled=True):
     mk, ms, _ = _METHOD_STYLE[method]
     any_plotted = False
     for d, col in zip(dirs, colors):
@@ -140,8 +181,9 @@ def _draw_method(ax, dirs, colors, method):
         if method not in lims:
             continue
         pt = lims[method]
+        lbl = _width_label(d) if labeled else '_'
         ax.plot(pt['e2'], pt['e1'], marker=mk, color=col, linestyle='None',
-                markersize=ms, label=_width_label(d), zorder=3)
+                markersize=ms, label=lbl, zorder=3)
         any_plotted = True
     return any_plotted
 
@@ -206,17 +248,57 @@ def plot_flc(dirs, output_path, exp_pts=None):
         return
 
     n_pages = 0
+    lims = _data_limits(dirs)
+
     with PdfPages(output_path) as pdf:
 
         if has['fracture']:
             fig, ax = _base_axes('Forming Limit Curve — fracture')
-            _draw_paths(ax, dirs, colors)
-            _draw_method(ax, dirs, colors, 'fracture')
-            _draw_experimental(ax, exp_pts)
-            ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
-            plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
-        if has['volk_hora']:
+            _draw_paths(ax, dirs, colors, alpha=0.3, labeled=True)
+
+            # --- collect fracture points (e2, e1) ---
+            pts = []
+            for d in dirs:
+                lims_d = _read_limits(d)
+                if 'fracture' in lims_d:
+                    pt = lims_d['fracture']
+                    pts.append((pt['e2'], pt['e1']))  # (x, y)
+
+            # --- sort left → right (by eps2) ---
+            pts.sort(key=lambda p: p[0])
+
+            # --- draw connecting line ---
+            if pts:
+                e2_list, e1_list = zip(*pts)
+                ax.plot(e2_list, e1_list,
+                        color='red', linewidth=1.5,
+                        linestyle='-', zorder=2,
+                        label='Fracture Curve')
+
+            # --- draw fracture markers on top ---
+            _draw_method(ax, dirs, colors, 'fracture', labeled=False)
+
+            # --- experimental overlay ---
+            _draw_experimental(ax, exp_pts)
+
+            # --- axes limits ---
+            if lims:
+                ax.set_xlim(lims[0], lims[1])
+                ax.set_ylim(lims[2], lims[3])
+
+            # --- legend entry for markers ---
+            ax.plot([], [], 'X', color='black', markersize=8,
+                    label='Fracture point')
+
+            ax.legend(fontsize=9, ncol=2, loc='upper right')
+
+            plt.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+            n_pages += 1
+
+        if False and has['volk_hora']:
             fig, ax = _base_axes('Forming Limit Curve — Volk-Hora necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'volk_hora')
@@ -224,7 +306,7 @@ def plot_flc(dirs, output_path, exp_pts=None):
             ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
-        if has['sdv6']:
+        if False and has['sdv6']:
             fig, ax = _base_axes('Forming Limit Curve — SDV6/damage necking')
             _draw_paths(ax, dirs, colors)
             _draw_method(ax, dirs, colors, 'sdv6')
@@ -232,7 +314,7 @@ def plot_flc(dirs, output_path, exp_pts=None):
             ax.legend(title='Geometry', fontsize=9, ncol=2, loc='upper right')
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
-        if sum(has.values()) > 1:
+        if False and sum(has.values()) > 1:
             fig, ax = _base_axes('Forming Limit Curve — all methods')
             _draw_paths(ax, dirs, colors, alpha=0.12)
             for method, (mk, ms, lbl_m) in _METHOD_STYLE.items():
@@ -250,11 +332,11 @@ def plot_flc(dirs, output_path, exp_pts=None):
             ax.legend(fontsize=7, ncol=2, loc='upper right', framealpha=0.8)
             plt.tight_layout(); pdf.savefig(fig); plt.close(fig); n_pages += 1
 
-        # PEPS (path-independent) FLC pages
-        for m in ('volk_hora', 'sdv6'):
-            if has[m]:
-                if _peps_flc_page(pdf, dirs, colors, m):
-                    n_pages += 1
+        # PEPS (path-independent) FLC pages — disabled for now
+        # for m in ('volk_hora', 'sdv6'):
+        #     if has[m]:
+        #         if _peps_flc_page(pdf, dirs, colors, m):
+        #             n_pages += 1
 
     print('FLC -> %s  (%d pages)' % (output_path, n_pages))
 

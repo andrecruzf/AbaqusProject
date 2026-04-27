@@ -24,31 +24,42 @@ DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}');
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 DEFAULT_WIDTH=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.SPECIMEN_WIDTH)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
+DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 SPECIMEN_WIDTH=${4:-$DEFAULT_WIDTH}
+MESH_REFINEMENT_FACTOR=${5:-$DEFAULT_MR}
 
-echo "  Pushing scripts and modules ..."
-scp "$SCRIPT_DIR/config.py" \
+# ── Push scripts once ─────────────────────────────────────────────────────────
+echo "  Pushing scripts to Euler ..."
+scp -q "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
+    "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \
     "$SCRIPT_DIR/plot_flc.py" \
-    "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
-    "$SCRIPT_DIR/submit_one.sh" \
+    "$SCRIPT_DIR/submit_all.sh" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
-scp -r "$SCRIPT_DIR/modules" \
-    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+echo "  Done."
 
-# ── Push PiP geometry directories ─────────────────────────────
+# ── Push modules directory ────────────────────────────────────────────────────
+echo "  Pushing modules ..."
+scp -qr "$SCRIPT_DIR/modules" \
+    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+echo "  Done."
+echo ""
+
+
+
+# ── Push PiP geometry directories ────────────────────────────────────────────
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Pushing PiP_Punches and PiP_Geometries ..."
-    scp -r "$SCRIPT_DIR/PiP_Punches" "$SCRIPT_DIR/PiP_Geometries" \
+    scp -qr "$SCRIPT_DIR/PiP_Punches" "$SCRIPT_DIR/PiP_Geometries" \
         "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 fi
 echo "  Done."
@@ -61,7 +72,7 @@ echo "  Launching submit_one.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} \
+        'bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} \
          > ${EULER_DIR}/submit_one.log 2>&1'
 "
 

@@ -23,8 +23,8 @@ import os
 
 # ── Configuration ─────────────────────────────────────────────
 SRC_CAE   = 'PinP.cae'         # source CAE with all variants
-PUNCH_DIR = 'PiP_Punches'      # output for PUNCH_* parts
-SPEC_DIR  = 'PiP_Geometries'   # output for SPECIMEN* parts
+PUNCH_DIR = '../PiP_Punches'  # output for PUNCH_* parts
+SPEC_DIR  = '../PiP_Geometries'  # output for SPECIMEN* parts
 SRC_MODEL = 'Model-1'          # model name inside PinP.cae to read from
 
 

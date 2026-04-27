@@ -35,7 +35,6 @@ _cfg() { python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; 
 TEST_TYPE=${2:-$(_cfg config.TEST_TYPE)}
 THICKNESS=${3:-$(_cfg config.BLANK_THICKNESS)}
 ORIENTATION=${4:-$(_cfg "int(config.MATERIAL_ORIENTATION_ANGLE)")}
-R_DOME=${R_DOME:-$(_cfg config.R_DOME)}
 
 _t=$(python3 -c "print(str(${THICKNESS}).replace('.','p'))")
 _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
@@ -49,7 +48,6 @@ echo "=============================================="
 echo "  postproc_single.sh"
 echo "  Job         : ${JOB_NAME}"
 echo "  ODB         : ${ODB}"
-echo "  R_DOME      : ${R_DOME} mm"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
@@ -65,7 +63,7 @@ module load abaqus/2023
 # ── Step 1: extract CSVs ───────────────────────────────────────
 echo ""
 echo "--- Step 1: extracting CSVs ---"
-R_DOME=${R_DOME} abaqus python "${PROJ_DIR}/postproc.py" -- "$ODB"
+abaqus python "${PROJ_DIR}/postproc.py" -- "$ODB"
 
 # ── Step 2: generate plots ─────────────────────────────────────
 echo ""
@@ -79,7 +77,7 @@ OUT_DIR="${PROJ_DIR}/${JOB_NAME}"
 if [ -d "$OUT_DIR" ]; then
     echo ""
     echo "--- Copying outputs to ${OUT_DIR}/ ---"
-    for f in strain_path.csv forming_limits.csv energy_data.csv postproc_plots.pdf; do
+    for f in elout.csv global.csv strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv postproc_plots.pdf; do
         [ -f "${SCRATCH_DIR}/${f}" ] \
             && cp "${SCRATCH_DIR}/${f}" "$OUT_DIR/" \
             && echo "  ${f} -> ${OUT_DIR}/" \

@@ -81,8 +81,8 @@ def _create_assembly_standard(cfg, m, a, spec_name):
             angle=90.0)
         print('  Rotated +90° around X: %s' % tool_inst)
 
-    a.instances['Punch-1'].translate(vector=(0.0, 0.0, -0.01))
-    print('  Punch-1 translated -0.01 mm in Z (initial gap)')
+    #a.instances['Punch-1'].translate(vector=(0.0, 0.0, -0.01))
+    #print('  Punch-1 translated -0.01 mm in Z (initial gap)')
 
 
 def _create_assembly_pip(cfg, m, a, spec_name):

@@ -74,10 +74,9 @@ echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
 cd "$SLURM_SUBMIT_DIR"
-R_DOME=${R_DOME:-$(python3 -c "import sys; sys.path.insert(0,'$SLURM_SUBMIT_DIR'); import config; print(config.R_DOME)")}
-R_DOME=${R_DOME} abaqus python postproc.py -- "$SCRATCH_DIR/${JOB_NAME}.odb"
+abaqus python postproc.py -- "$SCRATCH_DIR/${JOB_NAME}.odb"
 
-echo "  strain_path.csv written."
+echo "  elout.csv + global.csv written."
 
 # ── Step 4: Render SDV1 animation ────────────────────────────────────────────
 echo "=============================================="
@@ -93,7 +92,7 @@ echo "  Movie written."
 echo "=============================================="
 echo "  Copying results to home ..."
 echo "=============================================="
-for f in strain_path.csv forming_limits.csv energy_data.csv; do
+for f in elout.csv global.csv strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv; do
     cp "$SCRATCH_DIR/$f" "$WORK_DIR/" 2>/dev/null \
         && echo "  $f ✓" \
         || echo "  WARNING: $f not found in scratch"

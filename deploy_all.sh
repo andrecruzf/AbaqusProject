@@ -25,12 +25,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
 DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
-DEFAULT_R_DOME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.R_DOME)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
+DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
+# MESH_REFINEMENT_FACTOR can be set as an env var before calling this script,
+# or it defaults to the value from config.py.
+MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR:-$DEFAULT_MR}
 shift $(( $# < 3 ? $# : 3 ))
 CUSTOM_WIDTHS=false
 WIDTHS=("${@}")
@@ -57,6 +60,7 @@ echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Widths      : ${WIDTHS[*]}"
+echo "  Mesh factor : ${MESH_REFINEMENT_FACTOR}"
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
 fi
@@ -100,7 +104,7 @@ echo "  Launching submit_all.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${DEFAULT_R_DOME} ${_pip_id_arg} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
+        'bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
          > ${EULER_DIR}/submit_all.log 2>&1'
 "
 
