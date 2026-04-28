@@ -28,7 +28,7 @@ DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 
-TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
+TEST_TYPE=$(echo "${1:-$DEFAULT_TEST_TYPE}" | tr '[:upper:]' '[:lower:]')
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 # MESH_REFINEMENT_FACTOR can be set as an env var before calling this script,
@@ -74,6 +74,7 @@ echo "=============================================="
 echo "  Pushing scripts to Euler ..."
 scp "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
+    "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/postproc.py" \

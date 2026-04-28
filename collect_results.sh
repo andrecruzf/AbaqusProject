@@ -54,6 +54,7 @@ echo "  Widths      : ${WIDTHS[*]}"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
+LOCAL_DIRS=""
 for W in "${WIDTHS[@]}"; do
     JOB="${_test_cap}_W${W}_t${_t}_ang${_ang}"
     LOCAL_DIR="$SCRIPT_DIR/$JOB"
@@ -64,12 +65,14 @@ for W in "${WIDTHS[@]}"; do
 
     mkdir -p "$LOCAL_DIR"
 
-    # strain path CSV
-    if scp "${EULER_USER}@${EULER_HOST}:${REMOTE_DIR}/strain_path.csv" "$LOCAL_DIR/" 2>/dev/null; then
-        echo "    strain_path.csv ✓"
-    else
-        echo "    strain_path.csv — not found (job not done?)"
-    fi
+    # CSVs needed for plotting
+    for f in strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
+        if scp "${EULER_USER}@${EULER_HOST}:${REMOTE_DIR}/${f}" "$LOCAL_DIR/" 2>/dev/null; then
+            echo "    ${f} ✓"
+        else
+            echo "    ${f} — not found (skipping)"
+        fi
+    done
 
     # movie
     if [ "$DOWNLOAD_MOVIES" = true ]; then
@@ -79,15 +82,18 @@ for W in "${WIDTHS[@]}"; do
             echo "    movie — not found (skipping)"
         fi
     fi
+
+    LOCAL_DIRS="$LOCAL_DIRS $LOCAL_DIR"
 done
 
 echo ""
 echo "=============================================="
 if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
-    echo "  Plotting FLC ..."
+    FLC_PDF="$SCRIPT_DIR/FLC_${TEST_TYPE}_t${_t}_ang${_ang}.pdf"
+    echo "  Plotting FLC → ${FLC_PDF} ..."
     cd "$SCRIPT_DIR"
-    python3 plot_flc.py
-    echo "  Done → flc_plot.png"
+    python3 plot_flc.py $LOCAL_DIRS --output "$FLC_PDF"
+    echo "  Done."
 else
     echo "  Skipping FLC plot (test=${TEST_TYPE}, custom_widths=${CUSTOM_WIDTHS})"
 fi

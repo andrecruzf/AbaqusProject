@@ -6,15 +6,15 @@ Lance via Abaqus CAE en mode script (pas de GUI) :
 
     abaqus cae noGUI=build_model.py
 
-Le script exécute séquentiellement les 8 modules pour :
+Le script exécute séquentiellement les 7 étapes pour :
   1. Créer les pièces (outils rigides + éprouvette)
   2. Assembler le modèle
   3. Définir le matériau et la section coque
   4. Créer le step Dynamic Explicit + amplitude Smooth Step
   5. Définir le contact général
   6. Appliquer les conditions aux limites
-  7. Définir les demandes de sortie (Field + History)
-  8. Sauvegarder le .cae et écrire le .inp
+  7. Sauvegarder le .cae et écrire le .inp
+     (les demandes de sortie sont injectées dans le .inp par job.py)
 
 Sorties :
   • nakazima_model.cae   → ouvrir dans Abaqus CAE pour vérification
@@ -65,28 +65,28 @@ def run():
         os.makedirs(cfg.OUTPUT_DIR)
         print('  Created output directory: %s/' % cfg.OUTPUT_DIR)
 
-    print('\n[1/8] Pièces ...')
+    print('\n[1/7] Pièces ...')
     create_parts(cfg)
 
-    print('\n[2/8] Assembly ...')
+    print('\n[2/7] Assembly ...')
     create_assembly(cfg)
 
-    print('\n[3/8] Matériau ...')
+    print('\n[3/7] Matériau ...')
     define_material(cfg)
 
-    print('\n[4/8] Step & amplitude ...')
+    print('\n[4/7] Step & amplitude ...')
     create_step(cfg)
 
-    print('\n[5/8] Contact ...')
+    print('\n[5/7] Contact ...')
     define_contact(cfg)
 
-    print('\n[6/8] Conditions aux limites ...')
+    print('\n[6/7] Conditions aux limites ...')
     apply_bcs(cfg)
 
     # Output requests are injected into the .inp by job.py (_inject_output_requests)
     # to avoid 'Model has no attribute FieldOutputRequest' in Abaqus 2023 noGUI.
 
-    print('\n[8/8] Sauvegarde .cae + écriture .inp ...')
+    print('\n[7/7] Sauvegarde .cae + écriture .inp ...')
     save_and_export(cfg)
 
     print('\n' + '=' * 60)
@@ -97,5 +97,5 @@ def run():
 
 
 # ─────────────────────────────────────────────────────────────
-if __name__ == '__main__' or 'abaqus' in sys.version.lower() or True:
+if __name__ == '__main__' or 'abaqus' in sys.version.lower():
     run()

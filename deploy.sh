@@ -36,6 +36,7 @@ MESH_REFINEMENT_FACTOR=${5:-$DEFAULT_MR}
 echo "  Pushing scripts to Euler ..."
 scp -q "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
+    "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/run_flc.sh" \
     "$SCRIPT_DIR/postproc.py" \
@@ -44,6 +45,7 @@ scp -q "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/plot_flc.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "$SCRIPT_DIR/submit_all.sh" \
+    "$SCRIPT_DIR/submit_one.sh" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 echo "  Done."
 

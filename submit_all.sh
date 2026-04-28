@@ -13,6 +13,8 @@ set -e
 EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
 
 TEST_TYPE=$1
+# normalize to lowercase
+TEST_TYPE="${TEST_TYPE,,}"
 THICKNESS=$2
 ORIENTATION=$3
 PIP_PUNCH2_ID=$4
@@ -72,7 +74,14 @@ for W in "${WIDTHS[@]}"; do
     MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
     PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
     MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
-    abaqus cae noGUI=build_model.py
+    xvfb-run -a abaqus cae noGUI=build_model.py
+
+    echo "  Rendering mesh screenshot ..."
+    OUTPUT_DIR="${EULER_DIR}/${JOB_NAME}" \
+    JOB_NAME="${JOB_NAME}" \
+    xvfb-run -a abaqus cae noGUI="${EULER_DIR}/screenshot_mesh.py" \
+        || echo "  WARNING: mesh screenshot failed (continuing)."
+    cp /tmp/screenshot_mesh_out.txt "${EULER_DIR}/${JOB_NAME}/${JOB_NAME}_mesh_log.txt" 2>/dev/null || true
 
     echo "  Submitting solver job ..."
     JOB_ID=$(cd "${EULER_DIR}" && sbatch \

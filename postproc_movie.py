@@ -40,7 +40,7 @@ try:
 except Exception:
     pass
 
-_BG = '#1a1a2e'
+_BG = '#cccaca'
 
 
 def _resolve_odb_path():
@@ -64,6 +64,117 @@ def _resolve_odb_path():
     if job_name and subdir:
         return os.path.join(os.getcwd(), subdir, job_name + '.odb')
     return None
+
+
+def _resolve_eqps_max(odb):
+    """Return a physically meaningful fixed upper bound for the EQPS color scale.
+
+    Method B (preferred): scan frames backward to find the last frame where
+    deleted elements still had SDV1 output — their EQPS there is the true
+    fracture strain.  Deleted elements vanish from field output after deletion,
+    so the first backward frame that contains their label is their last alive
+    frame.
+
+    Method A (fallback): global max of SDV1 in the last frame (surviving
+    elements only).  Used when no deletions occurred or STATUS is absent.
+
+    The result is rounded up to the next clean power-of-10 multiple for
+    legible legend ticks.
+    """
+    import math as _math
+
+    print('  Resolving EQPS max ...')
+    try:
+        last_step_name = odb.steps.keys()[-1]
+        step = odb.steps[last_step_name]
+        frames = step.frames
+        n_frames = len(frames)
+        print('  Step: %s   Frames: %d' % (last_step_name, n_frames))
+    except Exception as e:
+        print('  NOTE: cannot access frames (%s) — using auto range.' % e)
+        return None
+
+    if n_frames == 0:
+        print('  NOTE: no frames in last step — using auto range.')
+        return None
+
+    # Diagnostic: list available field outputs
+    try:
+        fo_keys = list(frames[n_frames - 1].fieldOutputs.keys())
+        print('  Field outputs in last frame: %s' % fo_keys)
+    except Exception as e:
+        print('  NOTE: cannot list field outputs (%s)' % e)
+
+    eqps_max = None
+
+    # ── Method B: backward scan for fracture EQPS of deleted elements ─────────
+    try:
+        last_frame = frames[n_frames - 1]
+        fo_keys_last = list(last_frame.fieldOutputs.keys())
+        if 'STATUS' in fo_keys_last:
+            fo_status_last = last_frame.fieldOutputs['STATUS']
+            deleted_labels = []
+            for v in fo_status_last.values:
+                if v.data < 0.5:
+                    deleted_labels.append(v.elementLabel)
+            deleted = frozenset(deleted_labels)
+            print('  Deleted elements (STATUS=0) in last frame: %d' % len(deleted))
+            if deleted:
+                for i in range(n_frames - 1, -1, -1):
+                    frame = frames[i]
+                    try:
+                        fo_sdv1 = frame.fieldOutputs['SDV1']
+                    except (KeyError, Exception):
+                        continue
+                    found = []
+                    for v in fo_sdv1.values:
+                        if v.elementLabel in deleted:
+                            found.append(v.data)
+                    if found:
+                        cur_max = found[0]
+                        for x in found[1:]:
+                            if x > cur_max:
+                                cur_max = x
+                        eqps_max = cur_max
+                        print('  EQPS max: %.4f  (fracture — %d deleted elements, method B, frame %d)'
+                              % (eqps_max, len(deleted), i))
+                        break
+        else:
+            print('  STATUS not in field outputs — skipping method B')
+    except Exception as e:
+        print('  NOTE: method B failed (%s) — using fallback.' % e)
+
+    # ── Method A fallback: global max of survivors in last frame ──────────────
+    if not eqps_max or eqps_max < 1e-6:
+        try:
+            last_frame = frames[n_frames - 1]
+            fo_sdv1 = last_frame.fieldOutputs['SDV1']
+            cur_max = None
+            for v in fo_sdv1.values:
+                if cur_max is None or v.data > cur_max:
+                    cur_max = v.data
+            if cur_max is not None:
+                eqps_max = cur_max
+                print('  EQPS max: %.4f  (last-frame survivors, method A)' % eqps_max)
+            else:
+                print('  NOTE: SDV1 has no values in last frame — using auto range.')
+                return None
+        except KeyError:
+            print('  NOTE: SDV1 not in last frame — using auto range.')
+            return None
+        except Exception as e:
+            print('  NOTE: method A failed (%s) — using auto range.' % e)
+            return None
+
+    if not eqps_max or eqps_max < 1e-6:
+        print('  NOTE: EQPS max is zero/tiny (%.4g) — using auto range.' % (eqps_max or 0.0))
+        return None
+
+    # Round up to the nearest clean power-of-10 multiple
+    mag = 10.0 ** _math.floor(_math.log10(eqps_max))
+    result = _math.ceil(eqps_max / mag) * mag
+    print('  EQPS max (rounded up): %.4f' % result)
+    return result
 
 
 # ── Display setup — one punch (Nakazima / Marciniak) ──────────────
@@ -157,17 +268,87 @@ def _setup_two_punches():
         lockOptions=ON)
 
 
+def _render_streaming(vp, odb, step_keys, _cam, out_file, eqps_max=None):
+    """Stream frames one at a time into ffmpeg stdin — O(1) disk usage.
+
+    Each frame is written to a single temp PNG, immediately piped to ffmpeg,
+    then deleted.  Peak disk usage is one frame (~300-500 KB) vs N×frame for
+    the batch approach.  ffmpeg encodes concurrently with rendering.
+
+    Returns ffmpeg exit code.
+    """
+    tmp_png  = '/tmp/abaqus_frame_%d.png' % os.getpid()
+    tmp_base = tmp_png[:-4]     # printToFile appends .png automatically
+
+    cmd = [
+        'ffmpeg', '-y',
+        '-f', 'image2pipe', '-vcodec', 'png', '-framerate', '10',
+        '-i', 'pipe:0',
+        '-vf', 'format=yuv420p',
+        '-vcodec', 'libvpx', '-crf', '10', '-b:v', '1M',
+        out_file,
+    ]
+    ffmpeg_proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    total = 0
+    for k in step_keys:
+        total += len(odb.steps[k].frames)
+    global_idx = 0
+    pipe_ok = True
+
+    for step_idx in range(len(step_keys)):
+        if not pipe_ok:
+            print('PIPE NOK ')
+            break
+        step_name = step_keys[step_idx]
+        n_frames  = len(odb.steps[step_name].frames)
+        for frame_idx in range(n_frames):
+            vp.odbDisplay.setFrame(step=step_idx, frame=frame_idx)
+            try:
+                vp.view.setValues(**_cam)
+            except Exception:
+                pass
+            # Re-apply fixed range each frame — setFrame() resets autocompute.
+            # minValue=0.0 is a sentinel in some Abaqus builds meaning "auto";
+            # use 1e-9 so Abaqus treats it as an explicit user value.
+            if eqps_max is not None:
+                _max = float(eqps_max)
+                co = vp.odbDisplay.contourOptions
+                co.setValues(maxAutoCompute=OFF, maxValue=_max,
+                             minAutoCompute=OFF, minValue=1e-9)
+            session.printToFile(fileName=tmp_base, format=PNG, canvasObjects=(vp,))
+
+            try:
+                with open(tmp_png, 'rb') as fh:
+                    ffmpeg_proc.stdin.write(fh.read())
+                os.remove(tmp_png)
+            except (IOError, OSError) as e:
+                print('  WARNING: pipe error at frame %d: %s' % (global_idx, e))
+                pipe_ok = False
+                break
+
+            if global_idx % 10 == 0:
+                print('    frame %d / %d' % (global_idx, total))
+            global_idx += 1
+
+    try:
+        ffmpeg_proc.stdin.close()
+    except Exception:
+        pass
+    ret = ffmpeg_proc.wait()
+
+    if os.path.exists(tmp_png):
+        os.remove(tmp_png)
+
+    return ret
+
+
 def make_movie(odb_path, out_dir=None):
     odb_path = os.path.abspath(odb_path)
     if out_dir is None:
         out_dir = os.path.dirname(odb_path)
 
-    job_name  = os.path.splitext(os.path.basename(odb_path))[0]
-    frame_dir = os.path.join(out_dir, 'frames_tmp')
-    out_file  = os.path.join(out_dir, job_name + '_movie.webm')
-
-    if not os.path.isdir(frame_dir):
-        os.makedirs(frame_dir)
+    job_name = os.path.splitext(os.path.basename(odb_path))[0]
+    out_file = os.path.join(out_dir, job_name + '_movie.webm')
 
     print('=' * 60)
     print('  postproc_movie.py — animation export')
@@ -188,14 +369,12 @@ def make_movie(odb_path, out_dir=None):
 
     # ── Annotations ───────────────────────────────────────────
     vp.viewportAnnotationOptions.setValues(
-        compass=OFF, title=OFF, state=ON, legend=ON,
+        compass=OFF, title=OFF, state=OFF, legend=ON,
         legendFont='-*-verdana-bold-r-normal-*-*-140-*-*-p-*-*-*',
-        legendNumberFormat=ENGINEERING)
+        legendNumberFormat=FIXED, legendDecimalPlaces=3)
 
-    # ── Per-frame auto color range — full spectrum at every frame ──
-    vp.odbDisplay.contourOptions.setValues(
-        minAutoCompute=ON, maxAutoCompute=ON)
-    print('  Contour range: per-frame auto')
+    # ── Compute EQPS max before display setup touches contour options ─────────
+    eqps_max = _resolve_eqps_max(odb)
 
     # ── Display setup — detect one vs two punches ──────────────
     inst_names = list(odb.rootAssembly.instances.keys())
@@ -209,11 +388,46 @@ def make_movie(odb_path, out_dir=None):
         _setup_single_punch()
         print('  Display: single punch')
 
+    # ── Fixed contour range — applied after display setup so setPrimaryVariable
+    #    and plotState changes cannot reset it back to auto.
+    #    Two separate calls (max then min) match what the Abaqus macro recorder
+    #    generates; a combined call may be silently ignored in Abaqus 2023.
+    #    session.defaultOdbDisplay is also set so that setFrame() cannot reset
+    #    the range to the session default (which has autocompute ON). ─────────────
+    _cmax = float(eqps_max) if eqps_max else 1.0
+    # minValue=0.0 is a sentinel in some Abaqus builds; use 1e-9 instead.
+    _cmin = 1e-9
+    for _co in (vp.odbDisplay.contourOptions,):
+        _co.setValues(maxAutoCompute=OFF, maxValue=_cmax,
+                      minAutoCompute=OFF, minValue=_cmin)
+    try:
+        session.defaultOdbDisplay.contourOptions.setValues(
+            maxAutoCompute=OFF, maxValue=_cmax,
+            minAutoCompute=OFF, minValue=_cmin)
+    except Exception as _e:
+        print('  NOTE: defaultOdbDisplay contour set failed (%s)' % _e)
+    if eqps_max:
+        print('  Contour range: 0 — %.4f (fixed)' % eqps_max)
+    else:
+        print('  Contour range: 0 — 1 (no SDV1 data found)')
+
     # ── Camera ────────────────────────────────────────────────
+    # Fit to specimen only at the last frame.  The blank holder clamps the
+    # outer rim so the specimen XY footprint is constant throughout — this
+    # gives a stable camera.  Rigid bodies are hidden during fitView so the
+    # punch's initial standoff height doesn't force a zoomed-out view.
+    _s_keys = odb.steps.keys()
+    _last_s_idx = len(_s_keys) - 1
+    _last_f_idx = max(0, len(odb.steps[_s_keys[-1]].frames) - 1)
     session.graphicsOptions.setValues(backgroundColor=_BG)
     vp.view.setValues(session.views['Iso'])
+    vp.odbDisplay.setFrame(step=_last_s_idx, frame=_last_f_idx)
+    dg_sp = session.displayGroups['Specimen']
+    dg_rb = session.displayGroups['Rigid Bodies']
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp,))
     vp.view.fitView()
-    vp.view.zoom(zoomFactor=1.25)
+    vp.view.zoom(zoomFactor=1)
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp, dg_rb))
     _cam = dict(
         cameraPosition=vp.view.cameraPosition,
         cameraUpVector=vp.view.cameraUpVector,
@@ -222,54 +436,22 @@ def make_movie(odb_path, out_dir=None):
         height=vp.view.height,
     )
 
-    # ── Export frames ─────────────────────────────────────────
     step_keys = odb.steps.keys()
     total = 0
     for k in step_keys:
         total += len(odb.steps[k].frames)
     print('  Steps: %d   Frames: %d' % (len(step_keys), total))
+    print('  Streaming frames → ffmpeg stdin ...')
 
-    global_idx = 0
-    for step_idx in range(len(step_keys)):
-        step_name = step_keys[step_idx]
-        n_frames  = len(odb.steps[step_name].frames)
-        for frame_idx in range(n_frames):
-            vp.odbDisplay.setFrame(step=step_idx, frame=frame_idx)
-            try:
-                vp.view.setValues(**_cam)
-            except Exception:
-                pass
-            session.graphicsOptions.setValues(backgroundColor=_BG)
-            session.printToFile(
-                fileName=os.path.join(frame_dir, 'frame_%04d' % global_idx),
-                format=PNG, canvasObjects=(vp,))
-            if global_idx % 10 == 0:
-                print('    frame %d / %d' % (global_idx, total))
-            global_idx += 1
+    # ── Stream frames directly into ffmpeg — no temp directory ────────────────
+    ret = _render_streaming(vp, odb, step_keys, _cam, out_file, eqps_max=eqps_max)
 
     odb.close()
 
-    # ── ffmpeg encode ─────────────────────────────────────────
-    print('  Running ffmpeg ...')
-    pattern = os.path.join(frame_dir, 'frame_%04d.png')
-    cmd = [
-        'ffmpeg', '-y', '-framerate', '10', '-i', pattern,
-        '-vf', 'format=yuv420p',
-        '-vcodec', 'libvpx', '-crf', '10', '-b:v', '1M',
-        out_file,
-    ]
-
-    ret = subprocess.call(cmd)
     if ret != 0:
-        print('  WARNING: ffmpeg failed (exit %d). Frames in %s' % (ret, frame_dir))
+        print('  WARNING: ffmpeg exited with code %d' % ret)
+        print('  Check /tmp/postproc_movie_out.txt for render errors.')
     else:
-        import glob
-        for f in glob.glob(os.path.join(frame_dir, 'frame_*.png')):
-            os.remove(f)
-        try:
-            os.rmdir(frame_dir)
-        except OSError:
-            pass
         print('  Done -> %s' % out_file)
 
     print('=' * 60)

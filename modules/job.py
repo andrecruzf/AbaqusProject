@@ -168,7 +168,6 @@ def _inject_mass_scaling(inp_file, dt):
             i += 1
             if i < len(lines):
                 new_lines.append(lines[i])   # ", <time_period>" data line
-            #new_lines.append('*Fixed Mass Scaling, TYPE=UNIFORM, DT=%g\n' % dt)
             new_lines.append('*Variable Mass Scaling, TYPE=BELOW MIN, DT=%g, FREQUENCY=10\n' % dt)
         i += 1
     with open(inp_file, 'w') as f:

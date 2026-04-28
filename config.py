@@ -119,7 +119,7 @@ BLANK_RADIUS  = 100.0
 # MESH
 # =============================================================
 # Refinement factor: 1.0 = baseline; 0.5 = half element size (finer); 2.0 = coarser.
-MESH_REFINEMENT_FACTOR = float(_os.environ.get('MESH_REFINEMENT_FACTOR', 4.0))
+MESH_REFINEMENT_FACTOR = float(_os.environ.get('MESH_REFINEMENT_FACTOR', 2.0))
 
 # Seeding zones: (r_max mm, size_radial mm, size_circumferential mm).
 # Edges on the blank top face are assigned the size of the first zone whose
@@ -143,7 +143,7 @@ R_DOME = 0.15 * PUNCH_RADIUS * 2.0
 # =============================================================
 # FORMING PARAMETERS
 # =============================================================
-PUNCH_DISPLACEMENT = 37.0                          # mm
+PUNCH_DISPLACEMENT = 42                          # mm
 STEP_TIME          = PUNCH_DISPLACEMENT / 5.0      # s  — → 7.4 mm/s (ISO 12004-2: 0.5–2 mm/s)
 # Check ALLKE/ALLIE < 5 % in post-processing to validate quasi-static assumption.
 
