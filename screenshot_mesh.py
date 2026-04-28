@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-screenshot_mesh.py  —  Render a PNG of the specimen mesh from a saved .cae.
+screenshot_mesh.py  —  Render PNG screenshots of the specimen mesh from a .cae.
 
 Run via submit_one.sh / submit_all.sh immediately after the build step:
     OUTPUT_DIR=<path>  JOB_NAME=<name>  xvfb-run -a abaqus cae noGUI=screenshot_mesh.py
 
-Output:
-    <OUTPUT_DIR>/<JOB_NAME>_mesh.png
-    <OUTPUT_DIR>/<JOB_NAME>_mesh_log.txt   (stdout mirror for diagnostics)
+Output (per job):
+    <OUTPUT_DIR>/<JOB_NAME>_mesh.png        — ISO view
+    <OUTPUT_DIR>/<JOB_NAME>_mesh_top.png    — face-on view (+Z camera)
+    <OUTPUT_DIR>/<JOB_NAME>_mesh_diag.txt   — API call log for debugging
+
+Abaqus 2023 noGUI findings (hard-won):
+  - partDisplayOptions is absent in noGUI; assemblyDisplay is always active.
+  - assemblyDisplay.setValues(mesh=ON, renderStyle=FILLED) works.
+  - assemblyDisplay.meshOptions.setValues(meshVisibleEdges=ALL) shows all edges.
+  - Display groups: LeafFromInstance(instances=(inst_obj,)) + displayGroup.replace(leaf).
+  - Blank is in the XY plane (Z ≈ thickness/2); top view looks from +Z.
 """
 from abaqus import *
 from abaqusConstants import *
@@ -16,21 +24,21 @@ import os
 import sys
 import shutil
 
-_LOG_PATH = '/tmp/screenshot_mesh_out.txt'
-try:
-    _log_fh = open(_LOG_PATH, 'w')
+_DIAG = []
 
-    class _Tee(object):
-        def __init__(self, a, b):
-            self.a, self.b = a, b
-        def write(self, s):
-            self.a.write(s); self.b.write(s)
-        def flush(self):
-            self.a.flush(); self.b.flush()
 
-    sys.stdout = _Tee(sys.stdout, _log_fh)
-except Exception:
-    pass
+def _log(msg):
+    _DIAG.append(msg)
+
+
+def _try(label, fn):
+    try:
+        fn()
+        _log('  OK   %s' % label)
+        return True
+    except Exception as e:
+        _log('  FAIL %s  ->  %s' % (label, e))
+        return False
 
 
 def _resolve_params():
@@ -53,6 +61,29 @@ def _resolve_params():
     return job_name, out_dir
 
 
+def _apply_display_group(vp, a, specimen_inst_name):
+    """Restrict viewport to the specimen instance only via a display group."""
+    try:
+        import displayGroupMdbToolset as dgm
+        inst_obj = a.instances[specimen_inst_name]
+        leaf = dgm.LeafFromInstance(instances=(inst_obj,))
+        _log('  LeafFromInstance: OK')
+        vp.assemblyDisplay.displayGroup.replace(leaf=leaf)
+        _log('  displayGroup.replace: OK')
+    except Exception as e:
+        _log('  Display group failed: %s' % e)
+
+
+def _show_mesh_edges(vp):
+    """Enable filled render style with all mesh edges visible."""
+    ado = vp.assemblyDisplay
+    _try('mesh=ON',               lambda: ado.setValues(mesh=ON))
+    _try('renderStyle=FILLED',    lambda: ado.setValues(renderStyle=FILLED))
+    mo = getattr(ado, 'meshOptions', None)
+    if mo is not None:
+        _try('meshVisibleEdges=ALL', lambda: mo.setValues(meshVisibleEdges=ALL))
+
+
 def take_screenshot(job_name, out_dir):
     cae_path = None
     for f in sorted(os.listdir(out_dir)):
@@ -63,81 +94,85 @@ def take_screenshot(job_name, out_dir):
         print('ERROR: no .cae file found in %s' % out_dir)
         return
 
-    out_png = os.path.join(out_dir, job_name + '_mesh')
+    out_iso = os.path.join(out_dir, job_name + '_mesh')
+    out_top = os.path.join(out_dir, job_name + '_mesh_top')
 
     print('=' * 60)
     print('  screenshot_mesh.py')
-    print('  CAE  : %s' % cae_path)
-    print('  OUT  : %s.png' % out_png)
+    print('  CAE : %s' % cae_path)
     print('=' * 60)
 
     openMdb(pathName=cae_path)
+    m = mdb.models[mdb.models.keys()[0]]
 
-    model_name = mdb.models.keys()[0]
-    m = mdb.models[model_name]
-
-    # Find the specimen (only deformable part — has elements)
+    # Find the specimen (only deformable part with elements)
     specimen_part = None
     for pname, part in m.parts.items():
         print('  Part: %-28s  elements=%d  nodes=%d'
               % (pname, len(part.elements), len(part.nodes)))
         if specimen_part is None and len(part.elements) > 0:
             specimen_part = part
-            print('    → specimen')
+            print('    -> specimen')
 
     if specimen_part is None:
-        print('ERROR: no deformable part with elements found.')
+        print('ERROR: no meshed part found.')
         return
+
+    # Find the corresponding assembly instance
+    a = m.rootAssembly
+    specimen_inst_name = None
+    for iname, inst in a.instances.items():
+        try:
+            if len(inst.elements) > 0:
+                specimen_inst_name = iname
+                print('  Instance: %s' % iname)
+                break
+        except Exception:
+            pass
 
     vp = session.viewports['Viewport: 1']
 
-    # Switch viewport to the specimen part
-    vp.setValues(displayedObject=specimen_part)
+    # Assembly context: assemblyDisplay controls are only active when the
+    # displayed object is the assembly (not a part object).
+    vp.setValues(displayedObject=a)
 
-    # Dump available display attrs for diagnostics
-    part_attrs = [a for a in dir(vp) if 'display' in a.lower() or 'render' in a.lower()]
-    print('  vp display/render attrs: %s' % part_attrs)
+    if specimen_inst_name:
+        _apply_display_group(vp, a, specimen_inst_name)
 
-    # Try to get mesh lines via partDisplayOptions (Part module context)
-    for kwargs in [
-        {'renderStyle': FILLED, 'visibleEdges': ALL},
-        {'renderStyle': FILLED},
-    ]:
-        try:
-            vp.partDisplayOptions.setValues(**kwargs)
-            print('  partDisplayOptions.setValues(%s): OK' % kwargs)
-            break
-        except Exception as _e:
-            print('  partDisplayOptions.setValues(%s): %s' % (kwargs, _e))
+    _show_mesh_edges(vp)
 
-    # Fall back to trying assemblyDisplay if partDisplayOptions is absent
-    if not hasattr(vp, 'partDisplayOptions'):
-        for kwargs in [
-            {'renderStyle': FILLED, 'visibleEdges': ALL},
-            {'renderStyle': FILLED},
-            {'renderStyle': WIREFRAME},
-        ]:
-            try:
-                vp.assemblyDisplay.setValues(**kwargs)
-                print('  assemblyDisplay.setValues(%s): OK' % kwargs)
-                break
-            except Exception as _e:
-                print('  assemblyDisplay.setValues(%s): %s' % (kwargs, _e))
-
-    # White background
-    try:
-        session.graphicsOptions.setValues(backgroundColor='#FFFFFF')
-    except Exception as _e:
-        print('  backgroundColor: %s' % _e)
-
-    vp.view.setValues(session.views['Iso'])
-    vp.view.fitView()
-
+    session.graphicsOptions.setValues(backgroundColor='#FFFFFF')
     session.pngOptions.setValues(imageSize=(1280, 960))
     session.printOptions.setValues(vpDecorations=OFF, vpBackground=ON)
-    session.printToFile(fileName=out_png, format=PNG, canvasObjects=(vp,))
 
-    print('  Done → %s.png' % out_png)
+    # ── ISO view ──────────────────────────────────────────────────────────────
+    vp.view.setValues(session.views['Iso'])
+    vp.view.fitView()
+    session.printToFile(fileName=out_iso, format=PNG, canvasObjects=(vp,))
+    print('  ISO -> %s.png' % out_iso)
+
+    # ── Face-on view: blank in XY plane, look from +Z ─────────────────────────
+    try:
+        vp.view.setValues(
+            cameraPosition=(0.0, 0.0, 1000.0),
+            cameraUpVector=(0.0, 1.0, 0.0),
+            cameraTarget=(0.0, 0.0, 0.0),
+            projection=PARALLEL,
+        )
+        vp.view.fitView()
+        session.printToFile(fileName=out_top, format=PNG, canvasObjects=(vp,))
+        print('  Top -> %s.png' % out_top)
+    except Exception as e:
+        _log('  Top view failed: %s' % e)
+
+    # ── Write diagnostics ─────────────────────────────────────────────────────
+    diag_path = os.path.join(out_dir, job_name + '_mesh_diag.txt')
+    try:
+        with open(diag_path, 'w') as fh:
+            fh.write('\n'.join(_DIAG) + '\n')
+    except Exception:
+        pass
+
     print('=' * 60)
 
 
@@ -151,10 +186,3 @@ elif not os.path.isdir(out_dir):
     print('ERROR: output directory not found: %s' % out_dir)
 else:
     take_screenshot(job_name, out_dir)
-
-try:
-    if job_name and out_dir and os.path.isdir(out_dir):
-        shutil.copy(_LOG_PATH,
-                    os.path.join(out_dir, job_name + '_mesh_log.txt'))
-except Exception:
-    pass
