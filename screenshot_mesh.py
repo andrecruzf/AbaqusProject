@@ -8,37 +8,17 @@ Run via submit_one.sh / submit_all.sh immediately after the build step:
 Output (per job):
     <OUTPUT_DIR>/<JOB_NAME>_mesh.png        — ISO view
     <OUTPUT_DIR>/<JOB_NAME>_mesh_top.png    — face-on view (+Z camera)
-    <OUTPUT_DIR>/<JOB_NAME>_mesh_diag.txt   — API call log for debugging
 
-Abaqus 2023 noGUI findings (hard-won):
-  - partDisplayOptions is absent in noGUI; assemblyDisplay is always active.
-  - assemblyDisplay.setValues(mesh=ON, renderStyle=FILLED) works.
-  - assemblyDisplay.meshOptions.setValues(meshVisibleEdges=ALL) shows all edges.
-  - Display groups: LeafFromInstance(instances=(inst_obj,)) + displayGroup.replace(leaf).
-  - Blank is in the XY plane (Z ≈ thickness/2); top view looks from +Z.
+API confirmed from macro recording (Abaqus 2023):
+  - Switch viewport to the Part object (not the assembly).
+  - partDisplay.setValues(mesh=ON)
+  - partDisplay.meshOptions.setValues(meshTechnique=ON)   ← shows technique coloring
+  - partDisplay.geometryOptions.setValues(referenceRepresentation=OFF)
 """
 from abaqus import *
 from abaqusConstants import *
 import visualization
 import os
-import sys
-import shutil
-
-_DIAG = []
-
-
-def _log(msg):
-    _DIAG.append(msg)
-
-
-def _try(label, fn):
-    try:
-        fn()
-        _log('  OK   %s' % label)
-        return True
-    except Exception as e:
-        _log('  FAIL %s  ->  %s' % (label, e))
-        return False
 
 
 def _resolve_params():
@@ -59,29 +39,6 @@ def _resolve_params():
                             out_dir = os.path.join(os.getcwd(), sub)
 
     return job_name, out_dir
-
-
-def _apply_display_group(vp, a, specimen_inst_name):
-    """Restrict viewport to the specimen instance only via a display group."""
-    try:
-        import displayGroupMdbToolset as dgm
-        inst_obj = a.instances[specimen_inst_name]
-        leaf = dgm.LeafFromInstance(instances=(inst_obj,))
-        _log('  LeafFromInstance: OK')
-        vp.assemblyDisplay.displayGroup.replace(leaf=leaf)
-        _log('  displayGroup.replace: OK')
-    except Exception as e:
-        _log('  Display group failed: %s' % e)
-
-
-def _show_mesh_edges(vp):
-    """Enable filled render style with all mesh edges visible."""
-    ado = vp.assemblyDisplay
-    _try('mesh=ON',               lambda: ado.setValues(mesh=ON))
-    _try('renderStyle=FILLED',    lambda: ado.setValues(renderStyle=FILLED))
-    mo = getattr(ado, 'meshOptions', None)
-    if mo is not None:
-        _try('meshVisibleEdges=ALL', lambda: mo.setValues(meshVisibleEdges=ALL))
 
 
 def take_screenshot(job_name, out_dir):
@@ -118,28 +75,13 @@ def take_screenshot(job_name, out_dir):
         print('ERROR: no meshed part found.')
         return
 
-    # Find the corresponding assembly instance
-    a = m.rootAssembly
-    specimen_inst_name = None
-    for iname, inst in a.instances.items():
-        try:
-            if len(inst.elements) > 0:
-                specimen_inst_name = iname
-                print('  Instance: %s' % iname)
-                break
-        except Exception:
-            pass
-
     vp = session.viewports['Viewport: 1']
 
-    # Assembly context: assemblyDisplay controls are only active when the
-    # displayed object is the assembly (not a part object).
-    vp.setValues(displayedObject=a)
-
-    if specimen_inst_name:
-        _apply_display_group(vp, a, specimen_inst_name)
-
-    _show_mesh_edges(vp)
+    # ── Switch to Part module context (confirmed by macro recording) ──────────
+    vp.setValues(displayedObject=specimen_part)
+    vp.partDisplay.setValues(mesh=ON)
+    vp.partDisplay.meshOptions.setValues(meshTechnique=ON)
+    vp.partDisplay.geometryOptions.setValues(referenceRepresentation=OFF)
 
     session.graphicsOptions.setValues(backgroundColor='#FFFFFF')
     session.pngOptions.setValues(imageSize=(1280, 960))
@@ -153,25 +95,17 @@ def take_screenshot(job_name, out_dir):
 
     # ── Face-on view: blank in XY plane, look from +Z ─────────────────────────
     try:
+        vp.view.setProjection(projection=PARALLEL)
         vp.view.setValues(
             cameraPosition=(0.0, 0.0, 1000.0),
             cameraUpVector=(0.0, 1.0, 0.0),
             cameraTarget=(0.0, 0.0, 0.0),
-            projection=PARALLEL,
         )
         vp.view.fitView()
         session.printToFile(fileName=out_top, format=PNG, canvasObjects=(vp,))
         print('  Top -> %s.png' % out_top)
     except Exception as e:
-        _log('  Top view failed: %s' % e)
-
-    # ── Write diagnostics ─────────────────────────────────────────────────────
-    diag_path = os.path.join(out_dir, job_name + '_mesh_diag.txt')
-    try:
-        with open(diag_path, 'w') as fh:
-            fh.write('\n'.join(_DIAG) + '\n')
-    except Exception:
-        pass
+        print('  Top view failed: %s' % e)
 
     print('=' * 60)
 
