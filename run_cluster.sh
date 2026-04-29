@@ -24,7 +24,6 @@ set -e
 module load stack/2024-06
 module load abaqus/2023
 module load intel-oneapi-compilers/2023.2.0 intel-oneapi-mpi/2021.10.0
-module load python/3.11.6
 
 NCPUS=${SLURM_CPUS_PER_TASK:-4}
 
