@@ -268,77 +268,43 @@ def _setup_two_punches():
         lockOptions=ON)
 
 
-def _render_streaming(vp, odb, step_keys, _cam, out_file, eqps_max=None):
-    """Stream frames one at a time into ffmpeg stdin — O(1) disk usage.
+def _render_animation(vp, out_file):
+    """Export animation via Abaqus's built-in writeImageAnimation (TIME_HISTORY),
+    then convert the AVI to webm with ffmpeg.
 
-    Each frame is written to a single temp PNG, immediately piped to ffmpeg,
-    then deleted.  Peak disk usage is one frame (~300-500 KB) vs N×frame for
-    the batch approach.  ffmpeg encodes concurrently with rendering.
+    Using the built-in exporter means Abaqus drives the animation controller
+    internally — no manual setFrame() loop, no per-frame contour re-apply.
+    Display options (contour range, camera, display groups) set on the viewport
+    before this call are respected for the whole export.
 
-    Returns ffmpeg exit code.
+    Returns ffmpeg exit code, or 0 if the AVI itself is kept as fallback.
     """
-    tmp_png  = '/tmp/abaqus_frame_%d.png' % os.getpid()
-    tmp_base = tmp_png[:-4]     # printToFile appends .png automatically
+    tmp_avi = '/tmp/abaqus_movie_%d.avi' % os.getpid()
+
+    vp.animationController.setValues(animationType=TIME_HISTORY)
+    session.imageAnimationOptions.setValues(
+        frameRate=10, compass=OFF, timeScale=1)
+    session.writeImageAnimation(
+        fileName=tmp_avi, format=AVI, canvasObjects=(vp,))
+    vp.animationController.setValues(animationType=NONE)
+
+    # Abaqus may append .avi itself — find whichever exists.
+    actual_avi = tmp_avi if os.path.isfile(tmp_avi) else tmp_avi + '.avi'
+    if not os.path.isfile(actual_avi):
+        print('  WARNING: AVI not found at %s — skipping webm conversion.' % actual_avi)
+        return 1
 
     cmd = [
-        'ffmpeg', '-y',
-        '-f', 'image2pipe', '-vcodec', 'png', '-framerate', '10',
-        '-i', 'pipe:0',
+        'ffmpeg', '-y', '-i', actual_avi,
         '-vf', 'format=yuv420p',
         '-vcodec', 'libvpx', '-crf', '10', '-b:v', '1M',
         out_file,
     ]
-    ffmpeg_proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    total = 0
-    for k in step_keys:
-        total += len(odb.steps[k].frames)
-    global_idx = 0
-    pipe_ok = True
-
-    for step_idx in range(len(step_keys)):
-        if not pipe_ok:
-            print('PIPE NOK ')
-            break
-        step_name = step_keys[step_idx]
-        n_frames  = len(odb.steps[step_name].frames)
-        for frame_idx in range(n_frames):
-            vp.odbDisplay.setFrame(step=step_idx, frame=frame_idx)
-            try:
-                vp.view.setValues(**_cam)
-            except Exception:
-                pass
-            # Re-apply fixed range each frame — setFrame() resets autocompute.
-            # minValue=0.0 is a sentinel in some Abaqus builds meaning "auto";
-            # use 1e-9 so Abaqus treats it as an explicit user value.
-            if eqps_max is not None:
-                _max = float(eqps_max)
-                co = vp.odbDisplay.contourOptions
-                co.setValues(maxAutoCompute=OFF, maxValue=_max,
-                             minAutoCompute=OFF, minValue=1e-9)
-            session.printToFile(fileName=tmp_base, format=PNG, canvasObjects=(vp,))
-
-            try:
-                with open(tmp_png, 'rb') as fh:
-                    ffmpeg_proc.stdin.write(fh.read())
-                os.remove(tmp_png)
-            except (IOError, OSError) as e:
-                print('  WARNING: pipe error at frame %d: %s' % (global_idx, e))
-                pipe_ok = False
-                break
-
-            if global_idx % 10 == 0:
-                print('    frame %d / %d' % (global_idx, total))
-            global_idx += 1
-
+    ret = subprocess.call(cmd)
     try:
-        ffmpeg_proc.stdin.close()
-    except Exception:
+        os.remove(actual_avi)
+    except OSError:
         pass
-    ret = ffmpeg_proc.wait()
-
-    if os.path.exists(tmp_png):
-        os.remove(tmp_png)
-
     return ret
 
 
@@ -412,10 +378,12 @@ def make_movie(odb_path, out_dir=None):
         print('  Contour range: 0 — 1 (no SDV1 data found)')
 
     # ── Camera ────────────────────────────────────────────────
-    # Fit to specimen only at the last frame.  The blank holder clamps the
-    # outer rim so the specimen XY footprint is constant throughout — this
-    # gives a stable camera.  Rigid bodies are hidden during fitView so the
-    # punch's initial standoff height doesn't force a zoomed-out view.
+    # Fit to the rigid bodies (die + blank holder) at the last frame.
+    # They are always the same physical size regardless of specimen width,
+    # so this gives a consistent zoom across all geometries.  The specimen
+    # is hidden during fitView so its varying width doesn't affect the zoom;
+    # the punch is also hidden so its initial standoff height doesn't force
+    # a zoomed-out view.
     _s_keys = odb.steps.keys()
     _last_s_idx = len(_s_keys) - 1
     _last_f_idx = max(0, len(odb.steps[_s_keys[-1]].frames) - 1)
@@ -424,27 +392,18 @@ def make_movie(odb_path, out_dir=None):
     vp.odbDisplay.setFrame(step=_last_s_idx, frame=_last_f_idx)
     dg_sp = session.displayGroups['Specimen']
     dg_rb = session.displayGroups['Rigid Bodies']
-    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp,))
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_rb,))
     vp.view.fitView()
-    vp.view.zoom(zoomFactor=1)
     vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp, dg_rb))
-    _cam = dict(
-        cameraPosition=vp.view.cameraPosition,
-        cameraUpVector=vp.view.cameraUpVector,
-        cameraTarget=vp.view.cameraTarget,
-        width=vp.view.width,
-        height=vp.view.height,
-    )
 
     step_keys = odb.steps.keys()
     total = 0
     for k in step_keys:
         total += len(odb.steps[k].frames)
     print('  Steps: %d   Frames: %d' % (len(step_keys), total))
-    print('  Streaming frames → ffmpeg stdin ...')
+    print('  Exporting via writeImageAnimation → ffmpeg → webm ...')
 
-    # ── Stream frames directly into ffmpeg — no temp directory ────────────────
-    ret = _render_streaming(vp, odb, step_keys, _cam, out_file, eqps_max=eqps_max)
+    ret = _render_animation(vp, out_file)
 
     odb.close()
 
