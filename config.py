@@ -155,7 +155,7 @@ USE_EDGE_ENCASTRE = True   # encastre the outer blank edge
 # =============================================================
 USE_MASS_SCALING = True
 # Default 1e-6 s; override via MASS_SCALING_DT env var for sensitivity sweeps.
-MASS_SCALING_DT = float(_os.environ.get('MASS_SCALING_DT', 1.0e-6))   # s
+MASS_SCALING_DT = float(_os.environ.get('MASS_SCALING_DT', 1.0e-5))   # s
 
 
 # =============================================================
