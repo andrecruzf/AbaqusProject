@@ -40,7 +40,7 @@ try:
 except Exception:
     pass
 
-_BG = '#cccaca'
+_BG = '#E8E8E8'
 
 
 def _resolve_odb_path():
@@ -329,7 +329,8 @@ def make_movie(odb_path, out_dir=None):
     # ── Open ODB ──────────────────────────────────────────────
     odb = session.openOdb(name=odb_path, readOnly=True)
     vp  = session.viewports['Viewport: 1']
-    vp.setValues(displayedObject=odb, width=280, height=210)
+    vp.maximize()
+    vp.setValues(displayedObject=odb)
     session.printOptions.setValues(vpDecorations=OFF, vpBackground=ON)
     session.pngOptions.setValues(imageSize=(1280, 960))
 
