@@ -108,7 +108,7 @@ echo "=============================================="
 echo "  Per-specimen plots"
 echo "  Start : $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
-python3 -c "import matplotlib" 2>/dev/null || pip install --user matplotlib
+python3 -c "import matplotlib" 2>/dev/null || python3 -m pip install --user matplotlib
 python3 "$SLURM_SUBMIT_DIR/plot_results.py" "$WORK_DIR" \
     && echo "  Plots written to $WORK_DIR/" \
     || echo "  WARNING: plot_results.py failed (continuing)."
