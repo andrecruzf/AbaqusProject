@@ -43,6 +43,7 @@ VUMAT="$WORK_DIR/VUMAT_explicit.f"
 # Solver output (ODB, dat, fil, ...) goes to scratch to avoid filling home (50 GB limit).
 # Scratch is auto-deleted after 2 weeks — results are extracted before that in steps 3-4.
 mkdir -p "$SCRATCH_DIR"
+rm -f "$SCRATCH_DIR/${JOB_NAME}.lck"
 cp "$WORK_DIR/${JOB_NAME}.inp" "$SCRATCH_DIR/"
 cp "$VUMAT" "$SCRATCH_DIR/"
 
