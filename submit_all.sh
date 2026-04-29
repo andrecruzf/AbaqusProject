@@ -39,6 +39,7 @@ v = float('${MESH_REFINEMENT_FACTOR}')
 print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
 ")
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
+GLOBAL_DIR="${EULER_DIR}/${FLC_OUTDIR}"
 
 module load abaqus/2023
 
@@ -53,10 +54,13 @@ if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
 fi
 if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM_WIDTHS" = false ]; then
-    echo "  FLC output  : ${FLC_OUTDIR}/"
+    echo "  Global dir  : ${GLOBAL_DIR}/"
 fi
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
+
+# ── Create global directory structure ────────────────────────
+mkdir -p "${GLOBAL_DIR}/logs"
 
 JOB_IDS=()
 OUTPUT_DIRS=()
@@ -64,7 +68,7 @@ OUTPUT_DIRS=()
 for W in "${WIDTHS[@]}"; do
     echo "----------------------------------------------"
     JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_mr_suffix}"
-    OUTPUT_SUBDIR="$JOB_NAME"
+    OUTPUT_SUBDIR="${FLC_OUTDIR}/${JOB_NAME}"
 
     echo "  Building ${JOB_NAME} ..."
     cd "${EULER_DIR}"
@@ -77,15 +81,17 @@ for W in "${WIDTHS[@]}"; do
     xvfb-run -a abaqus cae noGUI=build_model.py
 
     echo "  Rendering mesh screenshot ..."
-    OUTPUT_DIR="${EULER_DIR}/${JOB_NAME}" \
+    OUTPUT_DIR="${EULER_DIR}/${OUTPUT_SUBDIR}" \
     JOB_NAME="${JOB_NAME}" \
     xvfb-run -a abaqus cae noGUI="${EULER_DIR}/screenshot_mesh.py" \
         || echo "  WARNING: mesh screenshot failed (continuing)."
-    cp /tmp/screenshot_mesh_out.txt "${EULER_DIR}/${JOB_NAME}/${JOB_NAME}_mesh_log.txt" 2>/dev/null || true
+    cp /tmp/screenshot_mesh_out.txt "${EULER_DIR}/${OUTPUT_SUBDIR}/${JOB_NAME}_mesh_log.txt" 2>/dev/null || true
 
     echo "  Submitting solver job ..."
     JOB_ID=$(cd "${EULER_DIR}" && sbatch \
         --job-name=${JOB_NAME} \
+        --output=${GLOBAL_DIR}/logs/${JOB_NAME}_%j.out \
+        --error=${GLOBAL_DIR}/logs/${JOB_NAME}_%j.err \
         --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
         --parsable run_cluster.sh)
 
@@ -109,10 +115,12 @@ if [[ "$TEST_TYPE" == "nakazima" || "$TEST_TYPE" == "marciniak" ]] && [ "$CUSTOM
     FLC_JOB_ID=$(cd "${EULER_DIR}" && sbatch \
         --dependency=${DEPENDENCY} \
         --job-name=FLC_${TEST_TYPE}_ang${_ang} \
+        --output=${GLOBAL_DIR}/logs/FLC_${TEST_TYPE}_ang${_ang}_%j.out \
+        --error=${GLOBAL_DIR}/logs/FLC_${TEST_TYPE}_ang${_ang}_%j.err \
         --export=ALL,OUTPUT_DIRS=${DIRS_STR},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
         --parsable run_flc.sh)
     echo "  FLC job     : ${FLC_JOB_ID} (held until all solver jobs complete)"
-    echo "  FLC diagram : ${EULER_DIR}/${FLC_OUTDIR}/flc_diagram.png"
+    echo "  FLC diagram : ${GLOBAL_DIR}/FLC_${TEST_TYPE}.pdf"
 else
     echo "  FLC job     : skipped (test=${TEST_TYPE}, custom_widths=${CUSTOM_WIDTHS})"
 fi
