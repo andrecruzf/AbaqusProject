@@ -25,12 +25,15 @@ DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'
 DEFAULT_WIDTH=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.SPECIMEN_WIDTH)")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
+DEFAULT_MS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MASS_SCALING_DT)")
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 SPECIMEN_WIDTH=${4:-$DEFAULT_WIDTH}
 MESH_REFINEMENT_FACTOR=${5:-$DEFAULT_MR}
+MASS_SCALING_DT=${MASS_SCALING_DT:-$DEFAULT_MS}
+PUNCH_RADIUS=${PUNCH_RADIUS:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")}
 
 # ── Push scripts once ─────────────────────────────────────────────────────────
 echo "  Pushing scripts to Euler ..."
@@ -74,7 +77,7 @@ echo "  Launching submit_one.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} \
+        'PUNCH_RADIUS=${PUNCH_RADIUS} bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${MASS_SCALING_DT} \
          > ${EULER_DIR}/submit_one.log 2>&1'
 "
 

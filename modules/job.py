@@ -28,7 +28,8 @@ def save_and_export(cfg):
         explicitPrecision=SINGLE,
         nodalOutputPrecision=SINGLE)
 
-    # Write .inp to CWD (Abaqus always writes here), then inject and move
+    # cd into out_dir so j.writeInput() drops the .inp directly there
+    os.chdir(out_dir)
     j.writeInput(consistencyChecking=OFF)
     inp_file = cfg.JOB_NAME + '.inp'
 
@@ -36,10 +37,7 @@ def save_and_export(cfg):
         _inject_mass_scaling(inp_file, cfg.MASS_SCALING_DT)
     _inject_output_requests(inp_file, cfg)
     _inject_initial_conditions(inp_file, cfg)
-
-    # Move .inp into output directory
-    shutil.move(inp_file, os.path.join(out_dir, inp_file))
-    print('  Moved %s → %s/' % (inp_file, out_dir))
+    print('  Written %s → %s/' % (inp_file, out_dir))
 
     # Save .cae directly into output directory
     mdb.saveAs(pathName=os.path.join(out_dir, cfg.CAE_NAME))

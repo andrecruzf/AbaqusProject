@@ -31,8 +31,8 @@ INP_DIR = 'PiP_Geometries' if TEST_TYPE == 'pip' else 'Naka_Marciniak_Geometries
 # Name of the imported specimen part (None = first non-tool part found)
 SPECIMEN_PART_NAME = 'Specimen'
 
-BLANK_THICKNESS            = float(_os.environ.get('BLANK_THICKNESS', 1.5))         # mm
-MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', 0.0))  # degrees
+BLANK_THICKNESS            = float(_os.environ.get('BLANK_THICKNESS', '')            or 1.5)    # mm
+MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', '') or 0.0)  # degrees
 
 
 # =============================================================
@@ -50,7 +50,7 @@ DIE_OUTER_RADIUS  = 73.0   # mm — outer radius (die and blank holder)
 DIE_HEIGHT        = 40.0   # mm — die wall height above blank
 BH_HEIGHT         = 44.0   # mm — blank holder height below blank
 BH_FILLET         = 4.0    # mm — blank holder inner fillet radius
-PUNCH_RADIUS      = 50.0   # mm — punch radius (hemi for Nakazima, flat for Marciniak)
+PUNCH_RADIUS      = float(_os.environ.get('PUNCH_RADIUS', '') or 50.0)   # mm — punch radius (hemi for Nakazima, flat for Marciniak)
 PUNCH_HEIGHT      = 60.0   # mm — punch cylindrical body height
 PUNCH_EDGE_FILLET = 10.0   # mm — edge fillet (Marciniak only, 10% of diameter per ISO 12004-2)
 
@@ -119,7 +119,7 @@ BLANK_RADIUS  = 100.0
 # MESH
 # =============================================================
 # Refinement factor: 1.0 = baseline; 0.5 = half element size (finer); 2.0 = coarser.
-MESH_REFINEMENT_FACTOR = float(_os.environ.get('MESH_REFINEMENT_FACTOR', 2.0))
+MESH_REFINEMENT_FACTOR = float(_os.environ.get('MESH_REFINEMENT_FACTOR', 3.0))
 
 # Seeding zones: (r_max mm, size_radial mm, size_circumferential mm).
 # Edges on the blank top face are assigned the size of the first zone whose
@@ -128,8 +128,8 @@ MESH_ZONES = [
     ( 5.0, 0.1, 0.1),   # punch apex
     (20.0, 0.2, 0.2),   # punch contact zone
     (30.0, 0.2, 0.2),   # transition
-    (55.0, 0.5, 0.5),   # dome shoulder
-    (1e9,  1.0, 1.0),   # flange / clamped zone
+    (55.0, 0.4, 0.4),   # dome shoulder
+    (1e9,  0.8, 0.8),   # flange / clamped zone
 ]
 
 # Elements through blank thickness — independent of MESH_REFINEMENT_FACTOR.
@@ -143,7 +143,7 @@ R_DOME = 0.15 * PUNCH_RADIUS * 2.0
 # =============================================================
 # FORMING PARAMETERS
 # =============================================================
-PUNCH_DISPLACEMENT = 42                          # mm
+PUNCH_DISPLACEMENT = 50                          # mm
 STEP_TIME          = PUNCH_DISPLACEMENT / 5.0      # s  — → 7.4 mm/s (ISO 12004-2: 0.5–2 mm/s)
 # Check ALLKE/ALLIE < 5 % in post-processing to validate quasi-static assumption.
 
@@ -155,7 +155,7 @@ USE_EDGE_ENCASTRE = True   # encastre the outer blank edge
 # =============================================================
 USE_MASS_SCALING = True
 # Default 1e-6 s; override via MASS_SCALING_DT env var for sensitivity sweeps.
-MASS_SCALING_DT = float(_os.environ.get('MASS_SCALING_DT', 1.0e-5))   # s
+MASS_SCALING_DT = float(_os.environ.get('MASS_SCALING_DT', '') or 1.0e-5)   # s
 
 
 # =============================================================
@@ -213,9 +213,11 @@ SDV_LABELS = [
 # FILE NAMING
 # (derived from all variables above — do not edit manually)
 # =============================================================
-_t        = str(BLANK_THICKNESS).replace('.', 'p')
-_test_cap = TEST_TYPE.capitalize()   # 'Nakazima', 'Marciniak', or 'Pip'
-_ang      = str(int(MATERIAL_ORIENTATION_ANGLE))
+_t           = str(BLANK_THICKNESS).replace('.', 'p')
+_punch_d     = int(round(PUNCH_RADIUS * 2))
+_test_prefix = {'nakazima': 'Naka', 'marciniak': 'Marc', 'pip': 'Pip'}[TEST_TYPE]
+_test_cap    = _test_prefix + (str(_punch_d) if TEST_TYPE != 'pip' else '')
+_ang         = str(int(MATERIAL_ORIENTATION_ANGLE))
 
 _pip_punch2_id = _os.environ.get('PIP_PUNCH2_ID', 'PUNCH_21') if TEST_TYPE == 'pip' else None
 _pip_suffix    = '_p2{}'.format(_pip_punch2_id).replace('PUNCH_', '') if _pip_punch2_id else ''
@@ -235,4 +237,4 @@ _mr_suffix = ('_mr' + ('%.4g' % MESH_REFINEMENT_FACTOR).replace('.', 'p')
 JOB_NAME   = '{}_W{}_t{}_ang{}{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix)
 CAE_NAME   = '{}_W{}_t{}_ang{}{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix)
 INP_NAME   = '{}_W{}_t{}_ang{}{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix)
-OUTPUT_DIR = JOB_NAME
+OUTPUT_DIR = _os.path.join(_os.environ.get('OUTPUT_BASE_DIR', _os.getcwd()), JOB_NAME)

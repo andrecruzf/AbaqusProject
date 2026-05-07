@@ -27,8 +27,12 @@ WIDTHS=("$@")
 
 # Derived name components
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
-_test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
+_punch_r=${PUNCH_RADIUS:-50}
+_punch_d=$(python3 -c "import math; print(int(round(float('${_punch_r}') * 2)))")
+if   [ "$TEST_TYPE" = "nakazima"  ]; then _test_cap="Naka${_punch_d}"
+elif [ "$TEST_TYPE" = "marciniak" ]; then _test_cap="Marc${_punch_d}"
+else _test_cap="Pip"; fi
 if [ "$TEST_TYPE" = "pip" ] && [ -n "$PIP_PUNCH2_ID" ]; then
     _pip_suffix="_p2$(echo "$PIP_PUNCH2_ID" | sed 's/PUNCH_//')"
 else
@@ -38,6 +42,17 @@ _mr_suffix=$(python3 -c "
 v = float('${MESH_REFINEMENT_FACTOR}')
 print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
 ")
+if [ -n "$MASS_SCALING_DT" ]; then
+    _ms_suffix=$(python3 -c "
+import math
+ms = float('${MASS_SCALING_DT}')
+exp = int(math.floor(math.log10(ms)))
+mant = int(round(ms / 10**exp))
+print('_ms%de%d' % (mant, abs(exp)))
+")
+else
+    _ms_suffix=""
+fi
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
 GLOBAL_DIR="${EULER_DIR}/${FLC_OUTDIR}"
 
@@ -50,6 +65,9 @@ echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Widths      : ${WIDTHS[*]}"
 echo "  Mesh factor : ${MESH_REFINEMENT_FACTOR}"
+if [ -n "$MASS_SCALING_DT" ]; then
+    echo "  Mass scaling: ${MASS_SCALING_DT}"
+fi
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
 fi
@@ -67,7 +85,7 @@ OUTPUT_DIRS=()
 
 for W in "${WIDTHS[@]}"; do
     echo "----------------------------------------------"
-    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_mr_suffix}"
+    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}"
     OUTPUT_SUBDIR="${FLC_OUTDIR}/${JOB_NAME}"
 
     echo "  Building ${JOB_NAME} ..."
@@ -78,7 +96,12 @@ for W in "${WIDTHS[@]}"; do
     MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
     PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
     MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
+    OUTPUT_BASE_DIR=${EULER_DIR} \
     xvfb-run -a abaqus cae noGUI=build_model.py
+
+    # build_model creates OUTPUT_DIR relative to CWD; move it into the global dir
+    rm -rf "${GLOBAL_DIR}/${JOB_NAME}"
+    mv "${EULER_DIR}/${JOB_NAME}" "${GLOBAL_DIR}/"
 
     echo "  Rendering mesh screenshot ..."
     OUTPUT_DIR="${EULER_DIR}/${OUTPUT_SUBDIR}" \

@@ -27,13 +27,16 @@ DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}');
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
+DEFAULT_MS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MASS_SCALING_DT)")
 
 TEST_TYPE=$(echo "${1:-$DEFAULT_TEST_TYPE}" | tr '[:upper:]' '[:lower:]')
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
-# MESH_REFINEMENT_FACTOR can be set as an env var before calling this script,
-# or it defaults to the value from config.py.
+# MESH_REFINEMENT_FACTOR, MASS_SCALING_DT, PUNCH_RADIUS can be set as env vars
+# before calling this script, or they default to config.py values.
 MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR:-$DEFAULT_MR}
+MASS_SCALING_DT=${MASS_SCALING_DT:-$DEFAULT_MS}
+PUNCH_RADIUS=${PUNCH_RADIUS:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")}
 shift $(( $# < 3 ? $# : 3 ))
 CUSTOM_WIDTHS=false
 WIDTHS=("${@}")
@@ -105,7 +108,7 @@ echo "  Launching submit_all.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
+        'PUNCH_RADIUS=${PUNCH_RADIUS} MASS_SCALING_DT=${MASS_SCALING_DT} bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
          > ${EULER_DIR}/submit_all.log 2>&1'
 "
 

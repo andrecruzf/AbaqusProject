@@ -15,6 +15,71 @@ For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal en
 %   \label{fig:energy_ratio_w50}
 % \end{figure}
 
+\section{Sensitivity Study: Mass Scaling and Mesh Refinement}
+
+A fully factorial $4 \times 4$ sensitivity study was conducted on the Nakazima W200 specimen ($t = 1.5$\,mm, $\alpha = 0^\circ$) to determine the largest stable time increment $\Delta t$ and the coarsest mesh that still yield results within acceptable tolerances. The W200 geometry was chosen because equibiaxial stretching produces the highest strain gradients and therefore the most demanding test of both mass scaling and spatial discretisation. Sixteen simulations were run simultaneously (Table~\ref{tab:study_grid}) and the results aggregated by \texttt{plot\_study.py} into the three-panel heatmap in Figure~\ref{fig:study_heatmap}.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Parameter grid for the mass scaling $\times$ mesh refinement sensitivity study (Nakazima W200, $t=1.5$\,mm). Each cell is one independent simulation.}
+\label{tab:study_grid}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+ & \multicolumn{4}{c}{Mesh refinement factor $f_\mathrm{MR}$} \\
+\cmidrule(l){2-5}
+$\Delta t$ [s] & 1 & 2 & 4 & 8 \\ \midrule
+$1\times10^{-7}$ & \checkmark & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-6}$ & \checkmark & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-5}$ & \checkmark & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-4}$ & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+% TODO: Insert study_results.pdf once all 16 jobs complete.
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=\textwidth]{../study_ms_mr_W200_t1p5_ang0/study_results.pdf}
+%   \caption{Sensitivity study heatmap (Nakazima W200, $t=1.5$\,mm). Left: wall-clock time (h).
+%            Centre: mean ALLKE/ALLIE over the second half of the simulation; the
+%            5\,\% quasi-static threshold is indicated. Right: deviation of the major
+%            failure strain $\Delta\varepsilon_1$ (\%) relative to the reference cell
+%            ($\Delta t = 10^{-7}$\,s, $f_\mathrm{MR}=1$), outlined in green.}
+%   \label{fig:study_heatmap}
+% \end{figure}
+
+\subsection{Mass Scaling Effect}\label{sec:study_mass_scaling}
+
+The kinetic-to-internal energy ratio ALLKE/ALLIE quantifies the deviation from quasi-static conditions. Because artificial kinetic energy scales quadratically with the stable time increment ($\mathrm{ALLKE} \propto \Delta t^2$), a ten-fold increase in $\Delta t$ raises the ratio by approximately two orders of magnitude. The contact transient at punch engagement produces a short-lived spike that is excluded from the metric: only the mean ratio over the second half of the simulation ($t > t_\mathrm{max}/2$) is reported, capturing the steady-state forming phase.
+
+For the W200 geometry the punch contact area is largest and the forming force is highest, making this the most sensitive width to mass scaling effects. As $\Delta t$ increases from $10^{-7}$\,s to $10^{-4}$\,s, the energy ratio is expected to cross the 5\,\% threshold at some intermediate value; the centre column of Figure~\ref{fig:study_heatmap} identifies that crossing. The selected production value $\Delta t = 10^{-5}$\,s should lie comfortably below threshold, confirming the quasi-static assumption for the main FLC campaign.
+
+% TODO: Report actual peak ALLKE/ALLIE values per row once results are available.
+
+\subsection{Mesh Refinement Effect}\label{sec:study_mesh}
+
+Mesh refinement affects the accuracy of the extracted failure strain $\varepsilon_1$ through two competing mechanisms. Finer elements resolve the neck more precisely, so the peak strain at the critical element more closely represents the true localisation. However, very fine meshes also change the effective fracture energy release per element and can interact with the element-deletion scheme, potentially altering the detected failure frame.
+
+The convergence metric $\Delta\varepsilon_1$ measures the deviation of the extracted major strain from the reference case ($f_\mathrm{MR} = 1$, $\Delta t = 10^{-7}$\,s). A value of $|\Delta\varepsilon_1| < 5\,\%$ is adopted as the acceptance criterion, consistent with the uncertainty typical of experimental FLC measurements~\cite{ISO120042}. The right column of Figure~\ref{fig:study_heatmap} shows how $\Delta\varepsilon_1$ varies with $f_\mathrm{MR}$ at fixed $\Delta t$; convergence is expected once the element size falls below the characteristic neck width.
+
+The wall-clock time (left column of Figure~\ref{fig:study_heatmap}) grows significantly with $f_\mathrm{MR}$, since both the number of elements and the reduced stable time increment increase with mesh density. This trade-off motivates the joint optimisation described in the following section.
+
+% TODO: Report actual Δε₁ values and runtime per column once results are available.
+
+\subsection{Combined Effect and Parameter Selection}\label{sec:study_combined}
+
+Running the two parameters simultaneously reveals their interaction. For a coarser mesh, the minimum element edge length is larger, so the same mass scaling target $\Delta t$ injects less artificial mass (the natural stable increment is closer to $\Delta t$). As a result, the ALLKE/ALLIE ratio at fixed $\Delta t$ is lower for coarser meshes — the acceptable mass scaling budget is wider. Conversely, a fine mesh with a conservative $\Delta t$ is the most accurate but most expensive corner of the parameter space.
+
+The recommended operating point is the cell that simultaneously satisfies:
+\begin{enumerate}
+  \item mean ALLKE/ALLIE $< 5\,\%$ (quasi-static validity); and
+  \item $|\Delta\varepsilon_1| < 5\,\%$ (FLC accuracy relative to reference).
+\end{enumerate}
+Among all cells that meet both criteria, the one with the shortest wall-clock time is selected for the production FLC campaign. The heatmap in Figure~\ref{fig:study_heatmap} provides a direct visual basis for this selection. The production settings used in the Nakazima, Marciniak, and Punch-in-Punch campaigns reported in the following sections were chosen accordingly.
+
+% TODO: State the selected (f_MR*, Δt*) pair and corresponding wall time once results are confirmed.
+
 \section{Nakazima Simulations}
 
 \subsection{Strain Paths and Fracture Locations}

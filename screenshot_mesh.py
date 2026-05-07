@@ -9,11 +9,10 @@ Output (per job):
     <OUTPUT_DIR>/<JOB_NAME>_mesh.png        — ISO view
     <OUTPUT_DIR>/<JOB_NAME>_mesh_top.png    — face-on view (+Z camera)
 
-API confirmed from macro recording (Abaqus 2023):
+API (Abaqus 2023):
   - Switch viewport to the Part object (not the assembly).
-  - partDisplay.setValues(mesh=ON)
+  - partDisplay.setValues(mesh=ON, renderStyle=WIREFRAME)
   - partDisplay.meshOptions.setValues(meshTechnique=ON)   ← shows technique coloring
-  - partDisplay.geometryOptions.setValues(referenceRepresentation=OFF)
 """
 from abaqus import *
 from abaqusConstants import *
@@ -77,11 +76,12 @@ def take_screenshot(job_name, out_dir):
 
     vp = session.viewports['Viewport: 1']
 
-    # ── Switch to Part module context (confirmed by macro recording) ──────────
+    # ── Switch to Part module context ─────────────────────────────────────────
+    # renderStyle=WIREFRAME makes mesh element edges visible.
+    # geometry keyword is not valid in Abaqus 2023 partDisplay.setValues().
     vp.setValues(displayedObject=specimen_part)
-    vp.partDisplay.setValues(mesh=ON)
+    vp.partDisplay.setValues(mesh=ON, renderStyle=WIREFRAME)
     vp.partDisplay.meshOptions.setValues(meshTechnique=ON)
-    vp.partDisplay.geometryOptions.setValues(referenceRepresentation=OFF)
 
     session.graphicsOptions.setValues(backgroundColor='#FFFFFF')
     session.pngOptions.setValues(imageSize=(1280, 960))

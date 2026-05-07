@@ -61,9 +61,35 @@ All simulations use a punch speed of 2\,mm/s, consistent with the upper bound sp
 
 Fixed mass scaling with a target stable time increment $\Delta t = 2 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation. The mass scaling value was chosen accounting for the reduced punch speed relative to earlier implementations: since ALLKE $\propto \Delta t^2 v^2$, reducing $v$ from 5\,mm/s to 2\,mm/s allows $\Delta t$ to be increased by a factor of 2.5 while maintaining the same energy ratio.
 
-\subsection{Mass Scaling Sensitivity Study}
+\subsection{Mass Scaling Sensitivity Study}\label{sec:mass_scaling_study}
 
-To validate the chosen increment $\Delta t = 2 \times 10^{-5}$\,s, a dedicated sensitivity study was performed using \texttt{deploy\_mass\_scaling.sh}. One representative geometry (Nakazima W100, $t = 1.85$\,mm) was simulated with four values: $\Delta t \in \{1\times10^{-5},\, 2\times10^{-5},\, 5\times10^{-5},\, 1\times10^{-4}\}$\,s. Each value produces an independent output directory (suffix \texttt{\_ms2e5}, etc.); after all solver jobs complete a comparison job runs \texttt{plot\_mass\_scaling.py} and writes a two-page PDF overlaying the ALLKE/ALLIE ratio and absolute energies for all DT values. The 5\,\% quasi-static threshold is drawn as a reference line on the ratio plot. The selected $\Delta t = 2 \times 10^{-5}$\,s was confirmed to keep the peak ratio well below this threshold while remaining computationally efficient.
+Mass scaling introduces artificial mass to increase the stable time increment $\Delta t$, reducing the number of explicit increments and therefore the wall-clock time. The added mass inflates the kinetic energy, so the quasi-static assumption becomes less valid as $\Delta t$ grows: $\mathrm{ALLKE} \propto \dot{u}^2 \Delta m \propto \Delta t^2$, meaning a ten-fold increase in $\Delta t$ raises the kinetic-to-internal energy ratio by roughly two orders of magnitude.
+
+To identify the largest $\Delta t$ that keeps the simulation quasi-static, a dedicated one-dimensional sweep was conducted on a representative W200 specimen ($t = 1.5$\,mm) using four values:
+\[
+  \Delta t \in \{1\times10^{-7},\; 1\times10^{-6},\; 1\times10^{-5},\; 1\times10^{-4}\}\,\text{s}.
+\]
+The quality metric is the mean ALLKE/ALLIE ratio evaluated over the second half of the simulation time, which avoids the transient spike that occurs at initial punch contact. The 5\,\% quasi-static threshold from the Abaqus documentation~\cite{AbaqusManual} is used as the acceptance criterion. Results are presented in Section~\ref{sec:study_mass_scaling}.
+
+\subsection{Mesh Refinement Study}\label{sec:mesh_refinement_study}
+
+Element size directly controls the accuracy with which strain gradients in the dome zone are resolved, and hence the reliability of the extracted FLC point. A mesh that is too coarse smears the localised neck over several elements, underestimating the peak major strain $\varepsilon_1$ at failure. Conversely, very fine meshes increase runtime significantly and can make full FLC campaigns computationally prohibitive.
+
+The mesh refinement factor $f_\mathrm{MR}$ scales the target element size relative to the base geometry provided by the supervisor. Four levels were studied:
+\[
+  f_\mathrm{MR} \in \{1,\; 2,\; 4,\; 8\},
+\]
+where $f_\mathrm{MR} = 1$ corresponds to the coarsest mesh and $f_\mathrm{MR} = 8$ to the finest. The deviation of the extracted major failure strain from the reference value (finest mesh, smallest $\Delta t$) is used as the convergence metric:
+\[
+  \Delta\varepsilon_1 = \frac{\varepsilon_1(f_\mathrm{MR},\,\Delta t) - \varepsilon_1^\mathrm{ref}}{\varepsilon_1^\mathrm{ref}} \times 100\,\%.
+\]
+Results are presented in Section~\ref{sec:study_mesh}.
+
+\subsection{Combined Parameter Study}\label{sec:combined_study}
+
+The mass scaling and mesh refinement studies were executed simultaneously as a fully factorial $4 \times 4$ grid (16 simulations total) on the W200 Nakazima specimen. Running both axes together reveals interactions between the two parameters: for coarser meshes the element-level stable time increment is inherently larger, so the same mass scaling $\Delta t$ produces a different ratio of artificial to natural mass. The combined study therefore provides a more realistic basis for parameter selection than independent one-at-a-time sweeps.
+
+The grid was deployed via \texttt{deploy\_study.sh}, which pushes all scripts once and calls \texttt{submit\_one.sh} once per combination via blocking SSH, collecting the SLURM job IDs to wire a downstream \texttt{plot\_study.py} aggregation job with an \texttt{afterok} dependency. The aggregation produces a three-panel heatmap (wall time, mean ALLKE/ALLIE, $\Delta\varepsilon_1$) that simultaneously visualises all trade-offs. Results are presented in Section~\ref{sec:study_combined}.
 
 \section{Output Requests}
 

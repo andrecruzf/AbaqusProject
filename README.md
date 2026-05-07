@@ -271,14 +271,58 @@ does not drift as the punch descends.
 
 ---
 
+## Parameter study — `deploy_study.sh`
+
+Runs a fully factorial mass-scaling × mesh-refinement sweep on a single
+representative specimen (default: W200).
+
+```bash
+# Use defaults from config.py (thickness + orientation)
+./deploy_study.sh
+
+# Override thickness and orientation
+./deploy_study.sh 1.5 0
+```
+
+The grid is defined at the top of `deploy_study.sh`:
+
+```bash
+MR_VALUES=(1 2 4 8)
+MS_VALUES=(1e-7 1e-6 1e-5 1e-4)
+```
+
+Each (MR, MS) combination is built and submitted independently via
+`submit_one.sh` over a blocking SSH loop. After all 16 solver jobs are queued,
+a `plot_study.py` aggregation job is submitted with `afterok` dependency on all
+of them; it writes a three-panel heatmap `study_results.pdf` (wall time,
+ALLKE/ALLIE, Δε₁) to the study directory on Euler.
+
+---
+
 ## Monitoring jobs
+
+### Streamlit app — `app.py`
+
+The primary monitoring interface. Run locally:
+
+```bash
+streamlit run app.py
+```
+
+| Tab | Contents |
+|-----|----------|
+| **Submit Job** | Build and submit single or full-width jobs from a GUI form |
+| **Job Status** | Live SLURM queue table with colour-coded states; progress bars (% complete + ETA) for all running Abaqus solver jobs, read from the `.sta` file in scratch |
+| **Results** | Browse synced results: single-job plots/movies, full FLC diagrams, multi-FLC comparison overlay |
+| **AI Assistant** | Claude-powered assistant for model and results questions |
+
+Progress is fetched silently in the background every 60 s; click **🔄** to force-refresh immediately.
+
+### Command-line
 
 ```bash
 # Check your queue
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'squeue --me'
-
-# Watch specific jobs (IDs printed by deploy script)
-ssh YOUR_ETH_USERNAME@euler.ethz.ch 'squeue -j 12345,12346'
 
 # Attach to the running deploy_all tmux session (live output)
 ssh YOUR_ETH_USERNAME@euler.ethz.ch
@@ -286,9 +330,6 @@ tmux attach -t deploy
 
 # Tail the submission log without keeping SSH open
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/submit_all.log'
-
-# Tail a solver log (job must be running)
-ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/Nakazima_W50_t1p5_ang0_12345.out'
 ```
 
 Typical wall times on 24 CPUs:
@@ -395,19 +436,17 @@ AbaqusProject/
 ├── plot_results.py            ← Python+matplotlib: per-specimen PDF
 ├── plot_flc.py                ← Python+matplotlib: FLC aggregation PDF
 │
+├── app.py                     ← Streamlit pipeline manager (submit / monitor / results / AI)
+│
 ├── deploy.sh                  ← single-specimen deploy (push + build + submit)
 ├── deploy_all.sh              ← full-width FLC sweep deploy (launches submit_all.sh via tmux)
-├── deploy_movie.sh            ← push postproc_movie.py and submit animation job
-├── submit_all.sh              ← runs ON Euler: builds models + submits all solver jobs
+├── deploy_study.sh            ← mass scaling × mesh refinement study (runs locally)
+├── submit_all.sh              ← runs ON Euler: builds all widths + submits solver + FLC jobs
 ├── submit_one.sh              ← runs ON Euler: build + submit for a single specimen
+├── submit_study.sh            ← runs ON Euler: builds all (MR, MS) combinations (legacy)
 ├── run_cluster.sh             ← SLURM: solver + postproc + movie (run on cluster)
-├── run_flc.sh                 ← SLURM: plot jobs (afterok solver)
-├── run_movie.sh               ← SLURM: EQPS animation (submitted by deploy_movie.sh)
-├── run_postproc.sh            ← SLURM: re-run postproc on existing ODBs
-├── run_plot.sh                ← SLURM: re-run plots from existing CSVs
-├── submit_postproc.sh         ← re-run post-processing without re-solving
-├── postproc_single.sh         ← interactive postproc on login node
-├── collect_results.sh         ← download results from Euler + plot FLC locally
+├── run_flc.sh                 ← SLURM: FLC aggregation job (afterok all solver jobs)
+├── run_plot_study.sh          ← SLURM: study aggregation job (afterok all study solver jobs)
 │
 ├── Naka_Marciniak_Geometries/ ← specimen .cae files for Nakazima/Marciniak
 ├── PiP_Geometries/            ← specimen .cae files for PiP
