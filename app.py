@@ -282,6 +282,28 @@ if page == "Submit Job":
             punch_diam = st.number_input("Punch Diameter", value=100.0)
             pip_id = None
 
+    # ── PiP punch preview grid ───────────────────────────────────────────────
+    if test_type == "pip":
+        _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
+        _pngs = {
+            p: os.path.join(_punch_dir, p + ".png")
+            for p in PIP_OPTIONS
+            if os.path.exists(os.path.join(_punch_dir, p + ".png"))
+        }
+        if _pngs:
+            with st.expander("Punch previews", expanded=True):
+                _cols = st.columns(len(_pngs))
+                for i, (pid, png_path) in enumerate(_pngs.items()):
+                    with _cols[i]:
+                        st.image(png_path, caption=pid, use_container_width=True)
+                        if pid == pip_id:
+                            st.markdown("**▲ selected**")
+        else:
+            st.caption(
+                "No punch previews found in `PiP_Punches/`. "
+                "Run `bash render_punch_previews.sh` on Euler and sync PNGs to generate them."
+            )
+
     with c6:
         mesh_factor = st.number_input("Mesh Factor", value=3.0)
 
