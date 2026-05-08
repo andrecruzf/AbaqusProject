@@ -115,6 +115,35 @@ else:
                         if a is not None and c is not None and d is not None:
                             triangles.append((a, c, d))
 
+            # Normalize winding order: all triangle normals should point away
+            # from the mesh centroid (outward). R3D4 elements are not guaranteed
+            # to have consistent winding, causing holes in FrontSide rendering.
+            if coords and triangles:
+                cx = cy = cz = 0.0
+                nc = len(coords)
+                for _c in coords:
+                    cx += _c[0]; cy += _c[1]; cz += _c[2]
+                cx /= nc; cy /= nc; cz /= nc
+
+                normalized = []
+                for tri in triangles:
+                    va = coords[tri[0]]; vb = coords[tri[1]]; vc = coords[tri[2]]
+                    ab = (vb[0]-va[0], vb[1]-va[1], vb[2]-va[2])
+                    ac = (vc[0]-va[0], vc[1]-va[1], vc[2]-va[2])
+                    nx2 = ab[1]*ac[2] - ab[2]*ac[1]
+                    ny2 = ab[2]*ac[0] - ab[0]*ac[2]
+                    nz2 = ab[0]*ac[1] - ab[1]*ac[0]
+                    # Vector from triangle centre toward mesh centroid
+                    dx = cx - (va[0]+vb[0]+vc[0])/3.0
+                    dy = cy - (va[1]+vb[1]+vc[1])/3.0
+                    dz = cz - (va[2]+vb[2]+vc[2])/3.0
+                    # If normal points toward centroid, flip winding
+                    if nx2*dx + ny2*dy + nz2*dz > 0:
+                        normalized.append((tri[0], tri[2], tri[1]))
+                    else:
+                        normalized.append(tri)
+                triangles = normalized
+
             out_stl = os.path.join(PUNCH_DIR, punch_id + '.stl')
             with open(out_stl, 'wb') as _f:
                 _f.write(('Abaqus mesh: ' + punch_id).ljust(80)[:80].encode('ascii', 'replace'))
