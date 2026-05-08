@@ -11,8 +11,8 @@ module load abaqus/2023
 cd "${EULER_DIR}"
 for cae in "${EULER_DIR}/PiP_Punches"/PUNCH_*.cae; do
     punch_id=$(basename "$cae" .cae)
-    out_json="${EULER_DIR}/PiP_Punches/${punch_id}_mesh.json"
-    if [ -f "$out_json" ]; then
+    out_stl="${EULER_DIR}/PiP_Punches/${punch_id}.stl"
+    if [ -f "$out_stl" ]; then
         echo "  Skipping ${punch_id} (already exported)"
         continue
     fi

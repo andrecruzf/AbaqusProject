@@ -272,47 +272,39 @@ if page == "Submit Job":
     with c4:
         angle = st.number_input("Angle", value=0)
 
+    c5, c6, c7 = st.columns(3)
+    with c5:
+        if test_type == "pip":
+            pip_id = st.selectbox("PiP Punch", PIP_OPTIONS)
+            punch_diam = None
+        else:
+            punch_diam = st.number_input("Punch Diameter", value=100.0)
+            pip_id = None
+    with c6:
+        mesh_factor = st.number_input("Mesh Factor", value=3.0)
+    with c7:
+        mass_scaling = st.selectbox(
+            "Mass Scaling Δt (s)",
+            MS_OPTIONS,
+            index=1,
+            format_func=lambda x: f"{x:.1e}",
+            key="cfg_mass_scaling",
+        )
+
+    # ── PiP 3-D punch preview ─────────────────────────────────────────────────
     if test_type == "pip":
-        # When PiP: left column = controls, right column = 3-D punch preview
-        _col_form, _col_3d = st.columns([1, 2])
-    else:
-        _col_form, _col_3d = st.columns([1, 0.001])  # effectively just the form column
+        _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
+        _stl_path  = os.path.join(_punch_dir, pip_id + ".stl")
+        _png_path  = os.path.join(_punch_dir, pip_id + ".png")
 
-    with _col_form:
-        c5, c6, c7 = st.columns(3)
-        with c5:
-            if test_type == "pip":
-                pip_id = st.selectbox("PiP Punch", PIP_OPTIONS)
-                punch_diam = None
-            else:
-                punch_diam = st.number_input("Punch Diameter", value=100.0)
-                pip_id = None
-        with c6:
-            mesh_factor = st.number_input("Mesh Factor", value=3.0)
-        with c7:
-            mass_scaling = st.selectbox(
-                "Mass Scaling Δt (s)",
-                MS_OPTIONS,
-                index=1,
-                format_func=lambda x: f"{x:.1e}",
-                key="cfg_mass_scaling",
-            )
-
-    # ── PiP 3-D punch preview (right column) ─────────────────────────────────
-    if test_type == "pip":
-        with _col_3d:
-            _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
-            _stl_path  = os.path.join(_punch_dir, pip_id + ".stl")
-            _png_path  = os.path.join(_punch_dir, pip_id + ".png")
-
-            if os.path.exists(_stl_path):
-                import base64 as _b64
-                with open(_stl_path, "rb") as _f:
-                    _stl_b64 = _b64.b64encode(_f.read()).decode()
-                _viewer_html = """
+        if os.path.exists(_stl_path):
+            import base64 as _b64
+            with open(_stl_path, "rb") as _f:
+                _stl_b64 = _b64.b64encode(_f.read()).decode()
+            _viewer_html = """
 <!DOCTYPE html><html><head>
 <style>body,html{margin:0;padding:0;background:#0e1117;overflow:hidden;}
-canvas{display:block;width:100%%;height:300px;}</style>
+canvas{display:block;width:100%%;height:420px;}</style>
 </head><body>
 <canvas id="c"></canvas>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
@@ -322,7 +314,7 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas = document.getElementById('c');
-const W = canvas.parentElement.clientWidth || 400, H = 300;
+const W = canvas.parentElement.clientWidth || 600, H = 420;
 canvas.width = W; canvas.height = H;
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -359,9 +351,9 @@ scene.add(new THREE.Mesh(geo, mat));
 (function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();
 </script></body></html>
 """ % _stl_b64
-                st.components.v1.html(_viewer_html, height=310, scrolling=False)
-            elif os.path.exists(_png_path):
-                st.image(_png_path, use_container_width=True)
+            st.components.v1.html(_viewer_html, height=430, scrolling=False)
+        elif os.path.exists(_png_path):
+            st.image(_png_path, use_container_width=True)
 
     cfg = dict(
         test_type=test_type,
