@@ -272,80 +272,77 @@ if page == "Submit Job":
     with c4:
         angle = st.number_input("Angle", value=0)
 
-    c5, c6, c7 = st.columns(3)
-
-    with c5:
-        if test_type == "pip":
-            pip_id = st.selectbox("PiP Punch", PIP_OPTIONS)
-            punch_diam = None
-        else:
-            punch_diam = st.number_input("Punch Diameter", value=100.0)
-            pip_id = None
-
-    # ── PiP punch 3-D viewer ─────────────────────────────────────────────────
     if test_type == "pip":
-        _punch_dir  = os.path.join(PROJECT_DIR, "PiP_Punches")
-        _json_path  = os.path.join(_punch_dir, pip_id + "_mesh.json")
-        _png_path   = os.path.join(_punch_dir, pip_id + ".png")
+        # When PiP: left column = controls, right column = 3-D punch preview
+        _col_form, _col_3d = st.columns([1, 2])
+    else:
+        _col_form, _col_3d = st.columns([1, 0.001])  # effectively just the form column
 
-        _mesh_ok = False
-        if os.path.exists(_json_path):
-            import json as _json
-            with open(_json_path) as _f:
-                _mesh = _json.load(_f)
-            _nodes = _mesh["nodes"]
-            _tris  = _mesh["triangles"]
-            _mesh_ok = len(_nodes) > 0 and len(_tris) > 0
-        if _mesh_ok:
-            _x = [n[0] for n in _nodes]
-            _y = [n[1] for n in _nodes]
-            _z = [n[2] for n in _nodes]
-            _i = [t[0] for t in _tris]
-            _j = [t[1] for t in _tris]
-            _k = [t[2] for t in _tris]
-            _fig3d = go.Figure(go.Mesh3d(
-                x=_x, y=_y, z=_z,
-                i=_i, j=_j, k=_k,
-                color="#6baed6",
-                opacity=1.0,
-                flatshading=False,
-                lighting=dict(ambient=0.4, diffuse=0.8, specular=0.3, roughness=0.5),
-                lightposition=dict(x=1, y=2, z=3),
-            ))
-            _fig3d.update_layout(
-                margin=dict(l=0, r=0, t=0, b=0),
-                height=380,
-                scene=dict(
-                    xaxis=dict(visible=False),
-                    yaxis=dict(visible=False),
-                    zaxis=dict(visible=False),
-                    bgcolor="#0e1117",
-                    aspectmode="data",
-                ),
-                paper_bgcolor="#0e1117",
-            )
-            st.plotly_chart(_fig3d, use_container_width=True, key="punch_3d")
-
-        elif os.path.exists(_png_path):
-            st.image(_png_path, caption=pip_id, use_container_width=False, width=320)
-
-        else:
-            st.caption(
-                f"No 3-D data for `{pip_id}`. "
-                "Run `bash render_punch_previews.sh` on Euler then sync via Results tab."
+    with _col_form:
+        c5, c6, c7 = st.columns(3)
+        with c5:
+            if test_type == "pip":
+                pip_id = st.selectbox("PiP Punch", PIP_OPTIONS)
+                punch_diam = None
+            else:
+                punch_diam = st.number_input("Punch Diameter", value=100.0)
+                pip_id = None
+        with c6:
+            mesh_factor = st.number_input("Mesh Factor", value=3.0)
+        with c7:
+            mass_scaling = st.selectbox(
+                "Mass Scaling Δt (s)",
+                MS_OPTIONS,
+                index=1,
+                format_func=lambda x: f"{x:.1e}",
+                key="cfg_mass_scaling",
             )
 
-    with c6:
-        mesh_factor = st.number_input("Mesh Factor", value=3.0)
+    # ── PiP 3-D punch preview (right column) ─────────────────────────────────
+    if test_type == "pip":
+        with _col_3d:
+            _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
+            _json_path = os.path.join(_punch_dir, pip_id + "_mesh.json")
+            _png_path  = os.path.join(_punch_dir, pip_id + ".png")
 
-    with c7:
-        mass_scaling = st.selectbox(
-            "Mass Scaling Δt (s)",
-            MS_OPTIONS,
-            index=1,  # default = 1e-5
-            format_func=lambda x: f"{x:.1e}",
-            key="cfg_mass_scaling",
-        )
+            _mesh_ok = False
+            if os.path.exists(_json_path):
+                import json as _json
+                with open(_json_path) as _f:
+                    _mesh = _json.load(_f)
+                _nodes = _mesh["nodes"]
+                _tris  = _mesh["triangles"]
+                _mesh_ok = len(_nodes) > 0 and len(_tris) > 0
+
+            if _mesh_ok:
+                _x = [n[0] for n in _nodes]
+                _y = [n[1] for n in _nodes]
+                _z = [n[2] for n in _nodes]
+                _i = [t[0] for t in _tris]
+                _j = [t[1] for t in _tris]
+                _k = [t[2] for t in _tris]
+                _fig3d = go.Figure(go.Mesh3d(
+                    x=_x, y=_y, z=_z,
+                    i=_i, j=_j, k=_k,
+                    color="#6baed6", opacity=1.0, flatshading=False,
+                    lighting=dict(ambient=0.4, diffuse=0.8, specular=0.3, roughness=0.5),
+                    lightposition=dict(x=1, y=2, z=3),
+                ))
+                _fig3d.update_layout(
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    height=300,
+                    scene=dict(
+                        xaxis=dict(visible=False),
+                        yaxis=dict(visible=False),
+                        zaxis=dict(visible=False),
+                        bgcolor="#0e1117",
+                        aspectmode="data",
+                    ),
+                    paper_bgcolor="#0e1117",
+                )
+                st.plotly_chart(_fig3d, use_container_width=True, key="punch_3d")
+            elif os.path.exists(_png_path):
+                st.image(_png_path, use_container_width=True)
 
     cfg = dict(
         test_type=test_type,
