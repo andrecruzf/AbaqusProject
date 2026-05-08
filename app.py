@@ -292,73 +292,101 @@ if page == "Submit Job":
         )
 
     # ── PiP 3-D punch preview ─────────────────────────────────────────────────
+    _STEP_VIEWER = (
+        '<!DOCTYPE html><html><head>'
+        '<style>*{margin:0;padding:0}body{background:#0e1117;overflow:hidden}'
+        'canvas{display:block;width:100%;height:420px}'
+        '#msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);'
+        'color:#777;font:12px sans-serif;pointer-events:none}</style></head><body>'
+        '<div id="msg">Loading STEP geometry…</div>'
+        '<canvas id="c"></canvas>'
+        '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>'
+        '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>'
+        '<script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js"></script>'
+        '<script>'
+        "var CDN='https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/';"
+        'occtimportjs({locateFile:function(f){return CDN+f}}).then(function(occt){'
+        "var bin=atob('__B64__'),buf=new Uint8Array(bin.length);"
+        'for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);'
+        'var result=occt.ReadStepFile(buf,null);'
+        "if(!result.success){document.getElementById('msg').textContent='STEP parse failed';return;}"
+        "var canvas=document.getElementById('c'),W=window.innerWidth||600,H=420;"
+        'var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});'
+        'renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W,H);renderer.setClearColor(0x0e1117);'
+        'var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,W/H,0.01,5000);'
+        'var controls=new THREE.OrbitControls(camera,renderer.domElement);'
+        'controls.enableDamping=true;controls.dampingFactor=0.08;'
+        'scene.add(new THREE.AmbientLight(0xffffff,0.5));'
+        'var d1=new THREE.DirectionalLight(0xffffff,0.9);d1.position.set(1,2,2);scene.add(d1);'
+        'var d2=new THREE.DirectionalLight(0x88aaff,0.3);d2.position.set(-1,-1,-1);scene.add(d2);'
+        'var mat=new THREE.MeshPhongMaterial({color:0x6baed6,side:THREE.FrontSide,shininess:45});'
+        'var box=new THREE.Box3();'
+        'for(var i=0;i<result.meshes.size();i++){'
+        'var mesh=result.meshes.get(i),geo=new THREE.BufferGeometry();'
+        "geo.setAttribute('position',new THREE.Float32BufferAttribute(mesh.vertex_array,3));"
+        "geo.setAttribute('normal',new THREE.Float32BufferAttribute(mesh.normal_array,3));"
+        'geo.setIndex(new THREE.Uint32BufferAttribute(mesh.index_array,1));'
+        'var m3=new THREE.Mesh(geo,mat);scene.add(m3);box.expandByObject(m3);}'
+        'var ctr=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());'
+        'var r=Math.max(sz.x,sz.y,sz.z);'
+        'camera.position.set(ctr.x+r*.8,ctr.y+r*.8,ctr.z+r*1.4);'
+        'camera.lookAt(ctr);controls.target.copy(ctr);controls.update();'
+        "document.getElementById('msg').style.display='none';"
+        '(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();'
+        '}).catch(function(e){document.getElementById(\'msg\').textContent=\'Error: \'+e.message;});'
+        '</script></body></html>'
+    )
+
+    _STL_VIEWER = (
+        '<!DOCTYPE html><html><head>'
+        '<style>*{margin:0;padding:0}body{background:#0e1117;overflow:hidden}'
+        'canvas{display:block;width:100%;height:420px}</style></head><body>'
+        '<canvas id="c"></canvas>'
+        '<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>'
+        '<script type="module">'
+        "import * as THREE from 'three';"
+        "import {STLLoader} from 'three/addons/loaders/STLLoader.js';"
+        "import {OrbitControls} from 'three/addons/controls/OrbitControls.js';"
+        "import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';"
+        "var canvas=document.getElementById('c'),W=canvas.parentElement.clientWidth||600,H=420;"
+        'canvas.width=W;canvas.height=H;'
+        'var renderer=new THREE.WebGLRenderer({canvas,antialias:true});'
+        'renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W,H);renderer.setClearColor(0x0e1117);'
+        'var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,W/H,0.01,5000);'
+        'var controls=new OrbitControls(camera,canvas);'
+        'controls.enableDamping=true;controls.dampingFactor=0.08;'
+        'scene.add(new THREE.AmbientLight(0xffffff,0.55));'
+        'var d1=new THREE.DirectionalLight(0xffffff,0.9);d1.position.set(1,2,2);scene.add(d1);'
+        'var d2=new THREE.DirectionalLight(0x88aaff,0.3);d2.position.set(-1,-1,-1);scene.add(d2);'
+        "var bin=atob('__B64__'),buf=new Uint8Array(bin.length);"
+        'for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);'
+        'var geo=mergeVertices(new STLLoader().parse(buf.buffer),1e-4);'
+        'geo.computeVertexNormals();geo.center();geo.computeBoundingBox();'
+        'var sz=geo.boundingBox.getSize(new THREE.Vector3()),r=Math.max(sz.x,sz.y,sz.z);'
+        'camera.position.set(r*.8,r*.8,r*1.4);camera.lookAt(0,0,0);controls.update();'
+        'var mat=new THREE.MeshPhongMaterial({color:0x6baed6,side:THREE.FrontSide,shininess:45});'
+        'scene.add(new THREE.Mesh(geo,mat));'
+        '(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();'
+        '</script></body></html>'
+    )
+
     if test_type == "pip":
-        _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
-        _stl_path  = os.path.join(_punch_dir, pip_id + ".stl")
-        _png_path  = os.path.join(_punch_dir, pip_id + ".png")
+        import base64 as _b64
+        _punch_dir  = os.path.join(PROJECT_DIR, "PiP_Punches")
+        _step_path  = os.path.join(_punch_dir, pip_id + ".step")
+        _stl_path   = os.path.join(_punch_dir, pip_id + ".stl")
+        _png_path   = os.path.join(_punch_dir, pip_id + ".png")
 
-        if os.path.exists(_stl_path):
-            import base64 as _b64
+        if os.path.exists(_step_path):
+            with open(_step_path, "rb") as _f:
+                _b64_data = _b64.b64encode(_f.read()).decode()
+            st.caption(f"Inner punch — {pip_id}  ·  STEP geometry  ·  drag to orbit, scroll to zoom")
+            st.components.v1.html(_STEP_VIEWER.replace("__B64__", _b64_data), height=430, scrolling=False)
+        elif os.path.exists(_stl_path):
             with open(_stl_path, "rb") as _f:
-                _stl_b64 = _b64.b64encode(_f.read()).decode()
-            _viewer_html = """
-<!DOCTYPE html><html><head>
-<style>body,html{margin:0;padding:0;background:#0e1117;overflow:hidden;}
-canvas{display:block;width:100%%;height:420px;}</style>
-</head><body>
-<canvas id="c"></canvas>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
-<script type="module">
-import * as THREE from 'three';
-import { STLLoader } from 'three/addons/loaders/STLLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-
-const canvas = document.getElementById('c');
-const W = canvas.parentElement.clientWidth || 600, H = 420;
-canvas.width = W; canvas.height = H;
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(W, H);
-renderer.setClearColor(0x0e1117);
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, W/H, 0.01, 5000);
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true; controls.dampingFactor = 0.08;
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const d1 = new THREE.DirectionalLight(0xffffff, 0.9);
-d1.position.set(1, 2, 2); scene.add(d1);
-const d2 = new THREE.DirectionalLight(0x88aaff, 0.3);
-d2.position.set(-1, -1, -1); scene.add(d2);
-
-const b64 = "%s";
-const bin = atob(b64);
-const buf = new Uint8Array(bin.length);
-for (let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
-
-// STL has unshared vertices per triangle — mergeVertices welds co-located
-// vertices so computeVertexNormals can blend across triangle boundaries,
-// giving smooth shading instead of a faceted appearance.
-let geo = new STLLoader().parse(buf.buffer);
-geo = mergeVertices(geo, 1e-4);
-geo.computeVertexNormals();
-geo.center();
-geo.computeBoundingBox();
-const sz = geo.boundingBox.getSize(new THREE.Vector3());
-const r  = Math.max(sz.x, sz.y, sz.z);
-camera.position.set(r*0.8, r*0.8, r*1.4);
-camera.lookAt(0,0,0); controls.update();
-
-const mat = new THREE.MeshPhongMaterial({color:0x6baed6, side:THREE.FrontSide, shininess:45});
-scene.add(new THREE.Mesh(geo, mat));
-
-(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();
-</script></body></html>
-""" % _stl_b64
-            st.caption(f"Inner punch preview — {pip_id}  ·  drag to orbit, scroll to zoom")
-            st.components.v1.html(_viewer_html, height=430, scrolling=False)
+                _b64_data = _b64.b64encode(_f.read()).decode()
+            st.caption(f"Inner punch — {pip_id}  ·  drag to orbit, scroll to zoom")
+            st.components.v1.html(_STL_VIEWER.replace("__B64__", _b64_data), height=430, scrolling=False)
         elif os.path.exists(_png_path):
             st.image(_png_path, use_container_width=True)
 
