@@ -282,26 +282,54 @@ if page == "Submit Job":
             punch_diam = st.number_input("Punch Diameter", value=100.0)
             pip_id = None
 
-    # ── PiP punch preview grid ───────────────────────────────────────────────
+    # ── PiP punch 3-D viewer ─────────────────────────────────────────────────
     if test_type == "pip":
-        _punch_dir = os.path.join(PROJECT_DIR, "PiP_Punches")
-        _pngs = {
-            p: os.path.join(_punch_dir, p + ".png")
-            for p in PIP_OPTIONS
-            if os.path.exists(os.path.join(_punch_dir, p + ".png"))
-        }
-        if _pngs:
-            with st.expander("Punch previews", expanded=True):
-                _cols = st.columns(len(_pngs))
-                for i, (pid, png_path) in enumerate(_pngs.items()):
-                    with _cols[i]:
-                        st.image(png_path, caption=pid, use_container_width=True)
-                        if pid == pip_id:
-                            st.markdown("**▲ selected**")
+        _punch_dir  = os.path.join(PROJECT_DIR, "PiP_Punches")
+        _json_path  = os.path.join(_punch_dir, pip_id + "_mesh.json")
+        _png_path   = os.path.join(_punch_dir, pip_id + ".png")
+
+        if os.path.exists(_json_path):
+            import json as _json
+            with open(_json_path) as _f:
+                _mesh = _json.load(_f)
+            _nodes = _mesh["nodes"]
+            _tris  = _mesh["triangles"]
+            _x = [n[0] for n in _nodes]
+            _y = [n[1] for n in _nodes]
+            _z = [n[2] for n in _nodes]
+            _i = [t[0] for t in _tris]
+            _j = [t[1] for t in _tris]
+            _k = [t[2] for t in _tris]
+            _fig3d = go.Figure(go.Mesh3d(
+                x=_x, y=_y, z=_z,
+                i=_i, j=_j, k=_k,
+                color="#6baed6",
+                opacity=1.0,
+                flatshading=False,
+                lighting=dict(ambient=0.4, diffuse=0.8, specular=0.3, roughness=0.5),
+                lightposition=dict(x=1, y=2, z=3),
+            ))
+            _fig3d.update_layout(
+                margin=dict(l=0, r=0, t=0, b=0),
+                height=380,
+                scene=dict(
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False),
+                    zaxis=dict(visible=False),
+                    bgcolor="#0e1117",
+                    aspectmode="data",
+                ),
+                paper_bgcolor="#0e1117",
+            )
+            st.plotly_chart(_fig3d, use_container_width=True, key="punch_3d")
+
+        elif os.path.exists(_png_path):
+            st.image(_png_path, caption=pip_id, use_container_width=False, width=320)
+
         else:
             st.caption(
-                "No punch previews found in `PiP_Punches/`. "
-                "Run `bash render_punch_previews.sh` on Euler and sync PNGs to generate them."
+                f"No 3-D data for `{pip_id}`. "
+                "Run `bash render_punch_previews.sh` on Euler then sync via Results tab."
             )
 
     with c6:
