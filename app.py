@@ -312,6 +312,7 @@ canvas{display:block;width:100%%;height:420px;}</style>
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const canvas = document.getElementById('c');
 const W = canvas.parentElement.clientWidth || 600, H = 420;
@@ -336,7 +337,12 @@ const b64 = "%s";
 const bin = atob(b64);
 const buf = new Uint8Array(bin.length);
 for (let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
-const geo = new STLLoader().parse(buf.buffer);
+
+// STL has unshared vertices per triangle — mergeVertices welds co-located
+// vertices so computeVertexNormals can blend across triangle boundaries,
+// giving smooth shading instead of a faceted appearance.
+let geo = new STLLoader().parse(buf.buffer);
+geo = mergeVertices(geo, 1e-4);
 geo.computeVertexNormals();
 geo.center();
 geo.computeBoundingBox();
@@ -345,12 +351,13 @@ const r  = Math.max(sz.x, sz.y, sz.z);
 camera.position.set(r*0.8, r*0.8, r*1.4);
 camera.lookAt(0,0,0); controls.update();
 
-const mat = new THREE.MeshPhongMaterial({color:0x6baed6, side:THREE.FrontSide, shininess:35});
+const mat = new THREE.MeshPhongMaterial({color:0x6baed6, side:THREE.FrontSide, shininess:45});
 scene.add(new THREE.Mesh(geo, mat));
 
 (function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();
 </script></body></html>
 """ % _stl_b64
+            st.caption(f"Inner punch preview — {pip_id}  ·  drag to orbit, scroll to zoom")
             st.components.v1.html(_viewer_html, height=430, scrolling=False)
         elif os.path.exists(_png_path):
             st.image(_png_path, use_container_width=True)
