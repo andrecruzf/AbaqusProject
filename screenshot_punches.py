@@ -10,7 +10,7 @@ Output per punch:
 """
 from abaqus import *
 from abaqusConstants import *
-import os, json
+import os
 
 EULER_DIR = os.getcwd()
 PUNCH_DIR = os.environ.get('PUNCH_DIR', '').strip() or os.path.join(EULER_DIR, 'PiP_Punches')
@@ -44,34 +44,53 @@ else:
     session.printToFile(fileName=out_png, format=PNG, canvasObjects=(vp,))
     print('  PNG  -> %s.png' % out_png)
 
-    # ── Mesh JSON export ──────────────────────────────────────────────────────
-    # Build label→index map from the part's node array
-    nodes      = part.nodes           # MeshNodeArray
-    elements   = part.elements        # MeshElementArray
+    # ── STL export ────────────────────────────────────────────────────────────
+    import struct as _struct, math as _math
+
+    def _cross(a, b):
+        return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+
+    def _norm3(v):
+        l = _math.sqrt(sum(x*x for x in v)) or 1.0
+        return [x/l for x in v]
+
+    mesh_nodes = part.nodes
+    elements   = part.elements
 
     label_to_idx = {}
-    coords       = []
-    for i, n in enumerate(nodes):
-        coords.append(list(n.coordinates))
-        label_to_idx[n.label] = i
+    coords = []
+    for idx, nd in enumerate(mesh_nodes):
+        coords.append(list(nd.coordinates))
+        label_to_idx[nd.label] = idx
 
     triangles = []
     for el in elements:
-        conn = el.connectivity          # tuple of node labels
-        # Quads → 2 triangles; tris → 1 triangle; ignore other types
+        conn = el.connectivity
         if len(conn) >= 3:
             a = label_to_idx.get(conn[0])
             b = label_to_idx.get(conn[1])
             c = label_to_idx.get(conn[2])
             if None not in (a, b, c):
-                triangles.append([a, b, c])
+                triangles.append((a, b, c))
             if len(conn) >= 4:
                 d = label_to_idx.get(conn[3])
                 if None not in (a, c, d):
-                    triangles.append([a, c, d])
+                    triangles.append((a, c, d))
 
-    out_json = os.path.join(PUNCH_DIR, punch_id + '_mesh.json')
-    with open(out_json, 'w') as f:
-        json.dump({'nodes': coords, 'triangles': triangles}, f, separators=(',', ':'))
-    print('  JSON -> %s  (%d nodes, %d triangles)'
-          % (out_json, len(coords), len(triangles)))
+    out_stl = os.path.join(PUNCH_DIR, punch_id + '.stl')
+    with open(out_stl, 'wb') as _f:
+        header = ('Abaqus mesh: ' + punch_id).ljust(80)[:80]
+        _f.write(header.encode('ascii', 'replace'))
+        _f.write(_struct.pack('<I', len(triangles)))
+        for tri in triangles:
+            va, vb, vc = coords[tri[0]], coords[tri[1]], coords[tri[2]]
+            ab = [vb[i]-va[i] for i in range(3)]
+            ac = [vc[i]-va[i] for i in range(3)]
+            n = _norm3(_cross(ab, ac))
+            _f.write(_struct.pack('<3f', n[0], n[1], n[2]))
+            _f.write(_struct.pack('<3f', va[0], va[1], va[2]))
+            _f.write(_struct.pack('<3f', vb[0], vb[1], vb[2]))
+            _f.write(_struct.pack('<3f', vc[0], vc[1], vc[2]))
+            _f.write(_struct.pack('<H', 0))
+    print('  STL  -> %s  (%d nodes, %d triangles)'
+          % (out_stl, len(coords), len(triangles)))
