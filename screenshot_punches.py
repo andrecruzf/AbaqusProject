@@ -77,20 +77,28 @@ else:
             print('  WARNING: writeStlFile failed (%s); falling back to mesh STL' % e)
 
         if not stl_ok:
-            # Final fallback: build binary STL from mesh elements
+            # Final fallback: build binary STL from mesh elements.
+            # Avoid generator expressions — Abaqus wraps coordinates in a
+            # non-standard C float type that breaks sum(x*x for x in v).
             import struct as _struct, math as _math
 
-            def _cross(a, b):
-                return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+            def _cross3(a, b):
+                return (a[1]*b[2]-a[2]*b[1],
+                        a[2]*b[0]-a[0]*b[2],
+                        a[0]*b[1]-a[1]*b[0])
 
             def _norm3(v):
-                l = _math.sqrt(sum(x*x for x in v)) or 1.0
-                return [x/l for x in v]
+                s = v[0]*v[0] + v[1]*v[1] + v[2]*v[2]
+                l = _math.sqrt(s) if s > 0.0 else 1.0
+                return (v[0]/l, v[1]/l, v[2]/l)
 
             label_to_idx = {}
             coords = []
             for idx, nd in enumerate(part.nodes):
-                coords.append(list(nd.coordinates))
+                # Cast to plain Python float — Abaqus coordinate type breaks
+                # arithmetic inside generator expressions / sum().
+                c = nd.coordinates
+                coords.append((float(c[0]), float(c[1]), float(c[2])))
                 label_to_idx[nd.label] = idx
 
             triangles = []
@@ -100,11 +108,11 @@ else:
                     a = label_to_idx.get(conn[0])
                     b = label_to_idx.get(conn[1])
                     c = label_to_idx.get(conn[2])
-                    if None not in (a, b, c):
+                    if a is not None and b is not None and c is not None:
                         triangles.append((a, b, c))
                     if len(conn) >= 4:
                         d = label_to_idx.get(conn[3])
-                        if None not in (a, c, d):
+                        if a is not None and c is not None and d is not None:
                             triangles.append((a, c, d))
 
             out_stl = os.path.join(PUNCH_DIR, punch_id + '.stl')
@@ -112,11 +120,11 @@ else:
                 _f.write(('Abaqus mesh: ' + punch_id).ljust(80)[:80].encode('ascii', 'replace'))
                 _f.write(_struct.pack('<I', len(triangles)))
                 for tri in triangles:
-                    va, vb, vc = coords[tri[0]], coords[tri[1]], coords[tri[2]]
-                    ab = [vb[i]-va[i] for i in range(3)]
-                    ac = [vc[i]-va[i] for i in range(3)]
-                    n = _norm3(_cross(ab, ac))
-                    _f.write(_struct.pack('<3f', n[0], n[1], n[2]))
+                    va = coords[tri[0]]; vb = coords[tri[1]]; vc = coords[tri[2]]
+                    ab = (vb[0]-va[0], vb[1]-va[1], vb[2]-va[2])
+                    ac = (vc[0]-va[0], vc[1]-va[1], vc[2]-va[2])
+                    n  = _norm3(_cross3(ab, ac))
+                    _f.write(_struct.pack('<3f', n[0],  n[1],  n[2]))
                     _f.write(_struct.pack('<3f', va[0], va[1], va[2]))
                     _f.write(_struct.pack('<3f', vb[0], vb[1], vb[2]))
                     _f.write(_struct.pack('<3f', vc[0], vc[1], vc[2]))
