@@ -288,12 +288,15 @@ if page == "Submit Job":
         _json_path  = os.path.join(_punch_dir, pip_id + "_mesh.json")
         _png_path   = os.path.join(_punch_dir, pip_id + ".png")
 
+        _mesh_ok = False
         if os.path.exists(_json_path):
             import json as _json
             with open(_json_path) as _f:
                 _mesh = _json.load(_f)
             _nodes = _mesh["nodes"]
             _tris  = _mesh["triangles"]
+            _mesh_ok = len(_nodes) > 0 and len(_tris) > 0
+        if _mesh_ok:
             _x = [n[0] for n in _nodes]
             _y = [n[1] for n in _nodes]
             _z = [n[2] for n in _nodes]

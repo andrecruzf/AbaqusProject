@@ -12,8 +12,8 @@ from abaqus import *
 from abaqusConstants import *
 import os, json
 
-EULER_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in dir() else os.getcwd()
-PUNCH_DIR = os.path.join(EULER_DIR, 'PiP_Punches')
+EULER_DIR = os.getcwd()
+PUNCH_DIR = os.environ.get('PUNCH_DIR', '').strip() or os.path.join(EULER_DIR, 'PiP_Punches')
 cae_path  = os.environ.get('PUNCH_CAE', '').strip()
 
 if not cae_path:
