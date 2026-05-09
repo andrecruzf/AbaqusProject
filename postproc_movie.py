@@ -40,7 +40,7 @@ try:
 except Exception:
     pass
 
-_BG = '#E8E8E8'
+_BG = '#F2F2F2'
 
 
 def _resolve_odb_path():
@@ -179,111 +179,237 @@ def _resolve_eqps_max(odb):
 
 # ── Display setup — one punch (Nakazima / Marciniak) ──────────────
 def _setup_single_punch():
+    vp = session.viewports['Viewport: 1']
     session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
-    leaf = dgo.LeafFromConstraintNames(name=("RigidBody_DIE-1        1",
-        "RigidBody_MATRIX-1        1", "RigidBody_PUNCH-1        1", ),
-        type=RIGID_BODY)
-    dg = session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
-    leaf = dgo.LeafFromSurfaceSets(surfaceSets=("SPECIMEN-1.ZMAX",
-        "SPECIMEN-1.ZMIN", ))
-    dg = session.DisplayGroup(leaf=leaf, name='Specimen')
-    dg1= session.displayGroups['Rigid Bodies']
-    session.viewports['Viewport: 1'].odbDisplay.setValues(visibleDisplayGroups=(
-        dg1, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        DEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        translucency=ON, translucencyFactor=0.15)
-    session.viewports['Viewport: 1'].odbDisplay.displayGroupInstances['Rigid Bodies'].setValues(
-        lockOptions=ON)
-    dg1= session.displayGroups['Specimen']
-    dg2= session.displayGroups['Rigid Bodies']
-    session.viewports['Viewport: 1'].odbDisplay.setValues(visibleDisplayGroups=(
-        dg1, dg2, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        UNDEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        DEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        renderStyle=FILLED, visibleEdges=NONE)
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        translucency=OFF)
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.setPrimaryVariable(
-        variableLabel='SDV1', outputPosition=INTEGRATION_POINT, )
-    session.viewports['Viewport: 1'].odbDisplay.basicOptions.setValues(
+
+    leaf = dgo.LeafFromConstraintNames(name=(
+        "RigidBody_DIE-1        1",
+        "RigidBody_MATRIX-1        1",
+        "RigidBody_PUNCH-1        1",
+    ), type=RIGID_BODY)
+    session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
+
+    leaf = dgo.LeafFromSurfaceSets(surfaceSets=(
+        "SPECIMEN-1.ZMAX", "SPECIMEN-1.ZMIN",
+    ))
+    session.DisplayGroup(leaf=leaf, name='Specimen')
+
+    dg_rb = session.displayGroups['Rigid Bodies']
+    dg_sp = session.displayGroups['Specimen']
+
+    # Rigid bodies: must set DEFORMED *before* locking — lockOptions freezes
+    # whatever plotState is active at lock time. Without DEFORMED locked in,
+    # the punch stays at its frame-0 position for the whole animation.
+    # Do NOT set renderStyle/visibleEdges here — locking before those global
+    # calls are made keeps the default shaded+edges look (mesh visible through
+    # the translucency), which is the intended tooling appearance.
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_rb,))
+    vp.odbDisplay.display.setValues(plotState=(DEFORMED,))
+    vp.odbDisplay.commonOptions.setValues(
+        translucency=ON, translucencyFactor=0.25)
+    vp.odbDisplay.displayGroupInstances['Rigid Bodies'].setValues(lockOptions=ON)
+
+    # Specimen: contours on deformed, filled, no edges, true scale
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp, dg_rb))
+    vp.odbDisplay.display.setValues(plotState=(CONTOURS_ON_DEF,))
+    vp.odbDisplay.commonOptions.setValues(
+        renderStyle=FILLED,
+        visibleEdges=NONE,
+        translucency=OFF,
+        deformationScaling=UNIFORM,
+        uniformScaleFactor=1.0,
+    )
+    vp.odbDisplay.setPrimaryVariable(
+        variableLabel='SDV1', outputPosition=INTEGRATION_POINT)
+    vp.odbDisplay.basicOptions.setValues(
         mirrorAboutXzPlane=True, mirrorAboutYzPlane=True)
-    session.viewports['Viewport: 1'].odbDisplay.displayGroupInstances['Specimen'].setValues(
-        lockOptions=ON)
+    vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
 
 
 # ── Display setup — two punches (PiP) ─────────────────────────────
 def _setup_two_punches():
+    vp = session.viewports['Viewport: 1']
     session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
-    leaf = dgo.LeafFromConstraintNames(name=("RigidBody_DIE-1        1",
-        "RigidBody_MATRIX-1        1", "RigidBody_PUNCH1-1        1",
-        "RigidBody_PUNCH2-1        1", ),
-        type=RIGID_BODY)
-    dg = session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
-    leaf = dgo.LeafFromSurfaceSets(surfaceSets=("SPECIMEN-1.ZMAX",
-        "SPECIMEN-1.ZMIN", ))
-    dg = session.DisplayGroup(leaf=leaf, name='Specimen')
-    dg1= session.displayGroups['Rigid Bodies']
-    session.viewports['Viewport: 1'].odbDisplay.setValues(visibleDisplayGroups=(
-        dg1, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        DEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        translucency=ON, translucencyFactor=0.15)
-    session.viewports['Viewport: 1'].odbDisplay.displayGroupInstances['Rigid Bodies'].setValues(
-        lockOptions=ON)
-    dg1= session.displayGroups['Specimen']
-    dg2= session.displayGroups['Rigid Bodies']
-    session.viewports['Viewport: 1'].odbDisplay.setValues(visibleDisplayGroups=(
-        dg1, dg2, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        UNDEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        DEFORMED, ))
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        renderStyle=FILLED, visibleEdges=NONE)
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        translucency=OFF)
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.setPrimaryVariable(
-        variableLabel='SDV1', outputPosition=INTEGRATION_POINT, )
-    session.viewports['Viewport: 1'].odbDisplay.basicOptions.setValues(
+
+    leaf = dgo.LeafFromConstraintNames(name=(
+        "RigidBody_DIE-1        1",
+        "RigidBody_MATRIX-1        1",
+        "RigidBody_PUNCH1-1        1",
+        "RigidBody_PUNCH2-1        1",
+    ), type=RIGID_BODY)
+    session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
+
+    leaf = dgo.LeafFromSurfaceSets(surfaceSets=(
+        "SPECIMEN-1.ZMAX", "SPECIMEN-1.ZMIN",
+    ))
+    session.DisplayGroup(leaf=leaf, name='Specimen')
+
+    dg_rb = session.displayGroups['Rigid Bodies']
+    dg_sp = session.displayGroups['Specimen']
+
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_rb,))
+    vp.odbDisplay.display.setValues(plotState=(DEFORMED,))
+    vp.odbDisplay.commonOptions.setValues(
+        translucency=ON, translucencyFactor=0.25)
+    vp.odbDisplay.displayGroupInstances['Rigid Bodies'].setValues(lockOptions=ON)
+
+    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp, dg_rb))
+    vp.odbDisplay.display.setValues(plotState=(CONTOURS_ON_DEF,))
+    vp.odbDisplay.commonOptions.setValues(
+        renderStyle=FILLED,
+        visibleEdges=NONE,
+        translucency=OFF,
+        deformationScaling=UNIFORM,
+        uniformScaleFactor=1.0,
+    )
+    vp.odbDisplay.setPrimaryVariable(
+        variableLabel='SDV1', outputPosition=INTEGRATION_POINT)
+    vp.odbDisplay.basicOptions.setValues(
         mirrorAboutXzPlane=True, mirrorAboutYzPlane=True)
-    session.viewports['Viewport: 1'].odbDisplay.displayGroupInstances['Specimen'].setValues(
-        lockOptions=ON)
+    vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
+
+
+def _setup_cut_view(vp, cut_rb_names):
+    """
+    Half-model front view — the Y=0 symmetry face acts as the 'cut'.
+
+    cut_rb_names : tuple of constraint names (LeafFromConstraintNames) to show
+                   as translucent rigid bodies in the cut view.  Typically the
+                   punch + the rim tool that does NOT cover the deformation zone
+                   (die below the blank or matrix/blank-holder above).
+
+    Show all specimen elements (element-based leaf, not just ZMAX/ZMIN surfaces)
+    with mirrorAboutXzPlane=OFF so only the Y>0 quarter is drawn.  Looking from
+    -Y toward +Y the Y=0 face of the specimen is the front face, exposing the
+    10 through-thickness element layers with FEATURE edges.
+    mirrorAboutYzPlane=ON keeps the full ±X width.
+
+    Returns True on success, False if display groups cannot be built.
+    """
+    # ── Specimen: element-based so the Y=0 face renders ──────────────────────
+    try:
+        leaf = dgo.LeafFromPartInstance(name=('SPECIMEN-1',))
+    except Exception:
+        try:
+            leaf = dgo.LeafFromElementSets(elementSets=('SPECIMEN-1.ELALL',))
+        except Exception as e:
+            print('  WARNING _setup_cut_view: cannot build element leaf (%s).' % e)
+            return False
+    try:
+        session.DisplayGroup(leaf=leaf, name='Specimen_Section')
+    except Exception:
+        pass  # already exists — reuse
+
+    # ── Rigid bodies for cut view (subset chosen by caller) ──────────────────
+    try:
+        rb_leaf = dgo.LeafFromConstraintNames(name=cut_rb_names, type=RIGID_BODY)
+        try:
+            session.DisplayGroup(leaf=rb_leaf, name='Cut Rigid Bodies')
+        except Exception:
+            session.displayGroups['Cut Rigid Bodies'].setValues(newLeaf=rb_leaf)
+        print('  Cut RB group: %s' % (cut_rb_names,))
+    except Exception as e:
+        print('  WARNING _setup_cut_view: cannot build Cut RB group (%s) — using all.' % e)
+        try:
+            session.displayGroups['Cut Rigid Bodies']
+        except KeyError:
+            try:
+                session.displayGroups['Rigid Bodies']
+                # fall back silently — name adjusted below
+            except Exception:
+                pass
+
+    try:
+        dg_sec = session.displayGroups['Specimen_Section']
+    except KeyError as e:
+        print('  WARNING _setup_cut_view: Specimen_Section not found (%s).' % e)
+        return False
+    try:
+        dg_cut_rb = session.displayGroups['Cut Rigid Bodies']
+    except KeyError:
+        try:
+            dg_cut_rb = session.displayGroups['Rigid Bodies']
+            print('  NOTE: Cut Rigid Bodies not found, falling back to Rigid Bodies.')
+        except KeyError as e:
+            print('  WARNING _setup_cut_view: no rigid body group found (%s).' % e)
+            return False
+
+    # ── Lock specimen first, then add rigid bodies ────────────────────────────
+    # Problem: when _setup_cut_view runs, commonOptions is already in
+    # renderStyle=FILLED + translucency=OFF (left over from main movie).
+    # Locking rigid bodies at that point freezes them as FILLED+opaque.
+    #
+    # Fix: invert the order.
+    #   1. Show only specimen → set CONTOURS_ON_DEF + FILLED + no translucency
+    #      → lock specimen so these settings survive the later global changes.
+    #   2. ADD rigid bodies (lock on specimen survives — adding preserves locks).
+    #   3. Set global DEFORMED + SHADED + translucency=ON.
+    #      Unlocked rigid bodies pick up the translucent global state.
+    #      Locked specimen keeps its CONTOURS_ON_DEF + FILLED + opaque settings.
+    try:
+        vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sec,))
+        vp.odbDisplay.display.setValues(plotState=(CONTOURS_ON_DEF,))
+        vp.odbDisplay.commonOptions.setValues(
+            renderStyle=FILLED,
+            visibleEdges=FEATURE,
+            translucency=OFF,
+            deformationScaling=UNIFORM,
+            uniformScaleFactor=1.0,
+        )
+        vp.odbDisplay.displayGroupInstances['Specimen_Section'].setValues(lockOptions=ON)
+    except Exception as e:
+        print('  WARNING _setup_cut_view: specimen lock failed (%s).' % e)
+        return False
+
+    # Add rigid bodies — specimen stays in the set so its lock is preserved.
+    try:
+        vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sec, dg_cut_rb))
+    except Exception as e:
+        print('  WARNING _setup_cut_view: setValues failed (%s).' % e)
+        return False
+
+    # Global settings now apply to the unlocked rigid bodies only.
+    # Locked specimen ignores these.
+    vp.odbDisplay.display.setValues(plotState=(DEFORMED,))
+    vp.odbDisplay.commonOptions.setValues(
+        renderStyle=SHADED,
+        visibleEdges=FEATURE,
+        translucency=ON,
+        translucencyFactor=0.25,
+    )
+
+    # Half model: X mirror for full ±X width; NO Y mirror so Y=0 face is exposed
+    vp.odbDisplay.basicOptions.setValues(
+        mirrorAboutXzPlane=False,
+        mirrorAboutYzPlane=True,
+    )
+
+    # Camera: -Y looking toward +Y, Z up — Y=0 face is front-facing
+    vp.view.setValues(
+        cameraPosition=(0., -500., 0.),
+        cameraUpVector=(0., 0., 1.),
+        cameraTarget=(0., 0., 0.),
+    )
+    return True
 
 
 def _render_animation(vp, out_file):
     """Export animation via Abaqus's built-in writeImageAnimation (TIME_HISTORY),
-    then convert the AVI to webm with ffmpeg.
+    then convert the lossless AVI to webm (VP9) + MP4 (H.264) with ffmpeg.
 
-    Using the built-in exporter means Abaqus drives the animation controller
-    internally — no manual setFrame() loop, no per-frame contour re-apply.
-    Display options (contour range, camera, display groups) set on the viewport
-    before this call are respected for the whole export.
-
-    Returns ffmpeg exit code, or 0 if the AVI itself is kept as fallback.
+    Returns ffmpeg exit code for the webm pass (0 = success).
     """
     tmp_avi = '/tmp/abaqus_movie_%d.avi' % os.getpid()
 
+    # Lossless 32-bit AVI intermediate — no color loss before ffmpeg re-encodes.
+    session.aviOptions.setValues(
+        compressionMethod=RAW32,
+        sizeDefinition=USER_DEFINED,
+        imageSize=(1920, 1080),
+    )
     vp.animationController.setValues(animationType=TIME_HISTORY)
     session.imageAnimationOptions.setValues(
-        frameRate=10, compass=OFF, timeScale=1)
+        frameRate=15, compass=OFF, timeScale=1)
     session.writeImageAnimation(
         fileName=tmp_avi, format=AVI, canvasObjects=(vp,))
     vp.animationController.setValues(animationType=NONE)
@@ -291,16 +417,31 @@ def _render_animation(vp, out_file):
     # Abaqus may append .avi itself — find whichever exists.
     actual_avi = tmp_avi if os.path.isfile(tmp_avi) else tmp_avi + '.avi'
     if not os.path.isfile(actual_avi):
-        print('  WARNING: AVI not found at %s — skipping webm conversion.' % actual_avi)
+        print('  WARNING: AVI not found at %s — skipping conversion.' % actual_avi)
         return 1
 
-    cmd = [
+    _vf = 'format=yuv420p,unsharp=5:5:0.8:3:3:0.4'
+
+    # webm / VP9 — constant quality, no bitrate cap
+    ret = subprocess.call([
         'ffmpeg', '-y', '-i', actual_avi,
-        '-vf', 'format=yuv420p',
-        '-vcodec', 'libvpx', '-crf', '10', '-b:v', '1M',
+        '-vf', _vf,
+        '-vcodec', 'libvpx-vp9', '-crf', '18', '-b:v', '0',
+        '-deadline', 'good', '-cpu-used', '2',
         out_file,
-    ]
-    ret = subprocess.call(cmd)
+    ])
+
+    # MP4 / H.264 — side output for broad player compatibility
+    mp4_file = out_file.replace('.webm', '.mp4')
+    subprocess.call([
+        'ffmpeg', '-y', '-i', actual_avi,
+        '-vf', _vf,
+        '-c:v', 'libx264', '-crf', '18',
+        mp4_file,
+    ])
+    if os.path.isfile(mp4_file):
+        print('  MP4  -> %s' % mp4_file)
+
     try:
         os.remove(actual_avi)
     except OSError:
@@ -332,13 +473,13 @@ def make_movie(odb_path, out_dir=None):
     vp.maximize()
     vp.setValues(displayedObject=odb)
     session.printOptions.setValues(vpDecorations=OFF, vpBackground=ON)
-    session.pngOptions.setValues(imageSize=(1280, 960))
+    session.pngOptions.setValues(imageSize=(1920, 1080))
 
     # ── Annotations ───────────────────────────────────────────
     vp.viewportAnnotationOptions.setValues(
         compass=OFF, title=OFF, state=OFF, legend=ON,
         legendFont='-*-verdana-bold-r-normal-*-*-140-*-*-p-*-*-*',
-        legendNumberFormat=FIXED, legendDecimalPlaces=3)
+        legendNumberFormat=FIXED, legendDecimalPlaces=2)
 
     # ── Compute EQPS max before display setup touches contour options ─────────
     eqps_max = _resolve_eqps_max(odb)
@@ -365,12 +506,19 @@ def make_movie(odb_path, out_dir=None):
     # minValue=0.0 is a sentinel in some Abaqus builds; use 1e-9 instead.
     _cmin = 1e-9
     for _co in (vp.odbDisplay.contourOptions,):
-        _co.setValues(maxAutoCompute=OFF, maxValue=_cmax,
-                      minAutoCompute=OFF, minValue=_cmin)
+        _co.setValues(
+            maxAutoCompute=OFF, maxValue=_cmax,
+            minAutoCompute=OFF, minValue=_cmin,
+            numIntervals=12,
+            spectrum='Rainbow',
+        )
     try:
         session.defaultOdbDisplay.contourOptions.setValues(
             maxAutoCompute=OFF, maxValue=_cmax,
-            minAutoCompute=OFF, minValue=_cmin)
+            minAutoCompute=OFF, minValue=_cmin,
+            numIntervals=12,
+            spectrum='Rainbow',
+        )
     except Exception as _e:
         print('  NOTE: defaultOdbDisplay contour set failed (%s)' % _e)
     if eqps_max:
@@ -405,6 +553,40 @@ def make_movie(odb_path, out_dir=None):
     print('  Exporting via writeImageAnimation → ffmpeg → webm ...')
 
     ret = _render_animation(vp, out_file)
+
+    # ── Cut view movie (Y=0 cross-section, front camera) ──────────────────────
+    # Rigid bodies shown in cut view: punch + blank holder (MATRIX, rim tool
+    # above the blank).  DIE is below and obscures the punch in the front view.
+    if two_punches:
+        _cut_rb_names = (
+            "RigidBody_PUNCH1-1        1",
+            "RigidBody_PUNCH2-1        1",
+            "RigidBody_MATRIX-1        1",
+        )
+    else:
+        _cut_rb_names = (
+            "RigidBody_PUNCH-1        1",
+            "RigidBody_MATRIX-1        1",
+        )
+
+    cut_file = os.path.join(out_dir, job_name + '_cut.webm')
+    print('  Rendering cut view -> %s ...' % os.path.basename(cut_file))
+    if _setup_cut_view(vp, _cut_rb_names):
+        vp.odbDisplay.setFrame(step=_last_s_idx, frame=_last_f_idx)
+        vp.view.fitView()
+        # Re-apply camera after fitView(): fitView shifts cameraTarget to the
+        # Y>0 model centroid, tilting the -Y look direction and making the
+        # translucent punch shape appear visually offset from the Y=0 cut face.
+        vp.view.setValues(
+            cameraPosition=(0., -500., 0.),
+            cameraUpVector=(0., 0., 1.),
+            cameraTarget=(0., 0., 0.),
+        )
+        ret_cut = _render_animation(vp, cut_file)
+        if ret_cut != 0:
+            print('  WARNING: cut video ffmpeg exited with code %d' % ret_cut)
+        else:
+            print('  Done (cut) -> %s' % cut_file)
 
     odb.close()
 

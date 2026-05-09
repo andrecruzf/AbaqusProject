@@ -1,3 +1,4 @@
+import base64
 import math
 import os
 import re
@@ -7,6 +8,7 @@ import anthropic
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as st_components
 from streamlit_autorefresh import st_autorefresh
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -25,11 +27,88 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 WIDTH_OPTIONS = [20, 50, 80, 90, 100, 120, 200]
 MS_OPTIONS = [1e-4, 1e-5,1e-6,1e-7]
-PIP_OPTIONS   = ["PUNCH_1", "PUNCH_2", "PUNCH_21", "PUNCH_23", "PUNCH_24", "PUNCH_25"]
+PIP_OPTIONS   = ["PUNCH_2", "PUNCH_21", "PUNCH_23", "PUNCH_24", "PUNCH_25"]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+def _synced_videos_html(movie_path, cut_path):
+    """Return an HTML string with two autoplay/loop/muted videos side by side,
+    synchronized so the cut view always matches the full-view frame.
+    Videos are embedded as base64 data URIs so no extra file serving is needed.
+    v1 (full view) is the master; a requestAnimationFrame loop keeps v2 in sync."""
+    def _b64(path):
+        with open(path, 'rb') as fh:
+            return base64.b64encode(fh.read()).decode()
+
+    b64_movie = _b64(movie_path)
+    b64_cut   = _b64(cut_path)
+
+    # object-fit:cover inside a cropped-aspect-ratio wrapper removes the black
+    # margins Abaqus leaves around the simulation content in a 16:9 frame.
+    # aspect-ratio:7/6 crops ~17% from each side (vs 12.5% for 4/3).
+    video_style = (
+        "position:absolute;top:0;left:0;"
+        "width:100%;height:100%;"
+        "object-fit:cover;object-position:center center;"
+    )
+    wrap_style = (
+        "position:relative;overflow:hidden;"
+        "aspect-ratio:9/7;width:100%;background:#000;"
+    )
+
+    return """
+<style>
+.vid-caption {
+  text-align: center;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  margin: 0 0 4px 0;
+  color: #000000;
+}
+@media (prefers-color-scheme: dark) {
+  .vid-caption { color: #ffffff; }
+}
+</style>
+<div style="display:flex;gap:8px;width:100%%;">
+  <div style="flex:1;min-width:0;">
+    <p class="vid-caption">Full view</p>
+    <div style="%(wrap)s">
+      <video id="v_movie" style="%(vid)s" autoplay loop muted playsinline>
+        <source src="data:video/webm;base64,%(b64_movie)s" type="video/webm">
+      </video>
+    </div>
+  </div>
+  <div style="flex:1;min-width:0;">
+    <p class="vid-caption">Cut view (Y=0 symmetry plane)</p>
+    <div style="%(wrap)s">
+      <video id="v_cut" style="%(vid)s" autoplay loop muted playsinline>
+        <source src="data:video/webm;base64,%(b64_cut)s" type="video/webm">
+      </video>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var master = document.getElementById('v_movie');
+  var slave  = document.getElementById('v_cut');
+  function sync() {
+    if (master.readyState >= 2 && slave.readyState >= 2) {
+      var diff = Math.abs(slave.currentTime - master.currentTime);
+      if (diff > 0.067) { slave.currentTime = master.currentTime; }
+    }
+    requestAnimationFrame(sync);
+  }
+  master.addEventListener('play',   function(){ if (slave.paused)  slave.play(); });
+  master.addEventListener('pause',  function(){ if (!slave.paused) slave.pause(); });
+  master.addEventListener('seeked', function(){ slave.currentTime = master.currentTime; });
+  requestAnimationFrame(sync);
+})();
+</script>
+""" % {'b64_movie': b64_movie, 'b64_cut': b64_cut,
+       'wrap': wrap_style, 'vid': video_style}
+
+
 def make_job_name(test_type, specimen_width, blank_thickness, angle,
                   punch_diameter, mesh_factor, mass_scaling_dt, pip_punch2_id):
 
@@ -292,54 +371,9 @@ if page == "Submit Job":
         )
 
     # ── PiP 3-D punch preview ─────────────────────────────────────────────────
-    _STEP_VIEWER = (
-        '<!DOCTYPE html><html><head>'
-        '<style>*{margin:0;padding:0}body{background:#0e1117;overflow:hidden}'
-        'canvas{display:block;width:100%;height:420px}'
-        '#msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);'
-        'color:#777;font:12px sans-serif;pointer-events:none}</style></head><body>'
-        '<div id="msg">Loading STEP geometry…</div>'
-        '<canvas id="c"></canvas>'
-        '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>'
-        '<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>'
-        '<script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js"></script>'
-        '<script>'
-        "var CDN='https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/';"
-        'occtimportjs({locateFile:function(f){return CDN+f}}).then(function(occt){'
-        "var bin=atob('__B64__'),buf=new Uint8Array(bin.length);"
-        'for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);'
-        'var result=occt.ReadStepFile(buf,null);'
-        "if(!result.success){document.getElementById('msg').textContent='STEP parse failed';return;}"
-        "var canvas=document.getElementById('c'),W=window.innerWidth||600,H=420;"
-        'var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});'
-        'renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W,H);renderer.setClearColor(0x0e1117);'
-        'var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,W/H,0.01,5000);'
-        'var controls=new THREE.OrbitControls(camera,renderer.domElement);'
-        'controls.enableDamping=true;controls.dampingFactor=0.08;'
-        'scene.add(new THREE.AmbientLight(0xffffff,0.5));'
-        'var d1=new THREE.DirectionalLight(0xffffff,0.9);d1.position.set(1,2,2);scene.add(d1);'
-        'var d2=new THREE.DirectionalLight(0x88aaff,0.3);d2.position.set(-1,-1,-1);scene.add(d2);'
-        'var mat=new THREE.MeshPhongMaterial({color:0x6baed6,side:THREE.FrontSide,shininess:45});'
-        'var box=new THREE.Box3();'
-        'for(var i=0;i<result.meshes.size();i++){'
-        'var mesh=result.meshes.get(i),geo=new THREE.BufferGeometry();'
-        "geo.setAttribute('position',new THREE.Float32BufferAttribute(mesh.vertex_array,3));"
-        "geo.setAttribute('normal',new THREE.Float32BufferAttribute(mesh.normal_array,3));"
-        'geo.setIndex(new THREE.Uint32BufferAttribute(mesh.index_array,1));'
-        'var m3=new THREE.Mesh(geo,mat);scene.add(m3);box.expandByObject(m3);}'
-        'var ctr=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());'
-        'var r=Math.max(sz.x,sz.y,sz.z);'
-        'camera.position.set(ctr.x+r*.8,ctr.y+r*.8,ctr.z+r*1.4);'
-        'camera.lookAt(ctr);controls.target.copy(ctr);controls.update();'
-        "document.getElementById('msg').style.display='none';"
-        '(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();'
-        '}).catch(function(e){document.getElementById(\'msg\').textContent=\'Error: \'+e.message;});'
-        '</script></body></html>'
-    )
-
     _STL_VIEWER = (
         '<!DOCTYPE html><html><head>'
-        '<style>*{margin:0;padding:0}body{background:#0e1117;overflow:hidden}'
+        '<style>*{margin:0;padding:0}body{overflow:hidden}'
         'canvas{display:block;width:100%;height:420px}</style></head><body>'
         '<canvas id="c"></canvas>'
         '<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>'
@@ -351,7 +385,9 @@ if page == "Submit Job":
         "var canvas=document.getElementById('c'),W=canvas.parentElement.clientWidth||600,H=420;"
         'canvas.width=W;canvas.height=H;'
         'var renderer=new THREE.WebGLRenderer({canvas,antialias:true});'
-        'renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W,H);renderer.setClearColor(0x0e1117);'
+        'renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(W,H);'
+        'function _syncBg(){var c="#0e1117";try{c=window.getComputedStyle(window.parent.document.body).backgroundColor;}catch(e){}renderer.setClearColor(c);document.body.style.background=c;}'
+        '_syncBg();setInterval(_syncBg,200);'
         'var scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,W/H,0.01,5000);'
         'var controls=new OrbitControls(camera,canvas);'
         'controls.enableDamping=true;controls.dampingFactor=0.08;'
@@ -360,28 +396,15 @@ if page == "Submit Job":
         'var d2=new THREE.DirectionalLight(0x88aaff,0.3);d2.position.set(-1,-1,-1);scene.add(d2);'
         "var bin=atob('__B64__'),buf=new Uint8Array(bin.length);"
         'for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);'
-        # midpoint subdivision: splits each triangle into 4, then weld+smooth
-        'function subdivide(g){'
-        'var p=g.attributes.position,v=[];'
-        'for(var t=0;t<p.count;t+=3){'
-        'var ax=p.getX(t),ay=p.getY(t),az=p.getZ(t);'
-        'var bx=p.getX(t+1),by=p.getY(t+1),bz=p.getZ(t+1);'
-        'var cx=p.getX(t+2),cy=p.getY(t+2),cz=p.getZ(t+2);'
-        'var mx=(ax+bx)/2,my=(ay+by)/2,mz=(az+bz)/2;'
-        'var nx=(bx+cx)/2,ny=(by+cy)/2,nz=(bz+cz)/2;'
-        'var ox=(cx+ax)/2,oy=(cy+ay)/2,oz=(cz+az)/2;'
-        'v.push(ax,ay,az,mx,my,mz,ox,oy,oz,'
-        '       mx,my,mz,bx,by,bz,nx,ny,nz,'
-        '       ox,oy,oz,nx,ny,nz,cx,cy,cz,'
-        '       mx,my,mz,nx,ny,nz,ox,oy,oz);}'
-        'var g2=new THREE.BufferGeometry();'
-        'g2.setAttribute("position",new THREE.Float32BufferAttribute(v,3));'
-        'return g2;}'
-        'var geo=mergeVertices(subdivide(new STLLoader().parse(buf.buffer)),1e-4);'
+        # Merge coincident vertices (weld seams that float32 STL may leave slightly apart),
+        # then compute smooth per-vertex normals.  No subdivision needed — Abaqus viewport
+        # STL already has 7 K–50 K triangles; subdivision before merging actually caused
+        # disconnected-edge artefacts because midpoints of unmerged verts differed in float.
+        'var geo=mergeVertices(new STLLoader().parse(buf.buffer),1e-2);'
         'geo.computeVertexNormals();geo.center();geo.computeBoundingBox();'
         'var sz=geo.boundingBox.getSize(new THREE.Vector3()),r=Math.max(sz.x,sz.y,sz.z);'
         'camera.position.set(r*.8,r*.8,r*1.4);camera.lookAt(0,0,0);controls.update();'
-        'var mat=new THREE.MeshPhongMaterial({color:0x6baed6,side:THREE.FrontSide,shininess:45});'
+        'var mat=new THREE.MeshPhongMaterial({color:0x8A8A8A,side:THREE.DoubleSide,shininess:45});'
         'scene.add(new THREE.Mesh(geo,mat));'
         '(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();'
         '</script></body></html>'
@@ -394,18 +417,21 @@ if page == "Submit Job":
         _stl_path   = os.path.join(_punch_dir, pip_id + ".stl")
         _png_path   = os.path.join(_punch_dir, pip_id + ".png")
 
-        if os.path.exists(_step_path):
-            with open(_step_path, "rb") as _f:
-                _b64_data = _b64.b64encode(_f.read()).decode()
-            st.caption(f"Inner punch — {pip_id}  ·  STEP geometry  ·  drag to orbit, scroll to zoom")
-            st.components.v1.html(_STEP_VIEWER.replace("__B64__", _b64_data), height=430, scrolling=False)
-        elif os.path.exists(_stl_path):
+        if os.path.exists(_stl_path):
             with open(_stl_path, "rb") as _f:
                 _b64_data = _b64.b64encode(_f.read()).decode()
             st.caption(f"Inner punch — {pip_id}  ·  drag to orbit, scroll to zoom")
             st.components.v1.html(_STL_VIEWER.replace("__B64__", _b64_data), height=430, scrolling=False)
         elif os.path.exists(_png_path):
             st.image(_png_path, use_container_width=True)
+
+        if os.path.exists(_step_path):
+            with open(_step_path, "rb") as _f:
+                st.download_button(
+                    f"Download {pip_id}.step (CAD)",
+                    _f, file_name=f"{pip_id}.step",
+                    mime="application/step", key=f"step_{pip_id}",
+                )
 
     cfg = dict(
         test_type=test_type,
@@ -741,8 +767,28 @@ elif page == "Results":
 
         webms = sorted(f for f in os.listdir(job_dir) if f.endswith(".webm"))
         if webms:
-            for webm in webms:
-                st.video(os.path.join(job_dir, webm))
+            movie_file = next((f for f in webms if f.endswith("_movie.webm")), None)
+            cut_file   = next((f for f in webms if f.endswith("_cut.webm")), None)
+            other_files = [f for f in webms
+                           if not f.endswith("_movie.webm") and not f.endswith("_cut.webm")]
+
+            _vkw = dict(autoplay=True, loop=True, muted=True)
+
+            if movie_file and cut_file:
+                html = _synced_videos_html(
+                    os.path.join(job_dir, movie_file),
+                    os.path.join(job_dir, cut_file),
+                )
+                st_components.html(html, height=500)
+            elif movie_file:
+                st.caption("Full view")
+                st.video(os.path.join(job_dir, movie_file), **_vkw)
+            elif cut_file:
+                st.caption("Cut view (Y=0 symmetry plane)")
+                st.video(os.path.join(job_dir, cut_file), **_vkw)
+
+            for f in other_files:
+                st.video(os.path.join(job_dir, f), **_vkw)
 
         tab_fd, tab_sp, tab_en, tab_fl = st.tabs(
             ["Force-Disp.", "Strain Path", "Energy", "Forming Limits"]
@@ -811,8 +857,6 @@ elif page == "Results":
     # ══════════════════════════════════════════════════════════════════════════
     elif view_mode == "Full FLC":
 
-        import fitz as _fitz
-
         sel_flc = st.selectbox("FLC set", list(flc_dirs.keys()))
         flc_dir = flc_dirs[sel_flc]
 
@@ -821,45 +865,144 @@ elif page == "Results":
         flc_pdfs = sorted(f for f in os.listdir(flc_dir) if f.startswith("FLC_") and f.endswith(".pdf"))
 
         has_png = os.path.exists(flc_png)
-        has_csv = os.path.exists(flc_csv)
         has_pdf = bool(flc_pdfs)
-        has_plot = has_png or has_pdf
 
-        def _render_pdf(path):
-            doc = _fitz.open(path)
-            for page in doc:
-                pix = page.get_pixmap(matrix=_fitz.Matrix(2, 2))
-                st.image(pix.tobytes("png"), use_container_width=True)
-            doc.close()
+        # One sub-dir per width — used both for the FLC chart and the job inspector
+        sub_jobs = {
+            e.name: e.path
+            for e in sorted(os.scandir(flc_dir), key=lambda x: x.name)
+            if e.is_dir() and _is_job_dir(e.path)
+        }
 
-        # Layout: plot left / scatter right when both exist; full-width otherwise
-        if has_plot and has_csv:
-            c_left, c_right = st.columns(2)
-        elif has_plot:
-            c_left, c_right = st.container(), None
+        _FLC_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+                       '#9467bd', '#8c564b', '#e377c2']
+
+        def _flc_w(s):
+            m = re.search(r'W(\d+)', str(s))
+            return int(m.group(1)) if m else 0
+
+        # ── Collect fracture points ───────────────────────────────────────────
+        # Priority 1: aggregated flc_points.csv (produced by flc_plot.py)
+        # Priority 2: individual sub-job forming_limits.csv (method='fracture')
+        _pts = []   # list of {name, e2, e1, dir}
+
+        if os.path.exists(flc_csv):
+            _df_agg = pd.read_csv(flc_csv)
+            if 'eps2_fracture' in _df_agg.columns and 'eps1_fracture' in _df_agg.columns:
+                for _, _r in _df_agg.iterrows():
+                    _nm = str(_r.get('subdir', ''))
+                    _pts.append({
+                        'name': _nm,
+                        'e2': float(_r['eps2_fracture']),
+                        'e1': float(_r['eps1_fracture']),
+                        'dir': sub_jobs.get(_nm, ''),
+                        'valid': str(_r.get('fracture_type', 'dome')) == 'dome',
+                    })
+
+        if not _pts:
+            for _nm, _jd in sub_jobs.items():
+                _flim = os.path.join(_jd, 'forming_limits.csv')
+                if not os.path.exists(_flim):
+                    continue
+                _dfl = pd.read_csv(_flim)
+                _fr = _dfl[_dfl['method'] == 'fracture']
+                if not _fr.empty:
+                    _pts.append({
+                        'name': _nm,
+                        'e2': float(_fr.iloc[0]['eps2_minor']),
+                        'e1': float(_fr.iloc[0]['eps1_major']),
+                        'dir': _jd,
+                        'valid': True,
+                    })
+
+        _pts.sort(key=lambda p: _flc_w(p['name']))
+        _cmap_flc = {p['name']: _FLC_COLORS[i % len(_FLC_COLORS)] for i, p in enumerate(_pts)}
+
+        # ── Draw FLC chart ────────────────────────────────────────────────────
+        if _pts:
+            flc_fig = go.Figure()
+
+            # Faint strain paths per specimen
+            for _p in _pts:
+                if not _p['dir'] or not os.path.isdir(_p['dir']):
+                    continue
+                _e1p, _e2p = None, None
+                for _fn, _c1, _c2 in [('elout.csv',      'eps1_le',    'eps2_le'),
+                                       ('strain_path.csv', 'eps1_major', 'eps2_minor')]:
+                    _fp2 = os.path.join(_p['dir'], _fn)
+                    if os.path.exists(_fp2):
+                        _dfsp = pd.read_csv(_fp2)
+                        if _c1 in _dfsp.columns and _c2 in _dfsp.columns:
+                            _e1p = _dfsp[_c1].tolist()
+                            _e2p = _dfsp[_c2].tolist()
+                            break
+                if _e1p:
+                    flc_fig.add_trace(go.Scatter(
+                        x=_e2p, y=_e1p, mode='lines',
+                        legendgroup=_p['name'], showlegend=False, hoverinfo='skip',
+                        line=dict(color=_cmap_flc[_p['name']], width=1.2), opacity=0.35,
+                    ))
+
+            # Red fracture curve (sorted left → right, dome points only)
+            _dome_pts = sorted([p for p in _pts if p['valid']], key=lambda p: p['e2'])
+            if _dome_pts:
+                flc_fig.add_trace(go.Scatter(
+                    x=[p['e2'] for p in _dome_pts],
+                    y=[p['e1'] for p in _dome_pts],
+                    mode='lines', name='Fracture curve',
+                    line=dict(color='red', width=2), hoverinfo='skip',
+                ))
+
+            # Per-specimen markers
+            for _p in _pts:
+                _col = _cmap_flc[_p['name']]
+                _m = re.search(r'W\d+', _p['name'])
+                _lbl = _m.group(0) if _m else _p['name']
+                flc_fig.add_trace(go.Scatter(
+                    x=[_p['e2']], y=[_p['e1']],
+                    mode='markers', name=_lbl, legendgroup=_p['name'],
+                    marker=dict(size=9, color=_col,
+                                symbol='circle' if _p['valid'] else 'x',
+                                line=dict(width=2, color=_col)),
+                    hovertemplate=(_lbl + '<br>ε₂=%{x:.3f}<br>ε₁=%{y:.3f}<extra></extra>'),
+                ))
+
+            # Reference lines
+            _L = max(max(p['e1'] for p in _pts), 0.8) * 1.3
+            flc_fig.add_trace(go.Scatter(
+                x=[-_L / 2, 0], y=[_L, 0], mode='lines', name='Uniaxial tension',
+                line=dict(color='lightgray', width=1.2, dash='dashdot'), hoverinfo='skip',
+            ))
+            flc_fig.add_trace(go.Scatter(
+                x=[0, _L], y=[0, _L], mode='lines', name='Equibiaxial',
+                line=dict(color='lightgray', width=1.2, dash='dash'), hoverinfo='skip',
+            ))
+
+            _e2v = [p['e2'] for p in _pts]
+            _e1v = [p['e1'] for p in _pts]
+            _pad = 0.2
+            _xr  = max(abs(min(_e2v)), abs(max(_e2v))) + 1e-6
+            _x0, _x1 = -(1 + _pad) * _xr, (1 + _pad) * _xr
+            _y0 = min(0.0, min(_e1v)) - _pad * (max(_e1v) - min(_e1v) + 1e-6)
+            _y1 = max(_e1v) + _pad * (max(_e1v) - min(_e1v) + 1e-6)
+
+            flc_fig.update_layout(
+                xaxis=dict(title='ε₂  minor strain  (–)', range=[_x0, _x1]),
+                yaxis=dict(title='ε₁  major strain  (–)', range=[_y0, _y1]),
+                title='Forming Limit Curve',
+                legend_title='Specimen',
+                hovermode='closest',
+                template='plotly_white',
+                height=550,
+            )
+            flc_fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color='gray')
+            flc_fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color='gray')
+            st.plotly_chart(flc_fig, use_container_width=True)
+
+        elif has_png:
+            st.image(flc_png, use_container_width=True)
         else:
-            c_left, c_right = None, st.container()
-
-        if has_plot:
-            with c_left:
-                if has_png:
-                    st.image(flc_png, use_container_width=True)
-                else:
-                    _render_pdf(os.path.join(flc_dir, flc_pdfs[0]))
-
-        if has_csv:
-            df_flc = pd.read_csv(flc_csv)
-            ctx = c_right if c_right is not None else st.container()
-            with ctx:
-                color_col = "fracture_type" if "fracture_type" in df_flc.columns else None
-                hover    = ["subdir"] if "subdir" in df_flc.columns else None
-                fig = px.scatter(
-                    df_flc, x="eps2_minor", y="eps1_major",
-                    color=color_col, hover_data=hover,
-                    labels={"eps2_minor": "ε₂ minor", "eps1_major": "ε₁ major"},
-                    title="Forming Limit Curve",
-                )
-                st.plotly_chart(fig, use_container_width=True)
+            st.info("No FLC data found — sync from Euler or run the post-processing scripts first.")
 
         if has_pdf:
             dl_cols = st.columns(len(flc_pdfs))
@@ -870,16 +1013,11 @@ elif page == "Results":
                         mime="application/pdf", key=f"flcdl_{pdf}_{sel_flc}",
                     )
 
-        # Constituent jobs within this FLC set
-        sub_jobs = {
-            e.name: e.path
-            for e in sorted(os.scandir(flc_dir), key=lambda x: x.name)
-            if e.is_dir() and _is_job_dir(e.path)
-        }
+        # ── Individual job results — identical layout to Single Job view ──────
         if sub_jobs:
             st.markdown("---")
-            st.caption(f"{len(sub_jobs)} postprocessed jobs in this FLC set")
-            sel_sub = st.selectbox("Inspect job", list(sub_jobs.keys()))
+            st.subheader("Individual Jobs")
+            sel_sub = st.selectbox("Width", list(sub_jobs.keys()))
             job_dir = sub_jobs[sel_sub]
 
             pngs = sorted(f for f in os.listdir(job_dir) if f.endswith(".png"))
@@ -887,6 +1025,30 @@ elif page == "Results":
                 img_cols = st.columns(min(len(pngs), 3))
                 for i, png in enumerate(pngs):
                     img_cols[i % 3].image(os.path.join(job_dir, png), use_container_width=True)
+
+            webms2 = sorted(f for f in os.listdir(job_dir) if f.endswith(".webm"))
+            if webms2:
+                movie_file2 = next((f for f in webms2 if f.endswith("_movie.webm")), None)
+                cut_file2   = next((f for f in webms2 if f.endswith("_cut.webm")), None)
+                other2      = [f for f in webms2
+                               if not f.endswith("_movie.webm") and not f.endswith("_cut.webm")]
+                _vkw2 = dict(autoplay=True, loop=True, muted=True)
+                if movie_file2 and cut_file2:
+                    st_components.html(
+                        _synced_videos_html(
+                            os.path.join(job_dir, movie_file2),
+                            os.path.join(job_dir, cut_file2),
+                        ),
+                        height=500,
+                    )
+                elif movie_file2:
+                    st.caption("Full view")
+                    st.video(os.path.join(job_dir, movie_file2), **_vkw2)
+                elif cut_file2:
+                    st.caption("Cut view (Y=0 symmetry plane)")
+                    st.video(os.path.join(job_dir, cut_file2), **_vkw2)
+                for f2 in other2:
+                    st.video(os.path.join(job_dir, f2), **_vkw2)
 
             tab_fd2, tab_sp2, tab_en2, tab_fl2 = st.tabs(
                 ["Force-Disp.", "Strain Path", "Energy", "Forming Limits"]

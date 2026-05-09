@@ -48,6 +48,15 @@ cat "$DEST_DIR/postproc_movie_out.txt" 2>/dev/null || true
 cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_movie.webm" "$DEST_DIR/" \
     && echo "  ${JOB_NAME}_movie.webm -> $DEST_DIR" \
     || echo "  WARNING: webm copy failed"
+cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_movie.mp4" "$DEST_DIR/" \
+    && echo "  ${JOB_NAME}_movie.mp4  -> $DEST_DIR" \
+    || echo "  NOTE: mp4 not present (optional)"
+cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_cut.webm" "$DEST_DIR/" \
+    && echo "  ${JOB_NAME}_cut.webm   -> $DEST_DIR" \
+    || echo "  NOTE: cut webm not present (optional)"
+cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_cut.mp4" "$DEST_DIR/" \
+    && echo "  ${JOB_NAME}_cut.mp4    -> $DEST_DIR" \
+    || echo "  NOTE: cut mp4 not present (optional)"
 
 echo "=============================================="
 echo "  Done: $(date '+%Y-%m-%d %H:%M:%S')"

@@ -256,18 +256,23 @@ from a completed ODB. Can be run any time after the solver finishes.
 
 What it does:
 1. Pushes `postproc_movie.py` and `run_movie.sh` to Euler
-2. Submits a SLURM job that runs Abaqus CAE (headless via `xvfb-run`) to render the animation
-3. Copies the resulting `.webm` to `$EULER_DIR/<JOB_NAME>/`
+2. Submits a SLURM job that runs Abaqus CAE (headless via `xvfb-run`) to render two animations
+3. Copies the resulting `.webm` files to `$EULER_DIR/<JOB_NAME>/`
 
 Download once done:
 
 ```bash
+# Full isometric view
 scp acruzfaria@euler.ethz.ch:/cluster/home/acruzfaria/AbaqusProject/<JOB_NAME>/<JOB_NAME>_movie.webm .
+# Y=0 half-model cut view (punch visible through translucent tooling)
+scp acruzfaria@euler.ethz.ch:/cluster/home/acruzfaria/AbaqusProject/<JOB_NAME>/<JOB_NAME>_cut.webm .
 ```
 
-The animation uses a fixed EQPS colour scale (max = fracture strain of deleted
-elements) and a stable camera calibrated to the specimen footprint, so the view
-does not drift as the punch descends.
+Two animations are produced:
+- **`_movie.webm`** — isometric full view with translucent tooling and EQPS contours on the specimen
+- **`_cut.webm`** — front view of the Y=0 symmetry half-model; punch and blank holder shown translucent so the interior strain field is visible
+
+Both use a fixed EQPS colour scale (max = fracture strain of deleted elements) and a stable camera, so the view does not drift as the punch descends. In the Streamlit Results tab the two videos are displayed side-by-side and kept frame-synchronised automatically.
 
 ---
 
@@ -311,10 +316,12 @@ streamlit run app.py
 
 | Tab | Contents |
 |-----|----------|
-| **Submit Job** | Build and submit single or full-width jobs from a GUI form |
+| **Submit Job** | Build and submit single or full-width jobs from a GUI form; 3-D punch preview for PiP runs |
 | **Job Status** | Live SLURM queue table with colour-coded states; progress bars (% complete + ETA) for all running Abaqus solver jobs, read from the `.sta` file in scratch |
-| **Results** | Browse synced results: single-job plots/movies, full FLC diagrams, multi-FLC comparison overlay |
+| **Results** | Browse synced results: **Single Job** (synced full/cut video pair + 4 interactive Plotly tabs); **Full FLC** (interactive FLC chart + per-width job inspector); **Compare FLC** (multi-set overlay with export) |
 | **AI Assistant** | Claude-powered assistant for model and results questions |
+
+All charts in the Results tab are rendered as interactive Plotly figures — no PDF viewer or external rendering library required.
 
 Progress is fetched silently in the background every 60 s; click **🔄** to force-refresh immediately.
 
@@ -473,7 +480,8 @@ AbaqusProject/
 | `FLC_<type>.pdf` | Aggregated FLC across all widths |
 | `<job>_mesh.png` | ISO view of the specimen mesh — generated immediately after build, before the solver runs |
 | `<job>_mesh_top.png` | Face-on view (+Z camera) of the specimen mesh — best for checking element density and zone transitions |
-| `<job>_movie.webm` | EQPS field animation (rendered by `deploy_movie.sh` / `run_cluster.sh`) |
+| `<job>_movie.webm` | EQPS field animation — isometric full view with translucent tooling |
+| `<job>_cut.webm` | EQPS animation — front view of Y=0 half-model; punch + blank holder shown translucent |
 
 ### Diagnostic plot pages (`postproc_plots.pdf`)
 

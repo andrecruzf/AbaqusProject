@@ -48,24 +48,32 @@ else:
     session.printToFile(fileName=out_png, format=PNG, canvasObjects=(vp,))
     print('  PNG  -> %s.png' % out_png)
 
-    # ── STEP export — analytical geometry, no tessellation ───────────────────
-    # Abaqus records this command when you use File > Export > Part > STEP.
-    # If your version uses a different method, record a macro to get the exact call.
+    # ── Geometry export — STEP → IGES → SAT, all smooth analytic geometry ──────
     out_step = os.path.join(PUNCH_DIR, punch_id + '.step')
-    step_ok = False
-    try:
-        part.writeGeomQuery(fileName=out_step, compressedFormat=False)
-        if os.path.exists(out_step) and os.path.getsize(out_step) > 200:
-            step_ok = True
-            print('  STEP -> %s  (%d KB)' % (out_step, os.path.getsize(out_step) // 1024))
-        else:
-            print('  WARNING: writeGeomQuery produced empty/missing file; falling back to STL')
-    except Exception as e:
-        print('  WARNING: STEP export failed (%s); falling back to STL' % e)
-        print('  Hint: record File > Export > Part > STEP in Abaqus to get the exact command')
+    out_igs  = os.path.join(PUNCH_DIR, punch_id + '.igs')
+    geom_ok  = False
+
+    export_attempts = [
+        (out_step, 'STEP', lambda p: part.writeStepFile(p)),
+        (out_igs,  'IGES', lambda p: part.writeIgesFile(p)),
+    ]
+
+    for out_path, label, export_fn in export_attempts:
+        try:
+            export_fn(out_path)
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 200:
+                geom_ok = True
+                print('  %s -> %s  (%d KB)' % (label, out_path, os.path.getsize(out_path) // 1024))
+                break
+            else:
+                if os.path.exists(out_path):
+                    os.remove(out_path)
+                print('  WARNING: %s export produced empty file' % label)
+        except Exception as e:
+            print('  WARNING: %s export failed (%s)' % (label, e))
 
     # ── STL fallback — viewport tessellation (smooth-ish) ────────────────────
-    if not step_ok:
+    if not geom_ok:
         out_stl = os.path.join(PUNCH_DIR, punch_id + '.stl')
         stl_ok  = False
         try:
