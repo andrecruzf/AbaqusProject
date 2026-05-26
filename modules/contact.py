@@ -47,6 +47,17 @@ def _make_friction_prop(model, name, mu):
     return prop
 
 
+def _get_specimen_part_name(model):
+    tool_names = {'Matrix', 'Die', 'Punch', 'Punch1', 'Punch2'}
+    candidates = [name for name in model.parts.keys() if name not in tool_names]
+    if not candidates:
+        raise RuntimeError('No specimen part found in the model.')
+    for preferred in ('Specimen', 'Sample_Circ', 'Blank_Var', 'Part-1'):
+        if preferred in candidates:
+            return preferred
+    return sorted(candidates)[0]
+
+
 def _get_specimen_surface(a, m, inst_name, surf_name):
     """
     Return an assembly surface from the specimen instance.
@@ -54,16 +65,18 @@ def _get_specimen_surface(a, m, inst_name, surf_name):
     """
     inst = a.instances[inst_name]
 
-    if surf_name not in inst.surfaces.keys():
-        raise RuntimeError(
-            'Surface "%s" not found on instance "%s".\n'
-            'Available instance surfaces: %s'
-            % (surf_name, inst_name, list(inst.surfaces.keys()))
-        )
+    if surf_name in inst.surfaces.keys():
+        return inst.surfaces[surf_name]
 
-    return inst.surfaces[surf_name]
+    spec_part = m.parts[_get_specimen_part_name(m)]
+    if surf_name in spec_part.surfaces.keys():
+        return spec_part.surfaces[surf_name]
 
-
+    raise RuntimeError(
+        'Surface "%s" not found on instance "%s".\n'
+        'Available instance surfaces: %s'
+        % (surf_name, inst_name, list(inst.surfaces.keys()))
+    )
 
 
 def _make_contact_pair(model, name, step_name, main_surf, secondary_surf, prop_name):

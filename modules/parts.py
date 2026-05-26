@@ -17,7 +17,9 @@ that the revolution axis aligns with global Z.
    X    →    X   (unchanged)
 """
 from abaqus import mdb
-from abaqusConstants import THREE_D, ANALYTIC_RIGID_SURFACE, STANDALONE, CLOCKWISE, SIDE1, REVERSE
+import abaqusConstants as ac
+from abaqusConstants import (THREE_D, ANALYTIC_RIGID_SURFACE, STANDALONE,
+                             CLOCKWISE, SIDE1, REVERSE)
 import math, os
 
 
@@ -517,8 +519,16 @@ def _upgrade_cae(abs_path):
     tmp_script = tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False)
     tmp_script.write(script)
     tmp_script.close()
+    # Find abaqus executable: env var override → known install paths → PATH fallback.
+    _candidates = [
+        os.environ.get('ABAQUS_CMD', ''),
+        '/cluster/software/commercial/abaqus/2023/x86_64/Commands/abaqus',
+        '/usr/local/bin/abaqus',
+        'abaqus',
+    ]
+    abaqus_cmd = next((c for c in _candidates if c and (os.path.isfile(c) or c == 'abaqus')), 'abaqus')
     try:
-        subprocess.call(['abaqus', 'cae', 'noGUI=' + tmp_script.name])
+        subprocess.call([abaqus_cmd, 'cae', 'noGUI=' + tmp_script.name])
     finally:
         os.remove(tmp_script.name)
 
@@ -530,13 +540,891 @@ def _upgrade_cae(abs_path):
     print('  Upgrade complete: %s' % os.path.basename(abs_path))
 
 
-def import_specimen_cae(cfg):
+def _ac_const(name):
+    return getattr(ac, name, None)
+
+
+def _seed_float(value):
+    try:
+        value = float(value)
+    except Exception:
+        return None
+    if value > 1.0e-12:
+        return value
+    return None
+
+
+def _seed_int(value):
+    try:
+        value = int(round(float(value)))
+    except Exception:
+        return None
+    if value > 0:
+        return value
+    return None
+
+
+def _edge_point(edge):
+    try:
+        if edge.pointOn:
+            return edge.pointOn[0]
+    except Exception:
+        pass
+    return None
+
+
+def _edge_length(edge):
+    try:
+        return edge.getSize(printResults=False)
+    except Exception:
+        try:
+            return edge.getSize()
+        except Exception:
+            return None
+
+
+def _edge_seed(part, edge, attr_name):
+    attr = _ac_const(attr_name)
+    if attr is None:
+        return None
+    try:
+        return part.getEdgeSeeds(edge=edge, attribute=attr)
+    except Exception:
+        try:
+            return part.getEdgeSeeds(edge, attr)
+        except Exception:
+            return None
+
+
+def _part_seed(part, attr_name):
+    attr = _ac_const(attr_name)
+    if attr is None:
+        return None
+    try:
+        return part.getPartSeeds(attribute=attr)
+    except Exception:
+        return None
+
+
+def _is_thickness_edge(cfg, edge):
+    p = _edge_point(edge)
+    if p is None:
+        return False
+    t = float(cfg.BLANK_THICKNESS)
+    return abs(p[2] - t * 0.5) < t * 0.4
+
+
+def _edge_radius(edge):
+    p = _edge_point(edge)
+    if p is None:
+        return None
+    return math.sqrt(p[0]**2 + p[1]**2)
+
+
+def _part_outer_radius(part):
+    vals = []
+    try:
+        vals.extend(math.sqrt(n.coordinates[0]**2 + n.coordinates[1]**2)
+                    for n in part.nodes)
+    except Exception:
+        pass
+    if not vals:
+        try:
+            vals.extend(math.sqrt(v.pointOn[0][0]**2 + v.pointOn[0][1]**2)
+                        for v in part.vertices)
+        except Exception:
+            pass
+    if not vals:
+        try:
+            vals.extend(_edge_radius(e) for e in part.edges
+                        if _edge_radius(e) is not None)
+        except Exception:
+            pass
+    return max(vals) if vals else 1.0
+
+
+def _imported_seed_scale_at_radius(cfg, radius, outer_radius, target_scale):
+    mode = getattr(cfg, 'MESH_IMPORTED_SCALE_MODE', 'radial_growth').lower()
+    if mode == 'uniform':
+        return target_scale
+    if mode in ('banded', 'banded_growth', 'two_band'):
+        band_r = max(0.0, float(getattr(cfg, 'MESH_IMPORTED_BAND_RADIUS', 50.0)))
+        if radius is None:
+            return target_scale
+        return 1.0 if radius <= band_r else target_scale
+    if mode not in ('radial', 'radial_growth', 'growth'):
+        raise ValueError("Invalid MESH_IMPORTED_SCALE_MODE: '%s'" % mode)
+
+    fixed_r = max(0.0, float(getattr(cfg, 'MESH_IMPORTED_FIXED_RADIUS', 20.0)))
+    power = max(0.1, float(getattr(cfg, 'MESH_IMPORTED_GROWTH_POWER', 1.0)))
+    if radius is None or outer_radius <= fixed_r + 1.0e-9:
+        return target_scale
+    if radius <= fixed_r:
+        return 1.0
+    xi = (radius - fixed_r) / (outer_radius - fixed_r)
+    xi = max(0.0, min(1.0, xi))
+    return 1.0 + (target_scale - 1.0) * (xi ** power)
+
+
+def _seed_value_text(value):
+    if value is None:
+        return ''
+    try:
+        return '%.10g' % float(value)
+    except Exception:
+        return str(value)
+
+
+def _dump_mesh_seeds(cfg, part, tag):
+    if not getattr(cfg, 'MESH_DUMP_IMPORTED_SEEDS', False):
+        return
+    try:
+        if not os.path.isdir(cfg.OUTPUT_DIR):
+            os.makedirs(cfg.OUTPUT_DIR)
+        path = os.path.join(cfg.OUTPUT_DIR, cfg.JOB_NAME + '_' + tag + '.csv')
+        attrs = (
+            'EDGE_SEEDING_METHOD', 'SIZE', 'NUMBER', 'BIAS_METHOD',
+            'BIAS_RATIO', 'BIAS_MIN_SIZE', 'BIAS_MAX_SIZE',
+            'DEVIATION_FACTOR', 'MIN_SIZE_FACTOR', 'CONSTRAINT',
+        )
+        with open(path, 'w') as fh:
+            fh.write('edge_index,x,y,z,r,length,is_thickness,%s\n' %
+                     ','.join(attrs))
+            for edge in part.edges:
+                p = _edge_point(edge)
+                if p is None:
+                    x = y = z = r = ''
+                else:
+                    x, y, z = p
+                    r = math.sqrt(x**2 + y**2)
+                length = _edge_length(edge)
+                vals = [_seed_value_text(_edge_seed(part, edge, a)) for a in attrs]
+                fh.write('%s,%s,%s,%s,%s,%s,%s,%s\n' % (
+                    edge.index,
+                    _seed_value_text(x), _seed_value_text(y),
+                    _seed_value_text(z), _seed_value_text(r),
+                    _seed_value_text(length),
+                    1 if _is_thickness_edge(cfg, edge) else 0,
+                    ','.join(vals)))
+        print('  Mesh seed dump: %s' % path)
+    except Exception as exc:
+        print('  WARNING _dump_mesh_seeds: %s' % exc)
+
+
+def _apply_outer_reseed(cfg, part):
+    """
+    Keep imported seeds inside MESH_IMPORTED_FIXED_RADIUS (center stays
+    exactly as in the .cae, typically 0.1 mm).  Outside that radius,
+    delete all imported seeds and apply seedEdgeBySize(h(r)) uniformly to
+    every in-plane edge — both radial and circumferential edges get the same
+    target size at their radius, so the mesher produces near-square elements.
+
+    Growth law:
+      h(r) = h_center                                for r <= r_fixed
+      h(r) = h_center + (h_outer-h_center) * xi^p   for r >  r_fixed
+      where xi = (r - r_fixed) / (R_outer - r_fixed)
+    """
+    r_fixed     = float(getattr(cfg, 'MESH_IMPORTED_FIXED_RADIUS', 20.0))
+    h_center    = float(getattr(cfg, 'MESH_CENTER_SIZE', 0.1))
+    h_outer     = h_center * float(getattr(cfg, 'MESH_REFINEMENT_FACTOR', 3.0))
+    power       = max(0.1, float(getattr(cfg, 'MESH_IMPORTED_GROWTH_POWER', 1.0)))
+    n_t         = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    thickness_seed = float(cfg.BLANK_THICKNESS) / float(n_t)
+    outer_radius = _part_outer_radius(part)
+
+    _dump_mesh_seeds(cfg, part, 'outer_reseed_before')
+
+    thick_seeded = 0
+    center_kept  = 0
+    outer_reseeded = 0
+
+    for edge in part.edges:
+        if _is_thickness_edge(cfg, edge):
+            try:
+                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
+                thick_seeded += 1
+            except Exception:
+                pass
+            continue
+
+        radius = _edge_radius(edge)
+        if radius is None or radius <= r_fixed:
+            center_kept += 1
+            continue
+
+        if outer_radius > r_fixed + 1.0e-9:
+            xi = (radius - r_fixed) / (outer_radius - r_fixed)
+            xi = max(0.0, min(1.0, xi))
+        else:
+            xi = 1.0
+        h = h_center + (h_outer - h_center) * (xi ** power)
+        try:
+            part.seedEdgeBySize([edge], h, deviationFactor=0.1)
+            outer_reseeded += 1
+        except Exception:
+            pass
+
+    print('  Outer reseed: center kept=%d (r<=%.1f mm, h=%.3f mm), '
+          'outer reseeded=%d (h_rim=%.3f mm), thickness=%d, power=%.2f'
+          % (center_kept, r_fixed, h_center, outer_reseeded, h_outer,
+             thick_seeded, power))
+    _dump_mesh_seeds(cfg, part, 'outer_reseed_after')
+
+
+def _apply_seed_bands(cfg, part):
+    """
+    Explicit per-band seed control via MESH_SEED_BANDS.
+
+    MESH_SEED_BANDS is a list of (r_max_mm, size_mm) pairs in ascending r
+    order.  For each in-plane edge the band whose r_max first exceeds the
+    edge midpoint radius is selected:
+      - size is None  → keep the imported .cae seed untouched
+      - size is a number → seedEdgeBySize(size) on that edge (both radial
+        and circumferential get the same target → square elements)
+    Thickness edges always get N_THICKNESS_SEEDS regardless.
+
+    Example config:
+      MESH_SEED_BANDS = [
+          (20,  None),   # punch apex — keep .cae fine seeds
+          (35,  0.3),    # transition zone
+          (50,  0.5),    # dome shoulder
+          (1e9, 0.8),    # flange / clamped
+      ]
+    """
+    bands = list(cfg.MESH_SEED_BANDS)   # [(r_max, size), ...]
+    bands.sort(key=lambda b: b[0])
+
+    n_t = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    thickness_seed = float(cfg.BLANK_THICKNESS) / float(n_t)
+    outer_radius = _part_outer_radius(part)
+
+    _dump_mesh_seeds(cfg, part, 'bands_before')
+
+    counts = {}  # size_label -> count
+    thick_seeded = 0
+
+    for edge in part.edges:
+        if _is_thickness_edge(cfg, edge):
+            try:
+                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
+                thick_seeded += 1
+            except Exception:
+                pass
+            continue
+
+        radius = _edge_radius(edge)
+        r = radius if radius is not None else outer_radius
+
+        target = None
+        for r_max, size in bands:
+            if r <= r_max + 1.0e-6:
+                target = size
+                break
+        else:
+            # beyond last band — use last band's size
+            target = bands[-1][1] if bands else None
+
+        if target is None:
+            counts['kept'] = counts.get('kept', 0) + 1
+            continue
+
+        try:
+            part.seedEdgeBySize([edge], float(target), deviationFactor=0.1)
+            key = '%.3g' % target
+            counts[key] = counts.get(key, 0) + 1
+        except Exception:
+            pass
+
+    band_summary = ', '.join('r<=%.0f:h=%s(%d)'
+                              % (r_max,
+                                 ('kept' if size is None else '%.3g' % size),
+                                 counts.get('kept' if size is None
+                                            else '%.3g' % size, 0))
+                              for r_max, size in bands)
+    print('  Seed bands: %s  thickness=%d' % (band_summary, thick_seeded))
+    _dump_mesh_seeds(cfg, part, 'bands_after')
+
+
+# ─────────────────────────────────────────────────────────────
+# Mesh zone partitioning and seeding (original stable approach)
+# ─────────────────────────────────────────────────────────────
+
+def _apply_mesh_zones(cfg, part):
+    """
+    Add radial ring partitions and apply per-zone seeding from MESH_ZONES.
+
+    MESH_IMPORTED_FIXED_RADIUS defines a protected center region:
+      r <= r_keep : imported .cae seeds and partitions are left completely
+                    untouched — the engin-seeded square center mesh is preserved.
+      r >  r_keep : new ring partitions are added at each MESH_ZONES boundary
+                    that falls in this range, then edges are reseeded per zone.
+
+    This avoids re-partitioning over existing geometry (which corrupts the mesh)
+    while still letting the zone table control the outer circular rings.
+
+    Caller must call part.generateMesh() afterwards.
+    Falls back gracefully if any individual partition step fails.
+    """
+    m      = mdb.models[cfg.MODEL_NAME]
+    zones  = cfg.MESH_ZONES
+    factor = getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)
+    t      = float(cfg.BLANK_THICKNESS)
+    eps_t  = max(0.01, t * 0.01)
+    r_keep = float(getattr(cfg, 'MESH_IMPORTED_FIXED_RADIUS', 0.0))
+
+    if factor <= 0.0:
+        print('  WARNING _apply_mesh_zones: factor=%.4f <= 0, skipped.' % factor)
+        return
+
+    node_list = list(part.nodes)
+    if node_list:
+        r_max = max(math.sqrt(n.coordinates[0]**2 + n.coordinates[1]**2)
+                    for n in node_list)
+    else:
+        r_max = max(math.sqrt(v.pointOn[0][0]**2 + v.pointOn[0][1]**2)
+                    for v in part.vertices)
+
+    # Build a smooth radial seed law anchored at the protected imported core.
+    # The first imported ring remains untouched; the transition to the first
+    # outer zone is ramped instead of stepped so the mesh does not collapse
+    # into a single abrupt layer at r_keep.
+    seed_anchors = []
+    center_size = float(getattr(cfg, 'MESH_CENTER_SIZE', 0.1))
+    if r_keep > 0.0:
+        seed_anchors.append((r_keep, center_size))
+    for r_zone, size_r, _size_c in zones:
+        if seed_anchors and abs(r_zone - seed_anchors[-1][0]) < 1.0e-9:
+            seed_anchors[-1] = (r_zone, float(size_r) * factor)
+        else:
+            seed_anchors.append((r_zone, float(size_r) * factor))
+    seed_anchors.sort(key=lambda item: item[0])
+    if not seed_anchors:
+        seed_anchors = [(0.0, center_size), (r_max, zones[-1][1] * factor)]
+
+    def _smoothstep(x):
+        x = max(0.0, min(1.0, x))
+        return x * x * (3.0 - 2.0 * x)
+
+    def _interp_size(radius):
+        if radius <= seed_anchors[0][0]:
+            return seed_anchors[0][1]
+        for idx in range(1, len(seed_anchors)):
+            r0, s0 = seed_anchors[idx - 1]
+            r1, s1 = seed_anchors[idx]
+            if radius <= r1 + 1.0e-9:
+                if r1 <= r0 + 1.0e-9:
+                    return s1
+                xi = _smoothstep((radius - r0) / (r1 - r0))
+                if s0 > 0.0 and s1 > 0.0:
+                    return math.exp(math.log(s0) + xi * (math.log(s1) - math.log(s0)))
+                return s0 + (s1 - s0) * xi
+        return seed_anchors[-1][1]
+
+    # Only add partitions outside the protected center and inside the specimen.
+    zone_radii = []
+    if r_keep > 0.5 and r_keep < r_max - 0.5:
+        zone_radii.append(r_keep)
+    zone_radii.extend([z[0] for z in zones[:-1]
+                       if z[0] > r_keep + 0.5 and z[0] < r_max - 0.5])
+
+    # ── Radial face + cell partitions (outer zone only) ───────────────────────
+    if zone_radii:
+        z_datum_id = part.DatumAxisByTwoPoint(
+            point1=(0.0, 0.0, 0.0),
+            point2=(0.0, 0.0, 1.0)
+        ).id
+    else:
+        print('  No outer zone radii to partition (r_keep=%.1f mm).' % r_keep)
+
+    for r in zone_radii:
+        qx = r * 0.99 if r > 0.1 else 0.05
+        sk_name = '__zone_r%g__' % r
+        try:
+            face_seq = part.faces.findAt(((qx, 0.01, t),))
+            if not face_seq:
+                print('  WARNING zones: no face found at r=%.2f mm.' % r)
+                continue
+            face = face_seq[0]
+
+            transform = part.MakeSketchTransform(
+                sketchPlane=face,
+                sketchPlaneSide=SIDE1,
+                origin=(0.0, 0.0, t)
+            )
+            sk = m.ConstrainedSketch(name=sk_name, sheetSize=400.0, transform=transform)
+            sk.CircleByCenterPerimeter(center=(0.0, 0.0), point1=(r, 0.0))
+
+            indices_before = {e.index for e in part.edges}
+            part.PartitionFaceBySketch(faces=face_seq, sketch=sk)
+            del m.sketches[sk_name]
+            sk_name = None
+
+            arc_edge = None
+            for e in part.edges:
+                if e.index in indices_before or not e.pointOn:
+                    continue
+                x, y, z_e = e.pointOn[0]
+                if abs(math.sqrt(x**2 + y**2) - r) < 0.5 and abs(z_e - t) < eps_t:
+                    arc_edge = e
+                    break
+
+            if arc_edge is None:
+                print('  WARNING zones: arc edge at r=%.2f mm not found.' % r)
+                continue
+
+            part.PartitionCellByExtrudeEdge(
+                cells=part.cells,
+                edges=[arc_edge],
+                line=part.datums[z_datum_id],
+                sense=REVERSE
+            )
+            print('  Zone partition r=%.1f mm: OK' % r)
+
+        except Exception as exc:
+            print('  WARNING zones: partition at r=%.2f mm failed: %s' % (r, exc))
+            if sk_name and sk_name in m.sketches.keys():
+                del m.sketches[sk_name]
+
+    # ── Seed edges ───────────────────────────────────────────────────────────
+    # Delete seeds only on outer edges — inner seeds are preserved as imported.
+    outer_edges = [e for e in part.edges
+                   if not _is_thickness_edge(cfg, e)
+                   and (_edge_radius(e) or 0.0) > r_keep]
+    if outer_edges:
+        try:
+            part.deleteSeeds(outer_edges)
+        except Exception:
+            pass
+
+    outer_max_size = getattr(cfg, 'MESH_OUTER_MAX_SIZE', None)
+    global_size = zones[-1][1] * factor
+    if outer_max_size is not None:
+        global_size = min(global_size, float(outer_max_size))
+    part.seedPart(size=global_size, deviationFactor=0.1, minSizeFactor=0.1)
+
+    n_t = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    thickness_seed = t / float(n_t)
+
+    zone_seeded = 0
+    thick_seeded = 0
+    center_kept = 0
+    for edge in part.edges:
+        if not edge.pointOn:
+            continue
+        x, y, z_ep = edge.pointOn[0]
+        if abs(z_ep - t * 0.5) < t * 0.4:
+            try:
+                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
+                thick_seeded += 1
+            except Exception:
+                pass
+            continue
+        r_e = math.sqrt(x**2 + y**2)
+        if r_e <= r_keep:
+            center_kept += 1
+            continue
+        size = _interp_size(r_e)
+        if outer_max_size is not None:
+            size = min(size, float(outer_max_size))
+        if size < global_size - 1e-9:
+            try:
+                part.seedEdgeBySize([edge], size, deviationFactor=0.1)
+                zone_seeded += 1
+            except Exception:
+                pass
+
+    print('  Mesh zones: center kept=%d (r<=%.1f mm), zone seeded=%d, '
+          'thickness=%d, global=%.3f mm, factor=%.3f, smooth anchors=%d'
+          % (center_kept, r_keep, zone_seeded, thick_seeded, global_size,
+             factor, len(seed_anchors)))
+
+
+def _apply_topological_mesh_tuning(cfg, part):
+    """
+    Topological mesh tuning for Butterfly/C-Grid partitioned blanks.
+
+    The supervisor's CAE has face-only partitions (not cell partitions), so the
+    blank is a single 3D cell.  Classification is therefore done on the TOP
+    SURFACE FACES (z≈t) by adjacency:
+
+      core face  — the central square top face (probe at eps, eps, t)
+      trans faces— top faces sharing an edge with the core face
+      outer faces— all remaining top faces
+
+    Each in-plane edge is seeded according to which face region it belongs to
+    (an edge shared by two face regions takes the finer classification).
+    Both the top (z≈t) and bottom (z≈0) partners are seeded identically.
+
+    Config knobs (all env-overridable):
+      MESH_CORE_SCALE         — multiplier on the CAE core seed size (default 1.0)
+      MESH_OUTER_GROWTH_RATIO — outer_size = new_core_size × ratio   (default 4.0)
+      MESH_RADIAL_BIAS_RATIO  — >1.0 enables biased spoke seeding    (default 1.0)
+      MESH_CORE_PROBE_OFFSET  — XY offset for top-face probe         (default 0.5 mm)
+
+    Falls back to 'imported' mode if the core face cannot be located.
+    """
+    t     = float(cfg.BLANK_THICKNESS)
+    eps   = float(getattr(cfg, 'MESH_CORE_PROBE_OFFSET', 0.5))
+    eps_t = max(0.01, t * 0.05)
+
+    core_scale = float(getattr(cfg, 'MESH_CORE_SCALE', 1.0))
+    mr         = float(getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0))
+    growth     = float(getattr(cfg, 'MESH_OUTER_GROWTH_RATIO', 4.0))
+    bias_on    = float(getattr(cfg, 'MESH_RADIAL_BIAS_RATIO', 1.0)) > 1.0 + 1e-6
+    n_t        = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    override_t = bool(getattr(cfg, 'MESH_OVERRIDE_THICKNESS_SEEDS', True))
+    thick_seed = t / float(n_t)
+
+    # ── 1. Locate the core top face ───────────────────────────────────────────
+    core_found = part.faces.findAt(((eps, eps, t),))
+    if not core_found:
+        print('  WARNING topo: core top face not found at probe (%.2f,%.2f,%.2f) '
+              '— falling back to imported' % (eps, eps, t))
+        _apply_imported_seed_tuning(cfg, part, 'imported')
+        return None
+    core_face     = core_found[0]
+    core_face_idx = core_face.index
+    core_edge_set = set(core_face.getEdges())
+
+    # ── 2. Find transition top faces (adjacent to core on top surface) ────────
+    trans_face_indices = set()
+    for eidx in core_edge_set:
+        e = part.edges[eidx]
+        if _is_thickness_edge(cfg, e):
+            continue
+        for fidx in e.getFaces():
+            if fidx == core_face_idx:
+                continue
+            p = part.faces[fidx].pointOn[0]
+            if abs(p[2] - t) < eps_t:
+                trans_face_indices.add(fidx)
+
+    trans_edge_set = set()
+    for fidx in trans_face_indices:
+        trans_edge_set.update(part.faces[fidx].getEdges())
+    trans_edge_set -= core_edge_set
+
+    # ── 3. All remaining top-surface in-plane edges = outer ───────────────────
+    all_top_edge_set = set()
+    for face in part.faces:
+        p = face.pointOn[0]
+        if abs(p[2] - t) < eps_t:
+            all_top_edge_set.update(face.getEdges())
+    outer_edge_set = all_top_edge_set - core_edge_set - trans_edge_set
+
+    # ── 4. Also seed the mirrored bottom (z≈0) edges with the same logic ──────
+    # Build a map: for every top in-plane edge, find its bottom partner by
+    # matching XY midpoint coordinates.
+    def _bottom_partner(top_edge):
+        p = _edge_point(top_edge)
+        if p is None or abs(p[2] - t) > eps_t:
+            return None
+        tx, ty = p[0], p[1]
+        best, best_d = None, 1.0
+        for e in part.edges:
+            q = _edge_point(e)
+            if q is None or abs(q[2]) > eps_t:
+                continue
+            d = math.sqrt((q[0]-tx)**2 + (q[1]-ty)**2)
+            if d < best_d:
+                best, best_d = e, d
+        return best if best_d < 0.5 else None
+
+    print('  Topo: core face %d | %d trans faces | %d outer top edges'
+          % (core_face_idx, len(trans_face_indices), len(outer_edge_set)))
+
+    # ── 5. Read base core seed size from CAE ─────────────────────────────────
+    core_inplane = [part.edges[i] for i in core_edge_set
+                    if not _is_thickness_edge(cfg, part.edges[i])]
+    base_sizes = []
+    for e in core_inplane:
+        sz = _seed_float(_edge_seed(part, e, 'SIZE'))
+        if sz:
+            base_sizes.append(sz)
+        else:
+            num = _seed_int(_edge_seed(part, e, 'NUMBER'))
+            length = _edge_length(e)
+            if num and length:
+                base_sizes.append(length / float(num))
+
+    if base_sizes:
+        base_core = min(base_sizes)
+    else:
+        base_core = float(getattr(cfg, 'MESH_CENTER_SIZE', 0.1))
+        print('  WARNING topo: no core seeds found in CAE — '
+              'using MESH_CENTER_SIZE=%.3f' % base_core)
+
+    new_core = base_core * core_scale / mr
+    outer_sz = new_core * growth
+    circ_sz  = math.sqrt(new_core * outer_sz)
+
+    def _seed_pair(top_e, size=None, num=None):
+        """Seed a top edge (and its bottom partner) by size or number."""
+        targets = [top_e]
+        bp = _bottom_partner(top_e)
+        if bp is not None:
+            targets.append(bp)
+        for e in targets:
+            try:
+                if num is not None:
+                    part.seedEdgeByNumber([e], num)
+                else:
+                    part.seedEdgeBySize([e], size, deviationFactor=0.1)
+            except Exception:
+                pass
+
+    # ── 6. Seed core edges — synchronized uniform grid ────────────────────────
+    seeded_core = 0
+    for e in core_inplane:
+        length = _edge_length(e)
+        if not length:
+            continue
+        _seed_pair(e, num=max(1, int(round(length / new_core))))
+        seeded_core += 1
+
+    # ── 7. Seed transition faces (spokes) — group by face for synchronization ─
+    seeded_rad  = 0
+    seeded_circ = 0
+
+    for fidx in trans_face_indices:
+        face_edges = [part.edges[i] for i in part.faces[fidx].getEdges()
+                      if i in trans_edge_set
+                      and not _is_thickness_edge(cfg, part.edges[i])]
+
+        radial_e = []   # [(edge, inner_end_first)]
+        circ_e   = []
+
+        for e in face_edges:
+            try:
+                verts = e.getVertices()
+                p0 = part.vertices[verts[0]].pointOn[0]
+                p1 = part.vertices[verts[1]].pointOn[0]
+                r0 = math.sqrt(p0[0]**2 + p0[1]**2)
+                r1 = math.sqrt(p1[0]**2 + p1[1]**2)
+                if abs(r0 - r1) > max(r0, r1, 1.0) * 0.15:
+                    radial_e.append((e, r0 < r1))
+                else:
+                    circ_e.append(e)
+            except Exception:
+                circ_e.append(e)
+
+        # Radial (spoke) edges — same count enforced across all in this face
+        if radial_e:
+            avg_len = (sum(_edge_length(e) or 0.0 for e, _ in radial_e)
+                       / len(radial_e))
+            num_rad = max(1, int(round(avg_len / ((new_core + outer_sz) * 0.5))))
+            for e, inner_first in radial_e:
+                try:
+                    if bias_on:
+                        if inner_first:
+                            part.seedEdgeByBias(biasMethod=ac.SINGLE,
+                                                end1Edges=[e],
+                                                minSize=new_core, maxSize=outer_sz)
+                        else:
+                            part.seedEdgeByBias(biasMethod=ac.SINGLE,
+                                                end2Edges=[e],
+                                                minSize=new_core, maxSize=outer_sz)
+                    else:
+                        _seed_pair(e, num=num_rad)
+                    seeded_rad += 1
+                except Exception:
+                    _seed_pair(e, size=(new_core + outer_sz) * 0.5)
+                    seeded_rad += 1
+
+        # Circumferential (ring) edges — geometric-mean size
+        for e in circ_e:
+            length = _edge_length(e)
+            if not length:
+                continue
+            _seed_pair(e, num=max(1, int(round(length / circ_sz))))
+            seeded_circ += 1
+
+    # ── 8. Seed outer edges ───────────────────────────────────────────────────
+    seeded_outer = 0
+    for i in outer_edge_set:
+        e = part.edges[i]
+        if _is_thickness_edge(cfg, e):
+            continue
+        _seed_pair(e, size=outer_sz)
+        seeded_outer += 1
+
+    # ── 9. Thickness seeds ────────────────────────────────────────────────────
+    seeded_thick = 0
+    if override_t:
+        for e in part.edges:
+            if _is_thickness_edge(cfg, e):
+                try:
+                    part.seedEdgeBySize([e], thick_seed, deviationFactor=0.1)
+                    seeded_thick += 1
+                except Exception:
+                    pass
+
+    summary = {
+        'base_core_size_mm':   base_core,
+        'new_core_size_mm':    new_core,
+        'outer_size_mm':       outer_sz,
+        'core_scale':          core_scale,
+        'mr':                  mr,
+        'growth_ratio':        growth,
+        'bias_on':             bias_on,
+        'seeded_core':         seeded_core,
+        'seeded_trans_radial': seeded_rad,
+        'seeded_trans_circ':   seeded_circ,
+        'seeded_outer':        seeded_outer,
+        'seeded_thickness':    seeded_thick,
+    }
+    print('  Topo seed summary: '
+          'core=%.3fmm (base=%.3f × scale=%.2f / mr=%.2f) '
+          'outer=%.3fmm (growth×%.1f) bias=%s | '
+          'edges: core=%d spk_r=%d spk_c=%d outer=%d thick=%d'
+          % (new_core, base_core, core_scale, mr,
+             outer_sz, growth, 'on' if bias_on else 'off',
+             seeded_core, seeded_rad, seeded_circ, seeded_outer, seeded_thick))
+    return summary
+
+
+def _apply_imported_seed_tuning(cfg, part, mode):
+    """
+    Keep the imported CAE seed topology and optionally scale the seed values.
+
+    mode='imported' keeps in-plane seeds untouched.  mode='imported_scaled'
+    rescales edge sizes/counts by a local radial factor: by default the
+    center stays at factor 1.0 and the factor ramps to MR at the outer edge.
+    Through-thickness edges can still be forced to N_THICKNESS_SEEDS so all
+    studies retain the same integration depth.
+    """
+    mode = (mode or 'imported').lower()
+    if mode == 'zones':
+        _apply_mesh_zones(cfg, part)
+        return
+    if mode == 'outer_reseed':
+        _apply_outer_reseed(cfg, part)
+        return
+    if mode == 'bands':
+        _apply_seed_bands(cfg, part)
+        return
+    if mode in ('topological', 'topo'):
+        _apply_topological_mesh_tuning(cfg, part)
+        return
+    scale = float(getattr(cfg, 'MESH_IMPORTED_SEED_SCALE',
+                          getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)))
+    scale_edges = mode in ('imported_scaled', 'scaled_imported')
+    scale_mode = getattr(cfg, 'MESH_IMPORTED_SCALE_MODE', 'radial_growth').lower()
+    override_t = getattr(cfg, 'MESH_OVERRIDE_THICKNESS_SEEDS', True)
+    n_t = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
+    thickness_seed = float(cfg.BLANK_THICKNESS) / float(n_t)
+    outer_radius = _part_outer_radius(part)
+
+    _dump_mesh_seeds(cfg, part, 'imported_seeds_before')
+
+    records = []
+    for edge in part.edges:
+        radius = _edge_radius(edge)
+        method = _edge_seed(part, edge, 'EDGE_SEEDING_METHOD')
+        size = _seed_float(_edge_seed(part, edge, 'SIZE'))
+        number = _seed_int(_edge_seed(part, edge, 'NUMBER'))
+        bias_min = _seed_float(_edge_seed(part, edge, 'BIAS_MIN_SIZE'))
+        bias_max = _seed_float(_edge_seed(part, edge, 'BIAS_MAX_SIZE'))
+        records.append((edge, radius, method, size, number, bias_min, bias_max,
+                        _is_thickness_edge(cfg, edge)))
+
+    default_size = (_seed_float(_part_seed(part, 'SIZE')) or
+                    _seed_float(_part_seed(part, 'DEFAULT_SIZE')))
+    if (scale_edges and scale_mode == 'uniform' and default_size is not None
+            and abs(scale - 1.0) > 1.0e-9):
+        try:
+            part.seedPart(size=default_size * scale,
+                          deviationFactor=0.1, minSizeFactor=0.1)
+            print('  Imported global seed scaled: %.4g -> %.4g'
+                  % (default_size, default_size * scale))
+        except Exception as exc:
+            print('  WARNING imported global seed scale failed: %s' % exc)
+
+    scaled_size = 0
+    scaled_number = 0
+    scaled_default = 0
+    skipped_bias = 0
+    thick_seeded = 0
+    scale_min = None
+    scale_max = None
+    for edge, radius, method, size, number, bias_min, bias_max, is_thick in records:
+        if override_t and is_thick:
+            try:
+                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
+                thick_seeded += 1
+            except Exception:
+                pass
+            continue
+
+        if not scale_edges or abs(scale - 1.0) <= 1.0e-9:
+            continue
+
+        local_scale = _imported_seed_scale_at_radius(
+            cfg, radius, outer_radius, scale)
+        scale_min = local_scale if scale_min is None else min(scale_min, local_scale)
+        scale_max = local_scale if scale_max is None else max(scale_max, local_scale)
+
+        method_text = str(method).upper() if method is not None else ''
+        has_bias = ('BIAS' in method_text) or (bias_min is not None and
+                                               bias_max is not None)
+        if has_bias:
+            skipped_bias += 1
+            continue
+
+        try:
+            if abs(local_scale - 1.0) <= 1.0e-9:
+                fixed_r = float(getattr(cfg, 'MESH_IMPORTED_FIXED_RADIUS', 20.0))
+                if (scale_mode in ('banded', 'banded_growth', 'two_band')
+                        and radius is not None and radius > fixed_r
+                        and size is None and number is None
+                        and default_size is not None):
+                    part.seedEdgeBySize([edge], default_size,
+                                        deviationFactor=0.1)
+                    scaled_default += 1
+                continue
+            if 'NUMBER' in method_text and number is not None:
+                new_number = max(1, int(round(float(number) / local_scale)))
+                if new_number != number:
+                    part.seedEdgeByNumber([edge], new_number)
+                    scaled_number += 1
+            elif size is not None:
+                part.seedEdgeBySize([edge], size * local_scale,
+                                    deviationFactor=0.1)
+                scaled_size += 1
+            elif number is not None:
+                new_number = max(1, int(round(float(number) / local_scale)))
+                if new_number != number:
+                    part.seedEdgeByNumber([edge], new_number)
+                    scaled_number += 1
+            elif default_size is not None:
+                part.seedEdgeBySize([edge], default_size * local_scale,
+                                    deviationFactor=0.1)
+                scaled_default += 1
+        except Exception:
+            pass
+
+    print('  Imported mesh seeds: mode=%s, scale_mode=%s, target=%.4g, '
+          'local=%.4g..%.4g, fixed_r=%.2f, outer_r=%.2f, '
+          'size-scaled=%d, number-scaled=%d, default-scaled=%d, '
+          'thickness=%d, skipped-bias=%d'
+          % (mode, scale_mode, scale,
+             scale_min if scale_min is not None else 1.0,
+             scale_max if scale_max is not None else 1.0,
+             float(getattr(cfg, 'MESH_IMPORTED_FIXED_RADIUS', 20.0)),
+             outer_radius, scaled_size, scaled_number, scaled_default,
+             thick_seeded, skipped_bias))
+    _dump_mesh_seeds(cfg, part, 'imported_seeds_after')
+
+
+def import_specimen_cae(cfg, postprocess=True):
     """
     Import the specimen mesh from the supervisor's geometry .cae file.
     All named sets (XSYMM, YSYMM, EDGE, ZMIN, ZMAX) propagate correctly
     to inst.sets when the part is instanced.
     If the .cae was saved with an older Abaqus release it is upgraded
     in-place via upgradeMdb() before opening.
+
+    Set postprocess=False to stop after importing and regenerating the mesh.
     """
     path = _cae_path(cfg)
     if not os.path.isfile(path):
@@ -593,17 +1481,14 @@ def import_specimen_cae(cfg):
     feature_name = 'Solid extrude-1'
     feat_names = [f for f in spec.features.keys()]
     if feature_name in feat_names:
-        # Delete all existing edge seeds before regenerating so that the
-        # factor-scaled seeds applied by _apply_mesh_zones() are not silently
-        # overridden (seedPart() skips edges that already have finer seeds).
-        try:
-            spec.deleteSeeds(spec.edges)
-        except Exception:
-            pass
+        seed_mode = getattr(cfg, 'MESH_SEED_MODE', 'imported_scaled').lower()
+        if seed_mode not in ('zones', 'imported', 'imported_scaled', 'scaled_imported',
+                              'outer_reseed', 'bands', 'topological', 'topo'):
+            raise ValueError("Invalid MESH_SEED_MODE: '%s'" % seed_mode)
+        print('  Mesh seed mode: %s — preserving imported CAE seeds.' % seed_mode)
         spec.features[feature_name].setValues(depth=cfg.BLANK_THICKNESS)
         spec.regenerate()
-        _apply_mesh_zones(cfg, spec)
-        n_before = len(spec.elements)
+        _apply_imported_seed_tuning(cfg, spec, seed_mode)
         spec.generateMesh()
         print('  Mesh generated: %d elements  (factor=%.4g)'
               % (len(spec.elements), getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)))
@@ -628,10 +1513,58 @@ def import_specimen_cae(cfg):
                   'blank XY dims scale by same factor)' % factor)
         _scale_specimen_thickness(cfg, spec)
 
-    _rebuild_contact_surfaces(cfg, spec)
-    _verify_symmetry_sets(spec)
-    _add_elout_set(cfg, spec)
-    _add_dome_zone_set(cfg, spec)
+    if postprocess:
+        _rebuild_contact_surfaces(cfg, spec)
+        _verify_symmetry_sets(spec)
+        _add_elout_set(cfg, spec)
+        _add_dome_zone_set(cfg, spec)
+
+
+def import_specimen_mesh_only(cfg):
+    """Import only the specimen CAE mesh with no reseeding or remeshing."""
+    path = _cae_path(cfg)
+    if not os.path.isfile(path):
+        raise IOError(
+            'Geometry .cae not found: %s\n'
+            '  Check INP_DIR and SPECIMEN_WIDTH in config.py.' % path)
+
+    _TOOL_NAMES = {'Punch', 'Matrix', 'Die'}
+    temp_model_name = '__specimen_import_temp__'
+    abs_path = os.path.abspath(path)
+
+    try:
+        mdb.openAuxMdb(pathName=abs_path)
+    except Exception as e:
+        if 'incompatible release' in str(e).lower():
+            print('  .cae version mismatch — upgrading via upgradeMdb...')
+            _upgrade_cae(abs_path)
+            mdb.openAuxMdb(pathName=abs_path)
+        else:
+            raise
+
+    mdb.copyAuxMdbModel(fromName='Model-1', toName=temp_model_name)
+    mdb.closeAuxMdb()
+
+    temp_model = mdb.models[temp_model_name]
+    candidates = [n for n in temp_model.parts.keys() if n not in _TOOL_NAMES]
+    if not candidates:
+        del mdb.models[temp_model_name]
+        raise RuntimeError('No specimen part found in %s' % path)
+
+    src_name = candidates[0]
+    for preferred in ('Sample_Circ', 'Blank_Var', 'Part-1'):
+        if preferred in candidates:
+            src_name = preferred
+            break
+
+    m = mdb.models[cfg.MODEL_NAME]
+    m.Part(name='Specimen', objectToCopy=temp_model.parts[src_name])
+    del mdb.models[temp_model_name]
+
+    spec = m.parts['Specimen']
+    spec.Unlock(reportWarnings=False)
+    print('  Specimen imported from: %s  (source part: "%s")' % (path, src_name))
+    print('  Sets available: %s' % sorted(spec.sets.keys()))
 
 
 def import_specimen(cfg):
@@ -802,31 +1735,38 @@ def _verify_symmetry_sets(part):
     tol = 1.0e-3   # mm — tight tolerance for planar sets
 
     node_coords = {n.label: n.coordinates for n in part.nodes}
+    x_vals = [c[0] for c in node_coords.values()]
+    y_vals = [c[1] for c in node_coords.values()]
+    x_plane = min(x_vals) if x_vals else 0.0
+    y_plane = min(y_vals) if y_vals else 0.0
 
-    def _rebuild_planar(set_name, coord_idx):
+    def _rebuild_planar(set_name, coord_idx, plane):
         """Rebuild a symmetry-plane nset from coordinate scanning."""
         labels = [lbl for lbl, c in node_coords.items()
-                  if abs(c[coord_idx]) < tol]
+                  if abs(c[coord_idx] - plane) < tol]
+        if not labels:
+            labels = [lbl for lbl, c in node_coords.items()
+                      if abs(c[coord_idx] - plane) < max(tol, 1.0e-2)]
         if not labels:
             print('  WARNING _verify_symmetry_sets: no nodes found at '
-                  'coord[%d]≈0 for set "%s".' % (coord_idx, set_name))
+                 'coord[%d]≈%.4f for set "%s".' % (coord_idx, plane, set_name))
             return
         node_seq = part.nodes.sequenceFromLabels(labels)
         part.Set(name=set_name, nodes=node_seq)
-        print('  Rebuilt "%s" from coordinates: %d nodes at coord[%d]=0'
-              % (set_name, len(labels), coord_idx))
+        print('  Rebuilt "%s" from coordinates: %d nodes at coord[%d]=%.4f'
+              % (set_name, len(labels), coord_idx, plane))
 
-    for set_name, coord_idx in (('XSYMM', 1), ('YSYMM', 0)):
+    for set_name, coord_idx, plane in (('XSYMM', 1, y_plane), ('YSYMM', 0, x_plane)):
         if set_name not in part.sets.keys():
             print('  "%s" set missing after mesh generation — rebuilding...'
                   % set_name)
-            _rebuild_planar(set_name, coord_idx)
+            _rebuild_planar(set_name, coord_idx, plane)
         else:
             n = len(part.sets[set_name].nodes)
             if n == 0:
                 print('  "%s" set has 0 nodes after mesh generation — rebuilding...'
                       % set_name)
-                _rebuild_planar(set_name, coord_idx)
+                _rebuild_planar(set_name, coord_idx, plane)
             else:
                 print('  "%s" set OK: %d nodes.' % (set_name, n))
 
@@ -875,9 +1815,19 @@ def _rebuild_contact_surfaces(cfg, part):
       S3: [0,4,5,1]   S4: [1,5,6,2]
       S5: [2,6,7,3]   S6: [3,7,4,0]
     """
-    tol   = 1.0e-4
-    z_bot = 0.0
-    z_top = float(cfg.BLANK_THICKNESS)
+    existing_surfaces = set(getattr(part, 'surfaces', {}).keys())
+    if {'ZMIN', 'ZMAX'}.issubset(existing_surfaces):
+        print('  Surface ZMIN/ZMAX already present — keeping imported surfaces.')
+        return
+
+    tol = 1.0e-4
+    node_z_vals = [n.coordinates[2] for n in part.nodes]
+    if not node_z_vals:
+        raise RuntimeError('_rebuild_contact_surfaces: no nodes found.')
+    z_bot = min(node_z_vals)
+    z_top = max(node_z_vals)
+    span = max(1.0e-9, z_top - z_bot)
+    tol_z = max(tol, span * 1.0e-3, 1.0e-4)
 
     # C3D8R face → local node indices (0-based)
     FACE_NODES = {
@@ -902,9 +1852,9 @@ def _rebuild_contact_surfaces(cfg, part):
         node_labels = [n.label for n in elem_nodes]
         for face_num, idx in FACE_NODES.items():
             zs = [node_z[node_labels[i]] for i in idx]
-            if all(abs(z - z_bot) < tol for z in zs):
+            if all(abs(z - z_bot) < tol_z for z in zs):
                 bot_by_face[face_num].append(elem.label)
-            elif all(abs(z - z_top) < tol for z in zs):
+            elif all(abs(z - z_top) < tol_z for z in zs):
                 top_by_face[face_num].append(elem.label)
 
     def _make_surface(by_face, surf_name, z_desc):
@@ -926,7 +1876,7 @@ def _rebuild_contact_surfaces(cfg, part):
         print('  Surface %s rebuilt: %d element faces at %s'
               % (surf_name, total, z_desc))
 
-    _make_surface(bot_by_face, 'ZMIN', 'z=0')
+    _make_surface(bot_by_face, 'ZMIN', 'z=%.4f' % z_bot)
     _make_surface(top_by_face, 'ZMAX', 'z=%.4f' % z_top)
 
 
@@ -1035,171 +1985,6 @@ def create_tool_rp_and_surfaces(cfg):
             raise RuntimeError('Surface "Outer" creation failed on %s: %s' % (tool_name, e))
 
     print('  RPs, Sets and tool surfaces: OK')
-
-
-# ─────────────────────────────────────────────────────────────
-# Mesh zone partitioning and seeding
-# ─────────────────────────────────────────────────────────────
-
-def _apply_mesh_zones(cfg, part):
-    """
-    Partition the blank into concentric radial zones and apply MESH_ZONES seeding.
-
-    For each zone boundary radius (ascending order):
-      1. Sketch a full circle on the top face at that radius → creates a quarter-arc
-         edge that splits the face into an inner disc and an outer annulus.
-      2. Extrude that arc edge downward through the solid cell
-         (PartitionCellByExtrudeEdge) → creates a cylindrical partition that also
-         splits the bottom face.
-    After all partitions the boundary edges are split at every zone radius, so
-    each segment can be seeded independently.
-
-    Seeding:
-      • seedPart sets the global (coarsest) size from the last MESH_ZONES entry.
-      • Each edge is then seeded to the size of its radial zone (finer overrides).
-
-    Caller must call part.generateMesh() afterwards.
-    Falls back gracefully if any individual partition step fails.
-    """
-    m      = mdb.models[cfg.MODEL_NAME]
-    zones  = cfg.MESH_ZONES
-    factor = getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0)
-    t      = float(cfg.BLANK_THICKNESS)
-    eps_t  = max(0.01, t * 0.01)
-
-    if factor <= 0.0:
-        print('  WARNING _apply_mesh_zones: factor=%.4f <= 0, skipped.' % factor)
-        return
-
-    # Max specimen radius from nodes (regenerated geometry) or vertices (orphan).
-    node_list = list(part.nodes)
-    if node_list:
-        r_max = max(math.sqrt(n.coordinates[0]**2 + n.coordinates[1]**2)
-                    for n in node_list)
-    else:
-        r_max = max(math.sqrt(v.pointOn[0][0]**2 + v.pointOn[0][1]**2)
-                    for v in part.vertices)
-
-    # Only partition zone boundaries that fit inside the specimen.
-    zone_radii = [z[0] for z in zones[:-1] if z[0] < r_max - 0.5]
-
-    # ── Radial face + cell partitions ────────────────────────────────────────
-    # Skip if the part already has partition features (e.g. W50/W80 .cae files
-    # store their own zone partitions). Re-partitioning over existing partitions
-    # corrupts the geometry and causes generateMesh() to produce 0 elements.
-    existing_partitions = any('Partition' in fn for fn in part.features.keys())
-    partitioned = []
-
-    if existing_partitions:
-        print('  Zone partitions already in feature tree — skipping partition step.')
-    else:
-        z_datum_id = part.DatumAxisByTwoPoint(
-            point1=(0.0, 0.0, 0.0),
-            point2=(0.0, 0.0, 1.0)
-        ).id
-
-    for r in zone_radii:
-        if existing_partitions:
-            partitioned.append(r)
-            continue
-        # Query point just inside the zone radius — on the right top face.
-        qx = r * 0.99 if r > 0.1 else 0.05
-        sk_name = '__zone_r%g__' % r
-        try:
-            face_seq = part.faces.findAt(((qx, 0.01, t),))
-            if not face_seq:
-                print('  WARNING zones: no face found at r=%.2f mm.' % r)
-                continue
-            face = face_seq[0]
-
-            transform = part.MakeSketchTransform(
-                sketchPlane=face,
-                sketchPlaneSide=SIDE1,
-                origin=(0.0, 0.0, t)
-            )
-            sk = m.ConstrainedSketch(name=sk_name, sheetSize=400.0, transform=transform)
-            sk.CircleByCenterPerimeter(center=(0.0, 0.0), point1=(r, 0.0))
-
-            indices_before = {e.index for e in part.edges}
-            part.PartitionFaceBySketch(faces=face_seq, sketch=sk)
-            del m.sketches[sk_name]
-            sk_name = None
-
-            # Find the new quarter-arc edge: at z≈t, radius≈r.
-            arc_edge = None
-            for e in part.edges:
-                if e.index in indices_before or not e.pointOn:
-                    continue
-                x, y, z_e = e.pointOn[0]
-                if abs(math.sqrt(x**2 + y**2) - r) < 0.5 and abs(z_e - t) < eps_t:
-                    arc_edge = e
-                    break
-
-            if arc_edge is None:
-                print('  WARNING zones: arc edge at r=%.2f mm not found.' % r)
-                continue
-
-            # Extrude the arc through the solid to partition the cell.
-            part.PartitionCellByExtrudeEdge(
-                cells=part.cells,
-                edges=[arc_edge],
-                line=part.datums[z_datum_id],
-                sense=REVERSE
-            )
-            partitioned.append(r)
-            print('  Zone partition r=%.1f mm: OK' % r)
-
-        except Exception as exc:
-            print('  WARNING zones: partition at r=%.2f mm failed: %s' % (r, exc))
-            if sk_name and sk_name in m.sketches.keys():
-                del m.sketches[sk_name]
-
-    # ── Seed edges ───────────────────────────────────────────────────────────
-    # Delete all stored edge seeds first — seedPart() will NOT override
-    # existing finer seeds, so without this the original CAE seeds always win.
-    # Pass part.edges positionally; the keyword form fails in Abaqus 2023 Python.
-    try:
-        part.deleteSeeds(part.edges)
-    except Exception:
-        pass
-
-    global_size = zones[-1][1] * factor
-    part.seedPart(size=global_size, deviationFactor=0.1, minSizeFactor=0.1)
-
-    t = cfg.BLANK_THICKNESS
-    n_t = int(getattr(cfg, 'N_THICKNESS_SEEDS', 10))
-    thickness_seed = t / float(n_t)
-
-    zone_seeded = 0
-    thick_seeded = 0
-    for edge in part.edges:
-        if not edge.pointOn:
-            continue
-        x, y, z_ep = edge.pointOn[0]
-        # Thickness edges span z=0 to z=t; their midpoint is at z≈t/2.
-        if abs(z_ep - t * 0.5) < t * 0.4:
-            try:
-                part.seedEdgeBySize([edge], thickness_seed, deviationFactor=0.1)
-                thick_seeded += 1
-            except Exception:
-                pass
-            continue
-        r_e = math.sqrt(x**2 + y**2)
-        size = global_size
-        for r_zone, size_r, _size_c in zones:
-            if r_e <= r_zone + 0.01:
-                size = size_r * factor
-                break
-        if size < global_size - 1e-9:
-            try:
-                part.seedEdgeBySize([edge], size, deviationFactor=0.1)
-                zone_seeded += 1
-            except Exception:
-                pass
-
-    print('  Mesh seeds applied: global=%.3f mm, thickness=%.3f mm (%d seeds), '
-          '%d zone edges, %d thickness edges, factor=%.3f'
-          % (global_size, thickness_seed, n_t, zone_seeded, thick_seeded, factor))
 
 
 # ─────────────────────────────────────────────────────────────

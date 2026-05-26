@@ -69,7 +69,8 @@ def _inject_output_requests(inp_file, cfg):
     Replace the default Abaqus output section (PRESELECT) with custom requests.
     For PiP, replaces the output block in BOTH steps.
 
-    Field  : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP — 100 intervals
+    Field  : S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP —
+             cfg.N_FIELD_INTERVALS intervals (default 1000)
     History: U3/RF3 on punch RP(s), RF3 on Die/Matrix RPs, ALLKE/ALLIE,
              + S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ on SPECIMEN-1.ELOUT
                (apex element defined in the imported geometry .inp)
@@ -101,6 +102,7 @@ def _inject_output_requests(inp_file, cfg):
 
     hist_time_interval = cfg.STEP_TIME / 100.0
 
+    n_field = getattr(cfg, 'N_FIELD_INTERVALS', 100)
     custom_output = (
         '** OUTPUT REQUESTS\n'
         '** \n'
@@ -108,7 +110,7 @@ def _inject_output_requests(inp_file, cfg):
         '** \n'
         '** FIELD OUTPUT\n'
         '** \n'
-        '*Output, field, number interval=100\n'
+        '*Output, field, number interval=%d\n' % n_field +
         '*Element Output, directions=YES\n'
         'S, LE, PEEQ, SDV, STATUS, TRIAX, SP, MISES, LEP\n'
         '*Node Output\n'
@@ -119,7 +121,7 @@ def _inject_output_requests(inp_file, cfg):
         + history_block +
         '*Energy Output\n'
         'ALLKE, ALLIE\n'
-        '** Apex element history — \n'
+        '** Apex element history\n'
         '*Output, history, FREQUENCY=1000\n'
         '*Element Output, elset=SPECIMEN-1.ELOUT\n'
         'S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ\n'
@@ -150,8 +152,8 @@ def _inject_output_requests(inp_file, cfg):
     with open(inp_file, 'w') as f:
         f.write(content)
 
-    print('  Injected custom output requests (%d step(s), 100 intervals, SDV, TRIAX, SP, MISES, LEP, ELOUT history)'
-          % replaced)
+    print('  Injected custom output requests (%d step(s), %d field intervals, SDV, TRIAX, SP, MISES, LEP, ELOUT history)'
+          % (replaced, n_field))
 
 
 def _inject_mass_scaling(inp_file, dt):

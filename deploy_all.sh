@@ -4,11 +4,9 @@
 #                   jobs, then submit FLC aggregation job.
 #
 # Usage:
-#   ./deploy_all.sh                            # all defaults from config.py
-#   ./deploy_all.sh marciniak                  # override test type
-#   ./deploy_all.sh marciniak 1.5              # override test type + thickness
-#   ./deploy_all.sh marciniak 1.5 45           # + orientation angle (degrees)
-#   ./deploy_all.sh marciniak 1.5 45 50 80 100 # + specific widths
+#   ./deploy_all.sh                                                # all defaults from config.py
+#   ./deploy_all.sh nakazima 1.5 0 none 3 1e-5 5.0 50              # explicit app-style args
+#   ./deploy_all.sh nakazima 1.5 0 none 3 1e-5 5.0 50 20 50 100    # + specific widths
 #
 # All defaults are read from config.py — edit only config.py to change them.
 # =============================================================
@@ -28,16 +26,22 @@ DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 DEFAULT_MS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MASS_SCALING_DT)")
+DEFAULT_PS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_SPEED)")
+DEFAULT_PR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")
 
 TEST_TYPE=$(echo "${1:-$DEFAULT_TEST_TYPE}" | tr '[:upper:]' '[:lower:]')
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
-# MESH_REFINEMENT_FACTOR, MASS_SCALING_DT, PUNCH_RADIUS can be set as env vars
-# before calling this script, or they default to config.py values.
-MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR:-$DEFAULT_MR}
-MASS_SCALING_DT=${MASS_SCALING_DT:-$DEFAULT_MS}
-PUNCH_RADIUS=${PUNCH_RADIUS:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")}
-shift $(( $# < 3 ? $# : 3 ))
+PIP_PUNCH2_ID=${4:-$PIP_PUNCH2_ID}
+MESH_REFINEMENT_FACTOR=${5:-$DEFAULT_MR}
+MASS_SCALING_DT=${6:-$DEFAULT_MS}
+PUNCH_SPEED=${7:-$DEFAULT_PS}
+PUNCH_RADIUS=${8:-$DEFAULT_PR}
+
+[ "$PIP_PUNCH2_ID" = "none" ] && PIP_PUNCH2_ID=""
+[ "$PUNCH_RADIUS" = "none" ] && PUNCH_RADIUS="$DEFAULT_PR"
+
+shift $(( $# < 8 ? $# : 8 ))
 CUSTOM_WIDTHS=false
 WIDTHS=("${@}")
 if [ ${#WIDTHS[@]} -eq 0 ]; then
@@ -75,7 +79,8 @@ echo "=============================================="
 
 # ── Push scripts once ─────────────────────────────────────────────────────────
 echo "  Pushing scripts to Euler ..."
-scp "$SCRIPT_DIR/config.py" \
+rsync -az --checksum \
+    "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
@@ -89,14 +94,16 @@ scp "$SCRIPT_DIR/config.py" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
 
 # ── Push modules directory ────────────────────────────────────────────────────
-scp -r "$SCRIPT_DIR/modules" \
-    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+rsync -az --checksum "$SCRIPT_DIR/modules/" \
+    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/modules/"
 
 # ── Push PiP geometry directories ────────────────────────────────────────────
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Pushing PiP_Punches and PiP_Geometries ..."
-    scp -r "$SCRIPT_DIR/PiP_Punches" "$SCRIPT_DIR/PiP_Geometries" \
-        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+    rsync -az --checksum "$SCRIPT_DIR/PiP_Punches/" \
+        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/PiP_Punches/"
+    rsync -az --checksum "$SCRIPT_DIR/PiP_Geometries/" \
+        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/PiP_Geometries/"
 fi
 echo "  Done."
 echo ""
@@ -108,7 +115,7 @@ echo "  Launching submit_all.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'PUNCH_RADIUS=${PUNCH_RADIUS} MASS_SCALING_DT=${MASS_SCALING_DT} bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
+        'PUNCH_RADIUS=${PUNCH_RADIUS} MASS_SCALING_DT=${MASS_SCALING_DT} PUNCH_SPEED=${PUNCH_SPEED} bash ${EULER_DIR}/submit_all.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${CUSTOM_WIDTHS} ${WIDTHS[*]} \
          > ${EULER_DIR}/submit_all.log 2>&1'
 "
 

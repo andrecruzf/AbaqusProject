@@ -9,7 +9,7 @@ Mass scaling:
   not support the FIXED mechanism type.
 
 Step time:
-  STEP_TIME = PUNCH_DISPLACEMENT / 5.0  (time-scaled, not real speed)
+  STEP_TIME = PUNCH_DISPLACEMENT / PUNCH_SPEED
   Verify ALLKE/ALLIE < 5 % in post-processing to confirm quasi-static regime.
 """
 from abaqus import mdb
@@ -50,8 +50,8 @@ def _create_step_standard(cfg, m):
         improvedDtMethod=ON,
         description='Nakazima/Marciniak forming — punch %.1f mm' % cfg.PUNCH_DISPLACEMENT)
 
-    print('  Step "Forming": timePeriod=%.4e s  (%.1f mm / 5.0)'
-          % (cfg.STEP_TIME, cfg.PUNCH_DISPLACEMENT))
+    print('  Step "Forming": timePeriod=%.4e s  (%.1f mm / %.4g mm/s)'
+          % (cfg.STEP_TIME, cfg.PUNCH_DISPLACEMENT, cfg.PUNCH_SPEED))
     if cfg.USE_MASS_SCALING:
         print('  Fixed mass scaling DT=%.2e s will be injected into .inp by job.py'
               % cfg.MASS_SCALING_DT)

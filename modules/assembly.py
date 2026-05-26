@@ -18,6 +18,7 @@ After rotation:
 """
 from abaqus import mdb
 from abaqusConstants import CARTESIAN, ON
+import math
 
 
 _TOOL_NAMES = {'Matrix', 'Die', 'Punch', 'Punch1', 'Punch2'}
@@ -153,9 +154,32 @@ def _setup_symmetry_sets(cfg, assembly, spec_name):
     boundary.py handles this correctly.
     """
     inst = assembly.instances['Specimen-1']
+    tol = 1.0e-3
+    xs = [n.coordinates[0] for n in inst.nodes]
+    ys = [n.coordinates[1] for n in inst.nodes]
+    x_plane = min(xs) if xs else 0.0
+    y_plane = min(ys) if ys else 0.0
+
+    def _rebuild_asm_set(set_name, coord_idx, plane):
+        coords = [abs(n.coordinates[coord_idx] - plane) for n in inst.nodes]
+        if coords:
+            local_tol = max(tol, max(coords) * 1.0e-4)
+        else:
+            local_tol = tol
+        labels = [n.label for n in inst.nodes
+                  if abs(n.coordinates[coord_idx] - plane) <= local_tol]
+        if not labels:
+            local_tol = max(1.0e-2, local_tol)
+            labels = [n.label for n in inst.nodes
+                      if abs(n.coordinates[coord_idx] - plane) <= local_tol]
+        if not labels:
+            return None
+        asm_name = 'ASSEMBLY_%s_%s' % (inst.name, set_name)
+        assembly.Set(name=asm_name, nodes=inst.nodes.sequenceFromLabels(labels))
+        return assembly.sets[asm_name]
 
     for set_name in ('XSYMM', 'YSYMM'):
-        if set_name in inst.sets.keys():
+        if set_name in inst.sets.keys() and len(inst.sets[set_name].nodes) > 0:
             region = inst.sets[set_name]
             nodes = list(region.nodes)
             n_nodes = len(nodes)
@@ -171,5 +195,14 @@ def _setup_symmetry_sets(cfg, assembly, spec_name):
                 print('  WARNING: set "%s" found but has 0 nodes — '
                       'mesh regeneration may have cleared it.' % set_name)
         else:
-            print('  WARNING: set "%s" not found on Specimen-1 — '
-                  'apply symmetry BC manually in CAE.' % set_name)
+            coord_idx = 1 if set_name == 'XSYMM' else 0
+            plane = y_plane if set_name == 'XSYMM' else x_plane
+            region = _rebuild_asm_set(set_name, coord_idx, plane)
+            if region is not None and len(region.nodes) > 0:
+                sample = region.nodes[0]
+                print('  Rebuilt "%s" on assembly: %d nodes — sample (%.3f, %.3f, %.3f)'
+                      % (set_name, len(region.nodes),
+                         sample.coordinates[0], sample.coordinates[1], sample.coordinates[2]))
+            else:
+                print('  WARNING: set "%s" not found on Specimen-1 — '
+                      'apply symmetry BC manually in CAE.' % set_name)

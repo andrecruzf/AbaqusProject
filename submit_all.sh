@@ -24,6 +24,8 @@ MESH_REFINEMENT_FACTOR=${5:-1}
 CUSTOM_WIDTHS=$6
 shift 6
 WIDTHS=("$@")
+PUNCH_SPEED=${PUNCH_SPEED:-5.0}
+MESH_SEED_MODE=${MESH_SEED_MODE:-imported}
 
 # Derived name components
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
@@ -53,6 +55,10 @@ print('_ms%de%d' % (mant, abs(exp)))
 else
     _ms_suffix=""
 fi
+_ps_suffix=$(python3 -c "
+v = float('${PUNCH_SPEED}')
+print('_ps' + ('%.4g' % v).replace('.','p') if '${TEST_TYPE}' != 'pip' and abs(v - 5.0) > 1e-6 else '')
+")
 FLC_OUTDIR="FLC_${TEST_TYPE}_t${_t}_ang${_ang}"
 GLOBAL_DIR="${EULER_DIR}/${FLC_OUTDIR}"
 
@@ -67,6 +73,9 @@ echo "  Widths      : ${WIDTHS[*]}"
 echo "  Mesh factor : ${MESH_REFINEMENT_FACTOR}"
 if [ -n "$MASS_SCALING_DT" ]; then
     echo "  Mass scaling: ${MASS_SCALING_DT}"
+fi
+if [ "$TEST_TYPE" != "pip" ]; then
+    echo "  Punch speed : ${PUNCH_SPEED} mm/s"
 fi
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Punch2      : ${PIP_PUNCH2_ID:-PUNCH_21 (default)}"
@@ -85,23 +94,37 @@ OUTPUT_DIRS=()
 
 for W in "${WIDTHS[@]}"; do
     echo "----------------------------------------------"
-    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}"
+    JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}${_ps_suffix}"
     OUTPUT_SUBDIR="${FLC_OUTDIR}/${JOB_NAME}"
 
     echo "  Building ${JOB_NAME} ..."
     cd "${EULER_DIR}"
-    TEST_TYPE=${TEST_TYPE} \
-    SPECIMEN_WIDTH=${W} \
-    BLANK_THICKNESS=${THICKNESS} \
-    MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
-    PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
-    MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
-    OUTPUT_BASE_DIR=${EULER_DIR} \
-    xvfb-run -a abaqus cae noGUI=build_model.py
+    _build_ok=0
+    for _attempt in 1 2 3; do
+        rm -f "${EULER_DIR}/${JOB_NAME}.inp"
+        TEST_TYPE=${TEST_TYPE} \
+        SPECIMEN_WIDTH=${W} \
+        BLANK_THICKNESS=${THICKNESS} \
+        MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
+        PIP_PUNCH2_ID=${PIP_PUNCH2_ID} \
+        MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
+        MESH_SEED_MODE=${MESH_SEED_MODE} \
+        MASS_SCALING_DT=${MASS_SCALING_DT} \
+        PUNCH_SPEED=${PUNCH_SPEED} \
+        OUTPUT_BASE_DIR=${EULER_DIR} \
+        xvfb-run -a abaqus cae noGUI=build_model.py && { _build_ok=1; break; }
+        echo "  WARNING: build attempt ${_attempt} failed — retrying ..."
+        rm -rf "${EULER_DIR}/${JOB_NAME}"
+    done
+    if [ ${_build_ok} -eq 0 ]; then
+        echo "  ERROR: build failed 3 times for ${JOB_NAME} — skipping."
+        continue
+    fi
 
     # build_model creates OUTPUT_DIR relative to CWD; move it into the global dir
     rm -rf "${GLOBAL_DIR}/${JOB_NAME}"
     mv "${EULER_DIR}/${JOB_NAME}" "${GLOBAL_DIR}/"
+    rm -f "${GLOBAL_DIR}/${JOB_NAME}/${JOB_NAME}.inp"
 
     echo "  Rendering mesh screenshot ..."
     OUTPUT_DIR="${EULER_DIR}/${OUTPUT_SUBDIR}" \
@@ -115,7 +138,7 @@ for W in "${WIDTHS[@]}"; do
         --job-name=${JOB_NAME} \
         --output=${GLOBAL_DIR}/logs/${JOB_NAME}_%j.out \
         --error=${GLOBAL_DIR}/logs/${JOB_NAME}_%j.err \
-        --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR} \
+        --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MESH_REFINEMENT_FACTOR},MASS_SCALING_DT=${MASS_SCALING_DT},PUNCH_SPEED=${PUNCH_SPEED} \
         --parsable run_cluster.sh)
 
     JOB_IDS+=("$JOB_ID")

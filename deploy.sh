@@ -18,7 +18,7 @@ echo "  deploy.sh — push + build + submit"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
-# ── 1. Read parameters (positional args > env > config.py defaults) ───
+# ── 1. Read parameters (positional args > config.py defaults) ───
 DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
 DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")
 DEFAULT_ORIENTATION=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")
@@ -26,18 +26,28 @@ DEFAULT_WIDTH=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); imp
 PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'PIP_PUNCH2_ID', '') or '')")
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 DEFAULT_MS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MASS_SCALING_DT)")
+DEFAULT_PS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_SPEED)")
+DEFAULT_PR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")
+DEFAULT_STUDY_SUBDIR=""
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
 THICKNESS=${2:-$DEFAULT_THICKNESS}
 ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 SPECIMEN_WIDTH=${4:-$DEFAULT_WIDTH}
-MESH_REFINEMENT_FACTOR=${5:-$DEFAULT_MR}
-MASS_SCALING_DT=${MASS_SCALING_DT:-$DEFAULT_MS}
-PUNCH_RADIUS=${PUNCH_RADIUS:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")}
+PIP_PUNCH2_ID=${5:-$PIP_PUNCH2_ID}
+MESH_REFINEMENT_FACTOR=${6:-$DEFAULT_MR}
+MASS_SCALING_DT=${7:-$DEFAULT_MS}
+PUNCH_SPEED=${8:-$DEFAULT_PS}
+PUNCH_RADIUS=${9:-$DEFAULT_PR}
+STUDY_SUBDIR=${10:-$DEFAULT_STUDY_SUBDIR}
+
+[ "$PIP_PUNCH2_ID" = "none" ] && PIP_PUNCH2_ID=""
+[ "$PUNCH_RADIUS" = "none" ] && PUNCH_RADIUS="$DEFAULT_PR"
 
 # ── Push scripts once ─────────────────────────────────────────────────────────
 echo "  Pushing scripts to Euler ..."
-scp -q "$SCRIPT_DIR/config.py" \
+rsync -az --checksum \
+    "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
@@ -54,30 +64,31 @@ echo "  Done."
 
 # ── Push modules directory ────────────────────────────────────────────────────
 echo "  Pushing modules ..."
-scp -qr "$SCRIPT_DIR/modules" \
-    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+rsync -az --checksum "$SCRIPT_DIR/modules/" \
+    "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/modules/"
 echo "  Done."
 echo ""
-
-
 
 # ── Push PiP geometry directories ────────────────────────────────────────────
 if [ "$TEST_TYPE" = "pip" ]; then
     echo "  Pushing PiP_Punches and PiP_Geometries ..."
-    scp -qr "$SCRIPT_DIR/PiP_Punches" "$SCRIPT_DIR/PiP_Geometries" \
-        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+    rsync -az --checksum "$SCRIPT_DIR/PiP_Punches/" \
+        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/PiP_Punches/"
+    rsync -az --checksum "$SCRIPT_DIR/PiP_Geometries/" \
+        "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/PiP_Geometries/"
 fi
 echo "  Done."
 echo ""
 
 # ── Launch build+submit on Euler via tmux ─────────────────────
 _pip_id_arg="${PIP_PUNCH2_ID:-none}"
+_study_subdir_arg="${STUDY_SUBDIR:-}"
 
 echo "  Launching submit_one.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'PUNCH_RADIUS=${PUNCH_RADIUS} bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${MASS_SCALING_DT} \
+        'PUNCH_RADIUS=${PUNCH_RADIUS} PUNCH_SPEED=${PUNCH_SPEED} bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${MASS_SCALING_DT} ${_study_subdir_arg} \
          > ${EULER_DIR}/submit_one.log 2>&1'
 "
 

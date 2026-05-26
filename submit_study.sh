@@ -18,24 +18,28 @@ ORIENTATION=$3
 WIDTH=$4
 IFS=' ' read -ra MR_VALUES <<< "$5"
 IFS=' ' read -ra MS_VALUES <<< "$6"
+PUNCH_SPEED=${PUNCH_SPEED:-1.0}
+MESH_SEED_MODE=${MESH_SEED_MODE:-imported}
 
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _test_cap=$(python3 -c "print('${TEST_TYPE}'.capitalize())")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
 
-STUDY_DIR="${EULER_DIR}/study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}"
+_ps_dir=$(python3 -c "v=float('${PUNCH_SPEED}'); print('_ps'+('%.4g'%v).replace('.','p') if abs(v-5.0)>1e-6 else '')")
+STUDY_DIR="${EULER_DIR}/study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}${_ps_dir}"
 mkdir -p "${STUDY_DIR}/logs"
 
 module load abaqus/2023
 
 echo "=============================================="
 echo "  submit_study.sh — MS × MR sensitivity study"
-echo "  Test type : ${TEST_TYPE}"
-echo "  Thickness : ${THICKNESS} mm"
-echo "  Width     : W${WIDTH}"
-echo "  MR values : ${MR_VALUES[*]}"
-echo "  MS values : ${MS_VALUES[*]}"
-echo "  Study dir : ${STUDY_DIR}/"
+echo "  Test type   : ${TEST_TYPE}"
+echo "  Thickness   : ${THICKNESS} mm"
+echo "  Width       : W${WIDTH}"
+echo "  Punch speed : ${PUNCH_SPEED} mm/s"
+echo "  MR values   : ${MR_VALUES[*]}"
+echo "  MS values   : ${MS_VALUES[*]}"
+echo "  Study dir   : ${STUDY_DIR}/"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
 
@@ -58,9 +62,13 @@ print('_ms%de%d' % (mant, abs(exp)))
 v = float('${MR}')
 print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
 ")
+        _ps_suffix=$(python3 -c "
+v = float('${PUNCH_SPEED}')
+print('_ps' + ('%.4g' % v).replace('.','p') if abs(v - 5.0) > 1e-6 else '')
+")
 
-        JOB_NAME="${_test_cap}_W${WIDTH}_t${_t}_ang${_ang}${_ms_suffix}${_mr_suffix}"
-        OUTPUT_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}/${JOB_NAME}"
+        JOB_NAME="${_test_cap}_W${WIDTH}_t${_t}_ang${_ang}${_ms_suffix}${_mr_suffix}${_ps_suffix}"
+        OUTPUT_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}${_ps_dir}/${JOB_NAME}"
 
         echo "  Building ${JOB_NAME} ..."
         cd "${EULER_DIR}"
@@ -72,7 +80,9 @@ print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
             BLANK_THICKNESS=${THICKNESS} \
             MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
             MESH_REFINEMENT_FACTOR=${MR} \
+            MESH_SEED_MODE=${MESH_SEED_MODE} \
             MASS_SCALING_DT=${MS} \
+            PUNCH_SPEED=${PUNCH_SPEED} \
             OUTPUT_BASE_DIR=${EULER_DIR} \
             xvfb-run -a abaqus cae noGUI=build_model.py && { _build_ok=1; break; }
             echo "  WARNING: build attempt ${_attempt} failed — retrying ..."
@@ -86,6 +96,7 @@ print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
         # build_model creates OUTPUT_DIR relative to CWD; move into study dir
         rm -rf "${STUDY_DIR}/${JOB_NAME}"
         mv "${EULER_DIR}/${JOB_NAME}" "${STUDY_DIR}/"
+        rm -f "${STUDY_DIR}/${JOB_NAME}/${JOB_NAME}.inp"
 
         echo "  Rendering mesh screenshot ..."
         OUTPUT_DIR="${EULER_DIR}/${OUTPUT_SUBDIR}" \
@@ -100,7 +111,7 @@ print('_mr' + ('%.4g' % v).replace('.','p') if abs(v - 1.0) > 1e-6 else '')
             --job-name="${JOB_NAME}" \
             --output="${STUDY_DIR}/logs/${JOB_NAME}_%j.out" \
             --error="${STUDY_DIR}/logs/${JOB_NAME}_%j.err" \
-            --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MR},MASS_SCALING_DT=${MS} \
+            --export=ALL,JOB_NAME=${JOB_NAME},OUTPUT_SUBDIR=${OUTPUT_SUBDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION},MESH_REFINEMENT_FACTOR=${MR},MASS_SCALING_DT=${MS},PUNCH_SPEED=${PUNCH_SPEED} \
             --parsable run_cluster.sh)
 
         JOB_IDS+=("${JOB_ID}")

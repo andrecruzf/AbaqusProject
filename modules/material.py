@@ -25,6 +25,21 @@ from abaqusConstants import (
 import math
 
 
+def _get_specimen_part_name(cfg, model):
+    spec_name = getattr(cfg, 'SPECIMEN_PART_NAME', None)
+    if spec_name and spec_name in model.parts.keys():
+        return spec_name
+
+    tool_names = {'Matrix', 'Die', 'Punch', 'Punch1', 'Punch2'}
+    candidates = [name for name in model.parts.keys() if name not in tool_names]
+    if not candidates:
+        raise RuntimeError('No specimen part found in the model.')
+    for preferred in ('Specimen', 'Sample_Circ', 'Blank_Var', 'Part-1'):
+        if preferred in candidates:
+            return preferred
+    return sorted(candidates)[0]
+
+
 def define_material(cfg):
     print('--- Material definition ---')
     m = mdb.models[cfg.MODEL_NAME]
@@ -33,7 +48,7 @@ def define_material(cfg):
     mat = m.Material(name=cfg.MATERIAL_NAME)
     mat.UserMaterial(mechanicalConstants=cfg.VUMAT_CONSTANTS)
     mat.Depvar(n=cfg.DEPVAR_COUNT, deleteVar=cfg.DEPVAR_DELETE)
-    mat.Density(table=((7.85e-9,),))
+    mat.Density(table=((cfg.MATERIAL_DENSITY,),))
 
     print('  UserMaterial "%s" created' % cfg.MATERIAL_NAME)
 
@@ -65,7 +80,7 @@ def define_material(cfg):
     print('  SolidSection "%s" created' % section_name)
 
     # ── Assign to specimen ONLY ──────────────────────────────
-    spec_name = cfg.SPECIMEN_PART_NAME
+    spec_name = _get_specimen_part_name(cfg, m)
     p = m.parts[spec_name]
 
     # Rebuild ELALL safely every run

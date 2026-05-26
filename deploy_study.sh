@@ -25,14 +25,16 @@ TEST_TYPE="nakazima"
 THICKNESS=${1:-$(python3 -c "import sys; sys.path.insert(0,'${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")}
 ORIENTATION=${2:-$(python3 -c "import sys; sys.path.insert(0,'${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")}
 WIDTH=200
+PUNCH_SPEED="${PUNCH_SPEED:-5.0}"
 
 # Study grid
-MR_VALUES=(1 2 4 8)
+MR_VALUES=(1 2 4)
 MS_VALUES=(1e-7 1e-6 1e-5 1e-4)
 
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
-STUDY_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}"
+_ps=$(python3 -c "v=float('${PUNCH_SPEED}'); print('_ps'+('%.4g'%v).replace('.','p'))")
+STUDY_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}${_ps}"
 STUDY_DIR="${EULER_DIR}/${STUDY_SUBDIR}"
 
 echo "=============================================="
@@ -41,6 +43,7 @@ echo "  Test type   : ${TEST_TYPE}"
 echo "  Thickness   : ${THICKNESS} mm"
 echo "  Orientation : ${ORIENTATION} deg"
 echo "  Width       : W${WIDTH}"
+echo "  Punch speed : ${PUNCH_SPEED} mm/s"
 echo "  MR values   : ${MR_VALUES[*]}"
 echo "  MS values   : ${MS_VALUES[*]}"
 echo "  Study dir   : ${STUDY_SUBDIR}/"
@@ -49,7 +52,8 @@ echo "=============================================="
 
 # ── Push all scripts once ─────────────────────────────────────
 echo "  Pushing scripts to Euler ..."
-scp -q "$SCRIPT_DIR/config.py" \
+rsync -az --checksum \
+    "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
@@ -61,7 +65,7 @@ scp -q "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "$SCRIPT_DIR/submit_one.sh" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
-scp -q -r "$SCRIPT_DIR/modules" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
+rsync -az --checksum "$SCRIPT_DIR/modules/" "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/modules/"
 echo "  Done."
 
 ssh "${EULER_USER}@${EULER_HOST}" "mkdir -p ${STUDY_DIR}/logs"
@@ -76,7 +80,7 @@ for MS in "${MS_VALUES[@]}"; do
         LOG="${STUDY_DIR}/logs/submit_ms${MS}_mr${MR}.log"
 
         JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-            "bash ${EULER_DIR}/submit_one.sh \
+            "PUNCH_SPEED=${PUNCH_SPEED} bash ${EULER_DIR}/submit_one.sh \
                 ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${WIDTH} \
                 none ${MR} ${MS} ${STUDY_SUBDIR} \
              2>&1 | tee ${LOG} | grep '^JOB_ID=' | cut -d= -f2")

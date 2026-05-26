@@ -163,7 +163,6 @@ def _resolve_eqps_max(odb):
             print('  NOTE: SDV1 not in last frame — using auto range.')
             return None
         except Exception as e:
-            print('  NOTE: method A failed (%s) — using auto range.' % e)
             return None
 
     if not eqps_max or eqps_max < 1e-6:
@@ -222,7 +221,9 @@ def _setup_single_punch():
     vp.odbDisplay.setPrimaryVariable(
         variableLabel='SDV1', outputPosition=INTEGRATION_POINT)
     vp.odbDisplay.basicOptions.setValues(
-        mirrorAboutXzPlane=True, mirrorAboutYzPlane=True)
+        mirrorAboutXzPlane=True,
+        mirrorAboutYzPlane=True,
+    )
     vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
 
 
@@ -265,13 +266,16 @@ def _setup_two_punches():
     vp.odbDisplay.setPrimaryVariable(
         variableLabel='SDV1', outputPosition=INTEGRATION_POINT)
     vp.odbDisplay.basicOptions.setValues(
-        mirrorAboutXzPlane=True, mirrorAboutYzPlane=True)
+        mirrorAboutXzPlane=True,
+        mirrorAboutYzPlane=True,
+    )
     vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
 
 
 def _setup_cut_view(vp, cut_rb_names):
     """
-    Half-model front view — the Y=0 symmetry face acts as the 'cut'.
+    Half-model side view. The cut movie disables the YZ mirror to expose the
+    X=0 section through the specimen center.
 
     cut_rb_names : tuple of constraint names (LeafFromConstraintNames) to show
                    as translucent rigid bodies in the cut view.  Typically the
@@ -279,10 +283,9 @@ def _setup_cut_view(vp, cut_rb_names):
                    (die below the blank or matrix/blank-holder above).
 
     Show all specimen elements (element-based leaf, not just ZMAX/ZMIN surfaces)
-    with mirrorAboutXzPlane=OFF so only the Y>0 quarter is drawn.  Looking from
-    -Y toward +Y the Y=0 face of the specimen is the front face, exposing the
-    10 through-thickness element layers with FEATURE edges.
-    mirrorAboutYzPlane=ON keeps the full ±X width.
+    with mirrorAboutYzPlane=OFF. Keep mirrorAboutXzPlane=ON so the other
+    symmetry direction remains complete. The camera looks along X for the cut
+    view, showing a section parallel to the YZ plane.
 
     Returns True on success, False if display groups cannot be built.
     """
@@ -378,24 +381,44 @@ def _setup_cut_view(vp, cut_rb_names):
         translucencyFactor=0.25,
     )
 
-    # Half model: X mirror for full ±X width; NO Y mirror so Y=0 face is exposed
+    # Cut model: disable the YZ mirror so the X=0 center section remains
+    # exposed. Keep the XZ mirror active for the other symmetry direction.
     vp.odbDisplay.basicOptions.setValues(
-        mirrorAboutXzPlane=False,
-        mirrorAboutYzPlane=True,
+        mirrorAboutXzPlane=True,
+        mirrorAboutYzPlane=False,
     )
 
-    # Camera: -Y looking toward +Y, Z up — Y=0 face is front-facing
+    # Camera: look from -X toward +X so the X=0 YZ symmetry section is front-facing.
     vp.view.setValues(
-        cameraPosition=(0., -500., 0.),
+        cameraPosition=(-2600., 0., 0.),
         cameraUpVector=(0., 0., 1.),
         cameraTarget=(0., 0., 0.),
     )
     return True
 
 
+def _ffmpeg_output_ok(path):
+    return os.path.isfile(path) and os.path.getsize(path) > 0
+
+
+def _run_ffmpeg_webm(actual_avi, out_file, vf):
+    if os.path.isfile(out_file):
+        try:
+            os.remove(out_file)
+        except OSError:
+            pass
+    return subprocess.call([
+        'ffmpeg', '-y', '-i', actual_avi,
+        '-vf', vf,
+        '-vcodec', 'libvpx-vp9', '-crf', '18', '-b:v', '0',
+        '-deadline', 'good', '-cpu-used', '2',
+        out_file,
+    ])
+
+
 def _render_animation(vp, out_file):
     """Export animation via Abaqus's built-in writeImageAnimation (TIME_HISTORY),
-    then convert the lossless AVI to webm (VP9) + MP4 (H.264) with ffmpeg.
+    then convert the lossless AVI to plain webm (VP9) with ffmpeg.
 
     Returns ffmpeg exit code for the webm pass (0 = success).
     """
@@ -420,33 +443,55 @@ def _render_animation(vp, out_file):
         print('  WARNING: AVI not found at %s — skipping conversion.' % actual_avi)
         return 1
 
-    _vf = 'format=yuv420p,unsharp=5:5:0.8:3:3:0.4'
-
-    # webm / VP9 — constant quality, no bitrate cap
-    ret = subprocess.call([
-        'ffmpeg', '-y', '-i', actual_avi,
-        '-vf', _vf,
-        '-vcodec', 'libvpx-vp9', '-crf', '18', '-b:v', '0',
-        '-deadline', 'good', '-cpu-used', '2',
-        out_file,
-    ])
-
-    # MP4 / H.264 — side output for broad player compatibility
-    mp4_file = out_file.replace('.webm', '.mp4')
-    subprocess.call([
-        'ffmpeg', '-y', '-i', actual_avi,
-        '-vf', _vf,
-        '-c:v', 'libx264', '-crf', '18',
-        mp4_file,
-    ])
-    if os.path.isfile(mp4_file):
-        print('  MP4  -> %s' % mp4_file)
+    vf = 'format=yuv420p,unsharp=5:5:0.8:3:3:0.4'
+    ret = _run_ffmpeg_webm(actual_avi, out_file, vf)
+    if ret != 0 or not _ffmpeg_output_ok(out_file):
+        if os.path.isfile(out_file):
+            try:
+                os.remove(out_file)
+            except OSError:
+                pass
+        print('  WARNING: WebM encode failed.')
+        ret = ret or 1
 
     try:
         os.remove(actual_avi)
     except OSError:
         pass
     return ret
+
+
+def _view_tuple(value, fallback):
+    try:
+        return tuple(value)
+    except Exception:
+        return fallback
+
+
+def _view_float(value, fallback):
+    try:
+        return float(value)
+    except Exception:
+        return fallback
+
+
+def _apply_minus_x_cut_camera(vp, target, width, height, margin=1.35):
+    """Look from -X while preserving a fitView-derived center and view size."""
+    tx, ty, tz = target
+    try:
+        vp.view.setProjection(projection=PARALLEL)
+    except Exception:
+        pass
+
+    values = dict(
+        cameraPosition=(tx - 2600., ty, tz),
+        cameraUpVector=(0., 0., 1.),
+        cameraTarget=(tx, ty, tz),
+    )
+    if width and height:
+        values['width'] = width * margin
+        values['height'] = height * margin
+    vp.view.setValues(**values)
 
 
 def make_movie(odb_path, out_dir=None):
@@ -481,7 +526,7 @@ def make_movie(odb_path, out_dir=None):
         legendFont='-*-verdana-bold-r-normal-*-*-140-*-*-p-*-*-*',
         legendNumberFormat=FIXED, legendDecimalPlaces=2)
 
-    # ── Compute EQPS max before display setup touches contour options ─────────
+    # ── Compute EQPS max before display setup ────────────────────────────────
     eqps_max = _resolve_eqps_max(odb)
 
     # ── Display setup — detect one vs two punches ──────────────
@@ -503,8 +548,8 @@ def make_movie(odb_path, out_dir=None):
     #    session.defaultOdbDisplay is also set so that setFrame() cannot reset
     #    the range to the session default (which has autocompute ON). ─────────────
     _cmax = float(eqps_max) if eqps_max else 1.0
-    # minValue=0.0 is a sentinel in some Abaqus builds; use 1e-9 instead.
-    _cmin = 1e-9
+    # minValue=0.0 is a sentinel in some Abaqus builds; 1e-6 matches the noise floor used elsewhere.
+    _cmin = 1e-6
     for _co in (vp.odbDisplay.contourOptions,):
         _co.setValues(
             maxAutoCompute=OFF, maxValue=_cmax,
@@ -554,7 +599,7 @@ def make_movie(odb_path, out_dir=None):
 
     ret = _render_animation(vp, out_file)
 
-    # ── Cut view movie (Y=0 cross-section, front camera) ──────────────────────
+    # ── Cut view movie (side view, X direction) ───────────────────────────────
     # Rigid bodies shown in cut view: punch + blank holder (MATRIX, rim tool
     # above the blank).  DIE is below and obscures the punch in the front view.
     if two_punches:
@@ -573,15 +618,32 @@ def make_movie(odb_path, out_dir=None):
     print('  Rendering cut view -> %s ...' % os.path.basename(cut_file))
     if _setup_cut_view(vp, _cut_rb_names):
         vp.odbDisplay.setFrame(step=_last_s_idx, frame=_last_f_idx)
-        vp.view.fitView()
-        # Re-apply camera after fitView(): fitView shifts cameraTarget to the
-        # Y>0 model centroid, tilting the -Y look direction and making the
-        # translucent punch shape appear visually offset from the Y=0 cut face.
-        vp.view.setValues(
-            cameraPosition=(0., -500., 0.),
-            cameraUpVector=(0., 0., 1.),
-            cameraTarget=(0., 0., 0.),
-        )
+        try:
+            dg_sec = session.displayGroups['Specimen_Section']
+            dg_cut_rb = session.displayGroups['Cut Rigid Bodies']
+        except KeyError:
+            dg_sec = session.displayGroups['Specimen_Section']
+            dg_cut_rb = dg_rb
+
+        # Fit on the complete analytical tooling first. Its size is stable
+        # across W20/W50/etc.; the specimen width should not drive the cut zoom.
+        try:
+            vp.odbDisplay.setValues(visibleDisplayGroups=(dg_rb,))
+            vp.view.fitView()
+            _cut_target = _view_tuple(vp.view.cameraTarget, (0., 0., 0.))
+            _cut_width = _view_float(vp.view.width, 0.)
+            _cut_height = _view_float(vp.view.height, 0.)
+            print('  Cut camera fit: tooling target=%s width=%.3f height=%.3f'
+                  % (_cut_target, _cut_width, _cut_height))
+        except Exception as e:
+            print('  WARNING: tooling fit for cut camera failed (%s); using default center.' % e)
+            _cut_target = (0., 0., 0.)
+            _cut_width = 0.
+            _cut_height = 0.
+
+        vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sec, dg_cut_rb))
+        vp.odbDisplay.setFrame(step=_last_s_idx, frame=_last_f_idx)
+        _apply_minus_x_cut_camera(vp, _cut_target, _cut_width, _cut_height)
         ret_cut = _render_animation(vp, cut_file)
         if ret_cut != 0:
             print('  WARNING: cut video ffmpeg exited with code %d' % ret_cut)

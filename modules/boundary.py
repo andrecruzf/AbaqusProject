@@ -20,6 +20,7 @@ and imported with the specimen part.
 """
 from abaqus import mdb
 from abaqusConstants import SET
+import math
 
 
 def apply_bcs(cfg):
@@ -157,6 +158,48 @@ def _get_region(a, inst, set_name):
     return None
 
 
+def _rebuild_instance_region(a, inst, set_name, kind):
+    """
+    Rebuild an assembly-level node set from instance coordinates when the
+    propagated part set is missing or empty after mesh regeneration.
+    """
+    tol = 1.0e-3
+    labels = []
+    xs = [n.coordinates[0] for n in inst.nodes]
+    ys = [n.coordinates[1] for n in inst.nodes]
+    x_plane = min(xs) if xs else 0.0
+    y_plane = min(ys) if ys else 0.0
+
+    if kind == 'x':
+        coords = [abs(n.coordinates[0] - x_plane) for n in inst.nodes]
+        if coords:
+            tol = max(tol, max(coords) * 1.0e-4)
+        labels = [n.label for n in inst.nodes if abs(n.coordinates[0] - x_plane) <= tol]
+    elif kind == 'y':
+        coords = [abs(n.coordinates[1] - y_plane) for n in inst.nodes]
+        if coords:
+            tol = max(tol, max(coords) * 1.0e-4)
+        labels = [n.label for n in inst.nodes if abs(n.coordinates[1] - y_plane) <= tol]
+    elif kind == 'edge':
+        r_vals = [math.sqrt(n.coordinates[0] ** 2 + n.coordinates[1] ** 2)
+                  for n in inst.nodes]
+        if r_vals:
+            max_r = max(r_vals)
+            edge_tol = max(tol, max_r * 1.0e-4)
+            labels = [n.label for n, r in zip(inst.nodes, r_vals)
+                      if r >= max_r - edge_tol]
+    else:
+        raise ValueError('Unknown rebuild kind: %s' % kind)
+
+    if not labels:
+        return None
+
+    asm_name = 'ASSEMBLY_%s_%s' % (inst.name, set_name)
+    region = inst.nodes.sequenceFromLabels(labels)
+    a.Set(name=asm_name, nodes=region)
+    return a.sets[asm_name]
+
+
 def _apply_symmetry_bcs(cfg, m, a):
     """
     Apply XSYMM and YSYMM BCs from the node sets defined in the geometry .inp.
@@ -179,6 +222,8 @@ def _apply_symmetry_bcs(cfg, m, a):
 
     # Symmetry plane at X=0 (U1=UR2=UR3=0) — nodes are in the 'YSYMM' nset
     region = _get_region(a, inst, 'YSYMM')
+    if region is None or len(region.nodes) == 0:
+        region = _rebuild_instance_region(a, inst, 'YSYMM', 'x')
     if region is None:
         raise RuntimeError('"YSYMM" set not found on Specimen-1 — BC_Sym_X (x=0 plane) cannot be applied.')
     if len(region.nodes) == 0:
@@ -188,6 +233,8 @@ def _apply_symmetry_bcs(cfg, m, a):
 
     # Symmetry plane at Y=0 (U2=UR1=UR3=0) — nodes are in the 'XSYMM' nset
     region = _get_region(a, inst, 'XSYMM')
+    if region is None or len(region.nodes) == 0:
+        region = _rebuild_instance_region(a, inst, 'XSYMM', 'y')
     if region is None:
         raise RuntimeError('"XSYMM" set not found on Specimen-1 — BC_Sym_Y (y=0 plane) cannot be applied.')
     if len(region.nodes) == 0:
@@ -202,10 +249,13 @@ def _apply_edge_bc(cfg, m, a):
     Uses the EDGE nset from the geometry .inp.
     """
     inst = a.instances['Specimen-1']
-    if 'EDGE' in inst.sets.keys():
+    region = _get_region(a, inst, 'EDGE')
+    if region is None or len(region.nodes) == 0:
+        region = _rebuild_instance_region(a, inst, 'EDGE', 'edge')
+    if region is not None and len(region.nodes) > 0:
         m.EncastreBC(name='BC_Edge',
                      createStepName='Initial',
-                     region=inst.sets['EDGE'])
+                     region=region)
         print('  BC_Edge: ENCASTRE on Specimen-1.EDGE')
     else:
         print('  WARNING: USE_EDGE_ENCASTRE=True but EDGE set not found — skipped.')

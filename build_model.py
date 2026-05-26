@@ -25,6 +25,7 @@ Modifier uniquement config.py pour changer de configuration.
 from __future__ import print_function
 import sys
 import os
+from abaqus import mdb
 
 # ── Chemin du projet (nécessaire pour les imports relatifs) ───
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in dir() else os.getcwd()
@@ -35,13 +36,15 @@ if _THIS_DIR not in sys.path:
 
 
 import config as cfg
-from modules.parts    import create_parts
+from modules.parts    import create_parts, import_specimen_mesh_only
 from modules.assembly import create_assembly
 from modules.material import define_material
 from modules.step     import create_step
 from modules.contact  import define_contact
 from modules.boundary import apply_bcs
 from modules.job      import save_and_export
+
+MESH_ONLY = os.environ.get('MESH_ONLY', '').lower() in ('1', 'true', 'yes')
 
 
 # ─────────────────────────────────────────────────────────────
@@ -64,6 +67,20 @@ def run():
     if not os.path.isdir(cfg.OUTPUT_DIR):
         os.makedirs(cfg.OUTPUT_DIR)
         print('  Created output directory: %s/' % cfg.OUTPUT_DIR)
+
+    if MESH_ONLY:
+        print('\n[MESH_ONLY] Importing specimen mesh only.')
+        if cfg.MODEL_NAME not in mdb.models:
+            mdb.Model(name=cfg.MODEL_NAME)
+        import_specimen_mesh_only(cfg)
+        mesh_cae = os.path.join(cfg.OUTPUT_DIR, cfg.CAE_NAME)
+        mdb.saveAs(pathName=mesh_cae)
+        print('  Saved mesh-only CAE: %s' % mesh_cae)
+        print('\n' + '=' * 60)
+        print('  BUILD MESH-ONLY COMPLETE')
+        print('  .cae : %s' % mesh_cae)
+        print('=' * 60)
+        return
 
     print('\n[1/7] Pièces ...')
     create_parts(cfg)

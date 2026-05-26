@@ -96,7 +96,7 @@ echo "  Movie written."
 echo "=============================================="
 echo "  Copying results to home ..."
 echo "=============================================="
-for f in elout.csv global.csv strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
+for f in elout.csv global.csv strain_path.csv strain_cluster.csv strain_neighborhood.csv strain_dome.csv strain_cluster_faces.csv specimen_outline.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
     cp "$SCRATCH_DIR/$f" "$WORK_DIR/" 2>/dev/null \
         && echo "  $f ✓" \
         || echo "  WARNING: $f not found in scratch"
@@ -104,6 +104,9 @@ done
 cp "$SCRATCH_DIR/${JOB_NAME}_movie.webm" "$WORK_DIR/" 2>/dev/null \
     && echo "  ${JOB_NAME}_movie.webm ✓" \
     || echo "  WARNING: movie not found in scratch (ffmpeg may have failed)"
+cp "$SCRATCH_DIR/${JOB_NAME}_cut.webm" "$WORK_DIR/" 2>/dev/null \
+    && echo "  ${JOB_NAME}_cut.webm ✓" \
+    || echo "  WARNING: cut movie not found in scratch (ffmpeg may have failed)"
 
 # ── Step 6: Per-specimen diagnostic plots ────────────────────────────────────
 echo "=============================================="
