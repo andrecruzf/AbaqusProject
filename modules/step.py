@@ -56,11 +56,26 @@ def _create_step_standard(cfg, m):
         print('  Fixed mass scaling DT=%.2e s will be injected into .inp by job.py'
               % cfg.MASS_SCALING_DT)
 
-    m.SmoothStepAmplitude(
-        name='Amp_Punch',
-        timeSpan=STEP,
-        data=((0.0, 0.0), (cfg.STEP_TIME, 1.0)))
-    print('  Amplitude "Amp_Punch": SmoothStep (0,0)→(%.4e,1)' % cfg.STEP_TIME)
+    # Punch velocity profile.  'constant' gives a constant punch speed (linear
+    # displacement) with a short smooth ramp at the step ends, so the strain rate
+    # stays steady through fracture and the Volk-Hora bifurcation is resolvable.
+    # 'smoothstep' (legacy default) decelerates through the fracture phase.
+    profile = getattr(cfg, 'PUNCH_VELOCITY_PROFILE', 'smoothstep')
+    if profile == 'constant':
+        ramp = getattr(cfg, 'PUNCH_RAMP_FRACTION', 0.05)
+        m.TabularAmplitude(
+            name='Amp_Punch',
+            timeSpan=STEP,
+            smooth=ramp,
+            data=((0.0, 0.0), (cfg.STEP_TIME, 1.0)))
+        print('  Amplitude "Amp_Punch": constant velocity, linear (0,0)→(%.4e,1), '
+              'smooth=%.3g ramp at ends' % (cfg.STEP_TIME, ramp))
+    else:
+        m.SmoothStepAmplitude(
+            name='Amp_Punch',
+            timeSpan=STEP,
+            data=((0.0, 0.0), (cfg.STEP_TIME, 1.0)))
+        print('  Amplitude "Amp_Punch": SmoothStep (0,0)→(%.4e,1)' % cfg.STEP_TIME)
 
 
 def _create_steps_pip(cfg, m):
