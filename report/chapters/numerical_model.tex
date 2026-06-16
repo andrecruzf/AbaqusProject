@@ -2,7 +2,7 @@
 
 \section{Model Overview}
 
-The FE model replicates the selected forming test in Abaqus/Explicit, chosen via the \texttt{TEST\_TYPE} flag (\texttt{nakazima}, \texttt{marciniak}, or \texttt{pip}) in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost.
+The numerical framework replicates the forming tests required by Task~I in Abaqus/Explicit. The selected test is chosen via the \texttt{TEST\_TYPE} flag (\texttt{nakazima}, \texttt{marciniak}, or \texttt{pip}) in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost.
 
 Table~\ref{tab:tool_geometry} summarises the tool geometry for each test configuration.
 
@@ -16,8 +16,8 @@ Punch type        & Hemisphere ($R=50$\,mm) & Flat ($\varnothing 100$\,mm) & Ann
 Die inner radius  & 52.5\,mm & 60\,mm & 55\,mm \\
 Die fillet        & 8\,mm    & 12\,mm & 15\,mm \\
 BH inner radius   & 54.5\,mm & 62\,mm & 62.5\,mm \\
-Punch displacement & 37\,mm   & 37\,mm & 20\,mm + 20\,mm \\
-Punch speed       & 2\,mm/s  & 2\,mm/s & 2\,mm/s \\ \bottomrule[1.5pt]
+Punch displacement & 50\,mm   & 50\,mm & 20\,mm + 20\,mm \\
+Punch speed       & 5\,mm/s  & 5\,mm/s & 2\,mm/s \\ \bottomrule[1.5pt]
 \end{tabular}
 \end{center}
 \end{table}
@@ -31,13 +31,15 @@ For the PiP configuration, the model includes five parts:
   \item \textbf{Blank holder}: rigid body with 2\,mm inner chamfer, inner radius 62.5\,mm.
 \end{itemize}
 
-For Nakazima and Marciniak, the standard four-part model is used (single punch, die, blank holder, blank). Specimen geometry files (\texttt{.cae}) are provided for widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm and are shared between all test configurations.
+For Nakazima and Marciniak, the standard four-part model is used (single punch, die, blank holder, blank). Specimen geometry files (\texttt{.cae}) are provided for widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm and are shared between all test configurations. The workflow is parameterised such that sheet thickness, material orientation, punch travel, forming speed, mass scaling, and mesh refinement can be changed without editing the model-building scripts.
 
 \section{Discretisation}
 
-The blank is meshed with eight-node linear brick elements with reduced integration and hourglass control (\texttt{C3D8R}). A single element layer is used through the thickness, consistent with the supervisor-provided geometry files and with the mesh configuration used in the reference model (PinP\_CR210H). Element size in the dome zone is approximately 1\,mm, providing adequate resolution of the strain gradient without excessive computational cost for the explicit solver.
+The blank is meshed with eight-node linear brick elements with reduced integration and hourglass control (\texttt{C3D8R}). A single element layer is used through the thickness, consistent with the supervisor-provided geometry files and with the mesh configuration used in the reference model (PinP\_CR210H). The relevant mesh metric for this project is the element size in the dome and contact zone, because this is where strain localisation is evaluated.
 
-Maintaining a consistent element size across all specimen widths and test configurations is a primary requirement of the project outline (Task~III). All geometry files use a common mesh density in the contact zone, ensuring that the extracted FLC points are not influenced by spatial discretisation artefacts. A mesh sensitivity study — varying element size systematically and monitoring the extracted failure strains — is identified as a direction for future work (see Chapter~\ref{chap:future_work}).
+Maintaining a consistent element size across all specimen widths and test configurations is a primary requirement of the project outline. The model-building workflow therefore treats mesh size as a controlled parameter rather than as an incidental property of each imported geometry. A user-defined mesh-refinement factor is applied during model generation, allowing the same target element length to be imposed across widths, sheet thicknesses, and punch configurations. This prevents apparent differences in forming limits from being caused by different spatial resolutions.
+
+The automated mesh-size modification also enables the Task~III mesh study. Instead of manually preparing separate geometry files, the same build script generates a controlled set of meshes and post-processes them with identical criteria. The resulting convergence data are used to select the production mesh density for the full parametric campaign.
 
 \section{Material Model}
 
@@ -53,13 +55,13 @@ For the PiP configuration, the two-step process is controlled by separate bounda
   \item \textbf{Step~2} (\texttt{Step2\_Form}, 10\,s): Punch~1 is locked via an \texttt{EncastreBC} (zero nodal velocity, holding at end-of-step-1 position); Punch~2 advances a further 20\,mm with a linear amplitude.
 \end{itemize}
 
-For Nakazima and Marciniak, a single \texttt{Forming} step (18.5\,s) uses a smooth-step amplitude to prescribe the 37\,mm punch displacement.
+For Nakazima and Marciniak, a single \texttt{Forming} step (10\,s) uses a smooth-step amplitude to prescribe the 50\,mm punch displacement.
 
 \section{Forming Speed and Mass Scaling}
 
-All simulations use a punch speed of 2\,mm/s, consistent with the upper bound specified in ISO~12004-2~\cite{ISO120042} (0.5--2\,mm/s). This is an artificial speed used in the quasi-static Abaqus/Explicit framework: the step time is set to $t = d/v$ (18.5\,s for Nakazima/Marciniak; $2 \times 10$\,s for PiP).
+All simulations use a punch speed of 5\,mm/s. This is an artificial speed used in the quasi-static Abaqus/Explicit framework: the step time is set to $t = d/v$ (10\,s for Nakazima/Marciniak; $2 \times 10$\,s for PiP).
 
-Fixed mass scaling with a target stable time increment $\Delta t = 2 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation. The mass scaling value was chosen accounting for the reduced punch speed relative to earlier implementations: since ALLKE $\propto \Delta t^2 v^2$, reducing $v$ from 5\,mm/s to 2\,mm/s allows $\Delta t$ to be increased by a factor of 2.5 while maintaining the same energy ratio.
+Fixed mass scaling with a target stable time increment $\Delta t = 1 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation.
 
 \subsection{Mass Scaling Sensitivity Study}\label{sec:mass_scaling_study}
 
@@ -73,13 +75,13 @@ The quality metric is the mean ALLKE/ALLIE ratio evaluated over the second half 
 
 \subsection{Mesh Refinement Study}\label{sec:mesh_refinement_study}
 
-Element size directly controls the accuracy with which strain gradients in the dome zone are resolved, and hence the reliability of the extracted FLC point. A mesh that is too coarse smears the localised neck over several elements, underestimating the peak major strain $\varepsilon_1$ at failure. Conversely, very fine meshes increase runtime significantly and can make full FLC campaigns computationally prohibitive.
+Element size directly controls the accuracy with which strain gradients in the dome zone are resolved, and hence the reliability of the extracted FLC point. A mesh that is too coarse smears the localised neck over several elements, underestimating the peak major strain $\varepsilon_1$ at failure. Conversely, very fine meshes increase runtime significantly and can make full FLC campaigns computationally prohibitive. The mesh study is therefore part of the framework design, not a separate manual validation exercise.
 
-The mesh refinement factor $f_\mathrm{MR}$ scales the target element size relative to the base geometry provided by the supervisor. Four levels were studied:
+The mesh refinement factor $f_\mathrm{MR}$ scales the target element size relative to the base geometry provided by the supervisor. Three levels were studied:
 \[
-  f_\mathrm{MR} \in \{1,\; 2,\; 4,\; 8\},
+  f_\mathrm{MR} \in \{1,\; 2,\; 4\},
 \]
-where $f_\mathrm{MR} = 1$ corresponds to the coarsest mesh and $f_\mathrm{MR} = 8$ to the finest. The deviation of the extracted major failure strain from the reference value (finest mesh, smallest $\Delta t$) is used as the convergence metric:
+where $f_\mathrm{MR} = 1$ corresponds to the coarsest mesh and $f_\mathrm{MR} = 4$ to the finest. The deviation of the extracted major failure strain from the reference value (finest mesh, smallest $\Delta t$) is used as the convergence metric:
 \[
   \Delta\varepsilon_1 = \frac{\varepsilon_1(f_\mathrm{MR},\,\Delta t) - \varepsilon_1^\mathrm{ref}}{\varepsilon_1^\mathrm{ref}} \times 100\,\%.
 \]
@@ -87,9 +89,9 @@ Results are presented in Section~\ref{sec:study_mesh}.
 
 \subsection{Combined Parameter Study}\label{sec:combined_study}
 
-The mass scaling and mesh refinement studies were executed simultaneously as a fully factorial $4 \times 4$ grid (16 simulations total) on the W200 Nakazima specimen. Running both axes together reveals interactions between the two parameters: for coarser meshes the element-level stable time increment is inherently larger, so the same mass scaling $\Delta t$ produces a different ratio of artificial to natural mass. The combined study therefore provides a more realistic basis for parameter selection than independent one-at-a-time sweeps.
+The mass scaling and mesh refinement studies were executed simultaneously as a fully factorial $4 \times 3$ grid (12 simulations total) on the W200 Nakazima specimen. Running both axes together reveals interactions between the two parameters: for coarser meshes the element-level stable time increment is inherently larger, so the same mass scaling $\Delta t$ produces a different ratio of artificial to natural mass. The combined study therefore provides a more realistic basis for parameter selection than independent one-at-a-time sweeps.
 
-The grid was deployed via \texttt{deploy\_study.sh}, which pushes all scripts once and calls \texttt{submit\_one.sh} once per combination via blocking SSH, collecting the SLURM job IDs to wire a downstream \texttt{plot\_study.py} aggregation job with an \texttt{afterok} dependency. The aggregation produces a three-panel heatmap (wall time, mean ALLKE/ALLIE, $\Delta\varepsilon_1$) that simultaneously visualises all trade-offs. Results are presented in Section~\ref{sec:study_combined}.
+The grid was deployed via \texttt{deploy\_study.sh}, which pushes all scripts once via \texttt{rsync --checksum} and calls \texttt{submit\_one.sh} once per combination via blocking SSH, collecting the SLURM job IDs to wire a downstream \texttt{plot\_study.py} aggregation job with an \texttt{afterok} dependency. The aggregation produces a three-panel heatmap (wall time, mean ALLKE/ALLIE, $\Delta\varepsilon_1$) that simultaneously visualises all trade-offs. Results are presented in Section~\ref{sec:study_combined}.
 
 \section{Output Requests}
 
@@ -105,11 +107,11 @@ History output includes whole-model energies \texttt{ALLKE} and \texttt{ALLIE} f
 
 \section{Simulation Pipeline}
 
-The entire workflow is automated via a set of Python and shell scripts deployed on the ETH Euler HPC cluster. The pipeline runs end-to-end from a single \texttt{deploy\_all.sh} invocation on the local machine.
+The entire workflow is automated via a set of Python and shell scripts deployed on the ETH Euler HPC cluster. It follows the three stages requested in the project outline: model creation, solver execution, and post-processing. The pipeline runs end-to-end from a single \texttt{deploy\_all.sh} invocation on the local machine.
 
 \begin{enumerate}
   \item \texttt{config.py} — Central parameter file: test type, specimen width, thickness, friction coefficients, VUMAT constants, forming speed, output directory.
-  \item \texttt{deploy\_all.sh} — Pushes all scripts to Euler via \texttt{scp}, then launches \texttt{submit\_all.sh} in a detached \texttt{tmux} session on the login node. The local terminal is freed immediately; all model building and job submission proceed remotely.
+  \item \texttt{deploy\_all.sh} — Pushes all scripts to Euler via \texttt{rsync --checksum} (skipping unchanged files), then launches \texttt{submit\_all.sh} in a detached \texttt{tmux} session on the login node. The local terminal is freed immediately; all model building and job submission proceed remotely.
   \item \texttt{submit\_all.sh} (runs on Euler) — Loads the Abaqus module, loops over all specimen widths, calls \texttt{abaqus cae noGUI=build\_model.py} for each, and submits the corresponding solver job. After all solver jobs are queued, the FLC aggregation job is submitted with an \texttt{afterok} dependency on all solver IDs. Output is logged to \texttt{submit\_all.log}.
   \item \texttt{build\_model.py} — Calls 8 modules sequentially to build the Abaqus model (\texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job}) and write the \texttt{.inp} file.
   \item Abaqus/Explicit solver — Runs the simulation on the compute node (24 CPUs, \texttt{mp\_mode=threads}).

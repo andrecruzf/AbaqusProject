@@ -1,7 +1,7 @@
 \chapter{Conclusion}\label{chap:conclusion}
 
-This project developed an automated numerical framework for the determination of
-forming limits in sheet metal forming. The framework covers the complete workflow
+This project developed the automated numerical framework required by Task~III of
+the project outline for robust forming-limit identification. The framework covers the complete workflow
 from model generation in Abaqus/CAE to solver submission, post-processing,
 diagnostic plotting, and FLC aggregation on the ETH Euler cluster. The same
 pipeline can be used for Nakazima, Marciniak, and Punch-in-Punch simulations by
@@ -24,10 +24,12 @@ they can be consumed directly by the Streamlit dashboard and by subsequent FLC
 identification scripts.
 
 The work also establishes a basis for systematic parameter studies. Mesh
-refinement, mass scaling, sheet thickness, material orientation, punch geometry,
-and specimen width can be varied through the same submission interface. This
-allows numerical FLC campaigns to be repeated consistently and compared with
-experimental results once the corresponding test data are available.
+refinement, mass scaling, sheet thickness, material orientation, punch radius,
+punch travel, and specimen width can be varied through the same submission
+interface. The mesh controls directly address the requirement that comparable
+element sizes be maintained across configurations, so that the numerical
+campaign can support the size-effect study of Task~I and provide consistent
+inputs to the identification framework of Task~II.
 
 In summary, the project provides the infrastructure required for automated,
 traceable, and scalable forming-limit simulations. The remaining work is mainly

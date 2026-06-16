@@ -64,11 +64,11 @@ Element deletion occurs when SDV7 is set, detected in post-processing via the ST
 
 \section{FLC Identification Criteria}
 
-Determining the onset of localised necking from strain field data is non-trivial. Several criteria have been proposed in the literature, each based on different physical assumptions. These are relevant to Task~II of the project; they are summarised here for context.
+Determining the onset of localised necking from strain field data is non-trivial. Several criteria have been proposed in the literature, each based on different physical assumptions. These are relevant to Task~II of the project; they are summarised here for context. Automated and expert-assisted evaluations have shown that robustness is not only a matter of the criterion itself, but also of noise handling, crack-frame selection, and the repeatability of the measured strain field~\cite{Affronti2018}.
 
 \subsection{ISO 12004-2 Position-Dependent Method}
 
-The standard method in ISO~12004-2~\cite{ISO120042} fits an inverse parabola to the cross-sectional strain profile perpendicular to the crack at the last frame before fracture. The FLC point is extrapolated from the fit at the section centre. The method requires spatial strain data (DIC or printed grid) and is position-dependent.
+The standard method in ISO~12004-2~\cite{ISO120042} fits an inverse parabola to the cross-sectional strain profile perpendicular to the crack at the last frame before fracture. The FLC point is extrapolated from the fit at the section centre. The method requires spatial strain data (DIC or printed grid) and is position-dependent. For materials with unstable strain localisation or dynamic strain ageing, the selected evaluation frame and section can strongly influence the result, motivating the more robust automated criteria addressed in Task~II.
 
 \subsection{Volk-Hora Time-Dependent Method}
 
