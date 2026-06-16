@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
+import json
 import math
 import os
 import re
 import subprocess
 import time
 import anthropic
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -26,6 +28,31 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Preserve scroll position across Streamlit reruns.
+# Each rerun re-executes this script; the injected JS saves scroll to
+# sessionStorage before the DOM is torn down and restores it after render.
+st_components.html("""
+<script>
+(function () {
+    const KEY = 'st_scroll_y';
+    const win = window.parent;
+
+    // Save scroll position on every scroll event
+    win.addEventListener('scroll', function () {
+        sessionStorage.setItem(KEY, win.scrollY);
+    }, { passive: true });
+
+    // Restore: try a few times to handle variable render times
+    const y = parseInt(sessionStorage.getItem(KEY) || '0');
+    if (y > 0) {
+        [80, 200, 400].forEach(function (t) {
+            setTimeout(function () { win.scrollTo(0, y); }, t);
+        });
+    }
+})();
+</script>
+""", height=0)
+
 EULER_USER  = "acruzfaria"
 EULER_HOST  = "euler.ethz.ch"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +61,306 @@ WIDTH_OPTIONS = [20, 50, 80, 90, 100, 120, 200]
 MS_OPTIONS = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 PIP_OPTIONS   = ["PUNCH_2", "PUNCH_21", "PUNCH_23", "PUNCH_24", "PUNCH_25"]
 VH_ALPHA = 0.55
-VH_FRACTURE_HOPS = 2
+VH_FRACTURE_RADIUS_MM = max(0.0, float(os.environ.get("POSTPROC_VH_FRACTURE_RADIUS_MM", "3.0")))
+VH_SEED_COUNT = max(1, int(os.environ.get("POSTPROC_VH_SEED_COUNT", "50")))
+VH_SEED_LABEL = "Top-%d" % VH_SEED_COUNT
+VH_EVAL_BACK_FRAMES = max(0, int(os.environ.get("POSTPROC_VH_EVAL_BACK_FRAMES", "2")))
+VH_FIT_WINDOW_FRAC = max(0.1, min(1.0, float(os.environ.get("POSTPROC_VH_FIT_WINDOW_FRAC", "0.4"))))
+VH_MIN_STABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_STABLE_POINTS", "7")))
+VH_MIN_UNSTABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_UNSTABLE_POINTS", "3")))
+CLUSTER_PATH_DISPLAY_MAX = max(1, int(os.environ.get("STREAMLIT_CLUSTER_PATH_DISPLAY_MAX", "40")))
+USER_DEFAULTS_PATH = os.path.join(PROJECT_DIR, "streamlit_job_defaults.json")
+
+
+def _vh_eval_index(n_points):
+    if n_points <= 1:
+        return 0
+    return max(1, min(n_points - 1, n_points - 1 - VH_EVAL_BACK_FRAMES))
+
+
+def _path_toggle_switch(path_indices):
+    """iOS-style toggle rendered as a zero-rerun HTML component.
+    Directly calls Plotly.restyle() on the preceding chart in the DOM."""
+    if not path_indices:
+        return
+    import json as _json
+    _idx = _json.dumps(path_indices)
+    st_components.html(f"""
+<style>
+* {{ box-sizing:border-box; margin:0; padding:0; }}
+body {{ background:transparent; overflow:hidden; }}
+.row {{
+    display:flex; align-items:center; gap:8px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:13px; font-weight:500; color:#94a3b8;
+    padding:4px 0; width:fit-content;
+}}
+.sw {{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }}
+.sw input {{ opacity:0; width:0; height:0; }}
+.track {{
+    position:absolute; inset:0;
+    background:#475569; border-radius:11px; cursor:pointer;
+    transition:background .18s;
+}}
+.track:before {{
+    content:""; position:absolute;
+    width:16px; height:16px; left:3px; top:3px;
+    background:#fff; border-radius:50%;
+    transition:transform .18s;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
+}}
+input:checked ~ .track {{ background:#2563eb; }}
+input:checked ~ .track:before {{ transform:translateX(18px); }}
+.row.on {{ color:#93c5fd; }}
+</style>
+<div class="row" id="row">
+  <label class="sw">
+    <input type="checkbox" id="cb" onchange="go(this.checked)">
+    <span class="track"></span>
+  </label>
+  <span>Strain paths</span>
+</div>
+<script>
+const IDX = {_idx};
+const row = document.getElementById('row');
+function findChart() {{
+    try {{
+        const iframes = Array.from(window.parent.document.querySelectorAll('iframe'));
+        const me = iframes.find(f => {{ try {{ return f.contentWindow===window; }} catch(e) {{ return false; }} }});
+        const charts = Array.from(window.parent.document.querySelectorAll('.js-plotly-plot'));
+        if (me && charts.length) {{
+            return charts.slice().reverse().find(c => me.compareDocumentPosition(c) & 2) || charts[charts.length-1];
+        }}
+        return charts.length ? charts[charts.length-1] : null;
+    }} catch(e) {{ return null; }}
+}}
+function go(on) {{
+    const chart = findChart();
+    const P = window.parent.Plotly;
+    if (chart && P) P.restyle(chart, {{visible: on}}, IDX);
+    row.className = on ? 'row on' : 'row';
+}}
+</script>
+""", height=32)
+
+
+def _plot_theme():
+    base_opt = str(st.get_option("theme.base") or "").strip().lower()
+    if base_opt not in ("dark", "light"):
+        cfg_path = os.path.join(PROJECT_DIR, ".streamlit", "config.toml")
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg_text = f.read()
+            m = re.search(r'^\s*base\s*=\s*["\']?(dark|light)["\']?', cfg_text, re.M | re.I)
+            if m:
+                base_opt = m.group(1).lower()
+        except OSError:
+            pass
+    primary = st.get_option("theme.primaryColor") or "#2563eb"
+    text_opt = st.get_option("theme.textColor")
+    bg_opt = st.get_option("theme.backgroundColor")
+    paper_opt = st.get_option("theme.secondaryBackgroundColor")
+
+    def _hex_luma(hex_color):
+        if not isinstance(hex_color, str):
+            return None
+        s = hex_color.strip().lstrip("#")
+        if len(s) != 6:
+            return None
+        try:
+            r = int(s[0:2], 16)
+            g = int(s[2:4], 16)
+            b = int(s[4:6], 16)
+        except ValueError:
+            return None
+        return 0.299 * r + 0.587 * g + 0.114 * b
+
+    text_luma = _hex_luma(text_opt)
+    bg_luma = _hex_luma(bg_opt)
+    if base_opt in ("dark", "light"):
+        base = base_opt
+    elif text_luma is not None:
+        base = "dark" if text_luma > 160 else "light"
+    elif bg_luma is not None:
+        base = "dark" if bg_luma < 128 else "light"
+    else:
+        base = "dark"
+
+    text = text_opt or ("#f3f4f6" if base == "dark" else "#111827")
+    bg = bg_opt or ("#000000" if base == "dark" else "#ffffff")
+    paper = paper_opt or ("#1f2937" if base == "dark" else "#f8fafc")
+    template = "plotly_dark" if base == "dark" else "plotly_white"
+    accent = "#f59e0b" if base == "dark" else "#f97316"
+    return {
+        "base": base,
+        "template": template,
+        "primary": primary,
+        "accent": accent,
+        "text": text,
+        "bg": bg,
+        "paper": paper,
+    }
+
+
+def _streamlit_plot_style(theme=None):
+    theme = theme or _plot_theme()
+    axis_color = "#ffffff" if theme["base"] == "dark" else "#000000"
+    grid_color = "rgba(255,255,255,0.14)" if theme["base"] == "dark" else "rgba(0,0,0,0.10)"
+    guide_color = "rgba(255,255,255,0.42)" if theme["base"] == "dark" else "rgba(0,0,0,0.42)"
+    annotation_bg = "rgba(17,24,39,0.74)" if theme["base"] == "dark" else "rgba(255,255,255,0.74)"
+    hover_bg = "#111827" if theme["base"] == "dark" else "#ffffff"
+    return {
+        "axis": axis_color,
+        "grid": grid_color,
+        "guide": guide_color,
+        "annotation_bg": annotation_bg,
+        "hover_bg": hover_bg,
+        "transparent": "rgba(0,0,0,0)",
+    }
+
+
+def _bm_mesh_zone_diagram_html():
+    return """
+    <div style="width:100%;overflow:visible;">
+      <svg viewBox="0 0 980 640" role="img" aria-label="BM mesh zone diagram"
+           style="width:100%;height:auto;display:block;border:1px solid rgba(125,125,125,.24);border-radius:6px;background:#f8fafc;">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#475569"/>
+          </marker>
+          <style>
+            .title{font:700 18px system-ui,-apple-system,Segoe UI,sans-serif;fill:#111827}
+            .label{font:600 13px system-ui,-apple-system,Segoe UI,sans-serif;fill:#111827}
+            .small{font:500 11px system-ui,-apple-system,Segoe UI,sans-serif;fill:#334155}
+            .axis{stroke:#475569;stroke-width:1.4;marker-end:url(#arrow)}
+            .line{stroke:#334155;stroke-width:1.2;fill:none}
+            .dash{stroke:#334155;stroke-width:1.1;stroke-dasharray:5 4;fill:none}
+            .dashdot{stroke:#334155;stroke-width:1.1;stroke-dasharray:7 3 2 3;fill:none}
+            .dim{stroke:#64748b;stroke-width:1;marker-end:url(#arrow)}
+          </style>
+        </defs>
+
+        <!-- ── Titles ── -->
+        <text class="title" x="52"  y="32">W20-W120 BM mesh zones</text>
+        <text class="title" x="530" y="32">W200 BM mesh zones</text>
+
+        <!-- ── W20-W120 ── shifted right to leave left margin for outside seeding labels -->
+        <g transform="translate(115,430)">
+          <!-- Zone fills -->
+          <rect x="0"  y="-324" width="232" height="324" fill="#fecaca" opacity=".95"/>
+          <path d="M0 -302 A302 302 0 0 1 232 -193 L232 -58 H0 Z" fill="#fde68a" opacity=".95"/>
+          <path d="M0 -302 A302 302 0 0 1 232 -193 L232 -138 A270 270 0 0 0 0 -270 Z" fill="#fdba74" opacity=".95"/>
+          <rect x="0"  y="-58"  width="232" height="35"  fill="#86efac" opacity=".95"/>
+          <rect x="46" y="-23"  width="186" height="23"  fill="#bae6fd" opacity=".95"/>
+          <rect x="0"  y="-23"  width="46"  height="23"  fill="#93c5fd" opacity=".9"/>
+          <!-- Specimen outline -->
+          <path d="M0 0 H232 V-324 H0 Z" class="line"/>
+          <!-- Horizontal partitions -->
+          <path d="M0 -23 H232" class="dash"/>
+          <path d="M0 -58 H232" class="dash"/>
+          <!-- P_inner_x vertical (x=46) -->
+          <path d="M46 0 V-58" class="line"/>
+          <!-- P_inner_r arc: centre(603,-58), r=557; start(46,-58), top exit(115,-324) -->
+          <path d="M46 -58 A557 557 0 0 1 115 -324" class="line"/>
+          <!-- P_circle_r: centre(0,0), r=302; (0,-302)→(232,-193) -->
+          <path d="M0 -302 A302 302 0 0 1 232 -193" class="line"/>
+          <!-- Extra W20/W50-only S3_1 split at the flat-cutout intersection radius -->
+          <path d="M0 -270 A270 270 0 0 1 232 -138" class="dashdot"/>
+          <!-- Zone labels centered in rectangular zones -->
+          <text class="label" text-anchor="middle" x="23"  y="-11">S1</text>
+          <text class="label" text-anchor="middle" x="139" y="-11">S2</text>
+          <text class="label" text-anchor="middle" x="116" y="-40">S2</text>
+          <text class="label" x="14"  y="-180">S3</text>
+          <text class="label" text-anchor="middle" x="116" y="-311">S4</text>
+
+          <!-- Y-seeding labels outside left — arrows point into diagram -->
+          <line x1="-10" y1="-11"  x2="0" y2="-11"  class="dim"/>
+          <text class="small" text-anchor="end" x="-13" y="-7" >S1 y</text>
+          <line x1="-10" y1="-40"  x2="0" y2="-40"  class="dim"/>
+          <text class="small" text-anchor="end" x="-13" y="-36">S2 y</text>
+          <line x1="-10" y1="-180" x2="0" y2="-180" class="dim"/>
+          <text class="small" text-anchor="end" x="-13" y="-176">S3 y</text>
+          <line x1="-10" y1="-280" x2="0" y2="-280" class="dim"/>
+          <text class="small" text-anchor="end" x="-13" y="-276">S3_1 y (W20/W50)</text>
+          <line x1="-10" y1="-313" x2="0" y2="-313" class="dim"/>
+          <text class="small" text-anchor="end" x="-13" y="-309">S4 y</text>
+          <!-- X-seeding labels outside below x-axis -->
+          <text class="small" text-anchor="middle" x="23"  y="40">S1 x</text>
+          <text class="small" text-anchor="middle" x="139" y="40">S2 x</text>
+          <!-- Geometric partition labels -->
+          <line x1="0" y1="10" x2="46" y2="10" class="dim"/>
+          <line x1="0" y1="4"  x2="0"  y2="14" stroke="#64748b" stroke-width="1" fill="none"/>
+          <text class="small" x="2"   y="26">P_inner_x</text>
+          <text class="small" x="236" y="-20">← P_XZplane_1</text>
+          <text class="small" x="236" y="-55">← 12.5 mm</text>
+          <text class="small" x="236" y="-190">← P_circle_r</text>
+          <text class="small" x="236" y="-138">← S3_1 split</text>
+          <text class="small" x="246" y="-122">W20/W50 only</text>
+          <text class="small" x="70"  y="-198">P_inner_r</text>
+          <!-- Axes -->
+          <line x1="0" y1="0" x2="258" y2="0" class="axis"/>
+          <line x1="0" y1="0" x2="0"   y2="-344" class="axis"/>
+          <text class="small" x="263" y="5">x</text>
+          <text class="small" x="-10" y="-354">y</text>
+        </g>
+
+        <!-- ── W200 ── same scale 4.63 px/mm; origin at specimen corner, x right, y up
+             r: outer=324(70mm), S3/S4 boundary=231(50mm=P_section3_r),
+                S2/S3 boundary=93(20mm=P_section2_r), S1 square side=46(10mm=P_section1_y)
+             diagonal: (46,-46)→(229,-229) = (P_s1_y,P_s1_y)→(70/√2,70/√2) mm -->
+        <g transform="translate(530,430)">
+          <!-- Zone fills: painters back→front -->
+          <path d="M0 0 L0 -324 A324 324 0 0 1 324 0 Z" fill="#fecaca" opacity=".95"/>
+          <path d="M0 0 L0 -231 A231 231 0 0 1 231 0 Z" fill="#fde68a" opacity=".95"/>
+          <path d="M0 0 L0 -93  A93  93  0 0 1  93 0 Z" fill="#86efac" opacity=".95"/>
+          <rect x="0" y="-46" width="46" height="46" fill="#93c5fd" opacity=".9"/>
+          <!-- Outer arc (specimen boundary) -->
+          <path d="M0 0 L0 -324 A324 324 0 0 1 324 0 Z" class="line"/>
+          <!-- P_section3_r = 50 mm = 231 px -->
+          <path d="M0 -231 A231 231 0 0 1 231 0" class="dash"/>
+          <!-- P_section2_r = 20 mm = 93 px -->
+          <path d="M0 -93 A93 93 0 0 1 93 0" class="dash"/>
+          <!-- P_section1_y square sides: x=46 (y=0→-46) and y=-46 (x=0→46) -->
+          <path d="M46 0 V-46 H0" class="line"/>
+          <!-- 45° diagonal partition: (46,-46)→(229,-229) -->
+          <path d="M46 -46 L229 -229" class="dash"/>
+          <!-- Zone labels centered in each region -->
+          <text class="label" text-anchor="middle" x="23"  y="-23">S1</text>
+          <text class="label" x="52"  y="-52">S2</text>
+          <text class="label" x="108" y="-114">S3</text>
+          <text class="label" x="191" y="-197">S4</text>
+          <!-- Partition ticks on x-axis, labels staggered below -->
+          <line x1="46"  y1="0" x2="46"  y2="8" stroke="#64748b" stroke-width="1"/>
+          <text class="small" x="28"  y="20">P_section1_y</text>
+          <line x1="93"  y1="0" x2="93"  y2="8" stroke="#64748b" stroke-width="1"/>
+          <text class="small" x="75"  y="33">P_section2_r</text>
+          <line x1="231" y1="0" x2="231" y2="8" stroke="#64748b" stroke-width="1"/>
+          <text class="small" x="213" y="46">P_section3_r</text>
+          <!-- Axes -->
+          <line x1="0" y1="0" x2="344" y2="0" class="axis"/>
+          <line x1="0" y1="0" x2="0"   y2="-344" class="axis"/>
+          <text class="small" x="349" y="5">x</text>
+          <text class="small" x="-10" y="-354">y</text>
+        </g>
+
+        <!-- ── Legend (below both diagrams) ── -->
+        <g transform="translate(28,500)">
+          <text class="title" x="0" y="0">Control mapping</text>
+          <rect x="0"   y="15" width="14" height="14" fill="#93c5fd"/>
+          <text class="small" x="20"  y="27">S1: finest center zone</text>
+          <rect x="190" y="15" width="14" height="14" fill="#86efac"/>
+          <text class="small" x="210" y="27">S2: transition zone</text>
+          <rect x="380" y="15" width="14" height="14" fill="#fde68a"/>
+          <text class="small" x="400" y="27">S3: outer transition</text>
+          <rect x="570" y="15" width="14" height="14" fill="#fdba74"/>
+          <text class="small" x="590" y="27">S3_1: W20/W50 extra band</text>
+          <rect x="775" y="15" width="14" height="14" fill="#fecaca"/>
+          <text class="small" x="795" y="27">S4: outer coarse band</text>
+          <text class="small" x="0" y="58">W200: P_section1_y = square side (S1); P_section2_r, P_section3_r = circle radii from origin; diagonal from (P_s1_y, P_s1_y) to (70/√2, 70/√2).</text>
+        </g>
+      </svg>
+    </div>
+    """
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -162,6 +488,24 @@ def _scan(base):
     except PermissionError:
         pass
     return flc, jobs
+
+
+def _job_mtime(path):
+    best = 0.0
+    for marker in _JOB_MARKERS:
+        fp = os.path.join(path, marker)
+        try:
+            t = os.path.getmtime(fp)
+            if t > best:
+                best = t
+        except OSError:
+            pass
+    if best == 0.0:
+        try:
+            best = os.path.getmtime(path)
+        except OSError:
+            pass
+    return best
 
 
 @st.cache_data(ttl=120)
@@ -526,8 +870,11 @@ def _display_job_videos(job_dir):
 
 
 def make_job_name(test_type, specimen_width, blank_thickness, angle,
-                  punch_diameter, mesh_factor, mass_scaling_dt, pip_punch2_id,
-                  punch_speed):
+                  punch_diameter, mesh_factor, thickness_seeds=None,
+                  mass_scaling_dt=1e-5, pip_punch2_id=None,
+                  punch_speed=5.0, punch_displacement=35.0,
+                  bm_mesh_manual=False, bm_mesh_tag="",
+                  punch_velocity_profile="smoothstep"):
 
     _t   = str(blank_thickness).replace(".", "p")
     _ang = str(int(angle))
@@ -542,9 +889,24 @@ def make_job_name(test_type, specimen_width, blank_thickness, angle,
     if abs(mesh_factor - 1.0) > 1e-6:
         _mr = "_mr" + f"{mesh_factor:.4g}".replace(".", "p")
 
+    _ts = ""
+    if thickness_seeds is not None and int(thickness_seeds) != 10:
+        _ts = f"_nt{int(thickness_seeds)}"
+
     _ps = ""
     if test_type != "pip" and abs(punch_speed - 5.0) > 1e-6:
         _ps = "_ps" + f"{punch_speed:.4g}".replace(".", "p")
+
+    _pd = ""
+    if test_type != "pip" and abs(punch_displacement - 35.0) > 1e-6:
+        _pd = "_pd" + f"{punch_displacement:.4g}".replace(".", "p")
+
+    _bm = ""
+    if bm_mesh_manual:
+        safe_tag = re.sub(r"[^A-Za-z0-9]+", "", str(bm_mesh_tag or ""))[:24]
+        _bm = "_bm" + (safe_tag or "man")
+
+    _vp = "_vconst" if str(punch_velocity_profile).lower() == "constant" else ""
 
     if test_type == "nakazima":
         prefix = f"Naka{int(round(punch_diameter))}"
@@ -553,12 +915,15 @@ def make_job_name(test_type, specimen_width, blank_thickness, angle,
     else:
         prefix = "Pip"
 
-    return f"{prefix}_W{specimen_width}_t{_t}_ang{_ang}{_pip}{_ms}{_mr}{_ps}"
+    return f"{prefix}_W{specimen_width}_t{_t}_ang{_ang}{_pip}{_ms}{_mr}{_ts}{_ps}{_pd}{_bm}{_vp}"
 
 
 def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
-                         mesh_factor, mass_scaling_dt, pip_punch2_id,
-                         punch_speed):
+                         mesh_factor, thickness_seeds=None,
+                         mass_scaling_dt=1e-5, pip_punch2_id=None,
+                         punch_speed=5.0, punch_displacement=35.0,
+                         bm_mesh_manual=False, bm_mesh_tag="",
+                         punch_velocity_profile="smoothstep"):
     job_name = make_job_name(
         test_type=test_type,
         specimen_width=0,
@@ -566,9 +931,14 @@ def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
         angle=angle,
         punch_diameter=punch_diameter,
         mesh_factor=mesh_factor,
+        thickness_seeds=thickness_seeds,
         mass_scaling_dt=mass_scaling_dt,
         pip_punch2_id=pip_punch2_id,
         punch_speed=punch_speed,
+        punch_displacement=punch_displacement,
+        bm_mesh_manual=bm_mesh_manual,
+        bm_mesh_tag=bm_mesh_tag,
+        punch_velocity_profile=punch_velocity_profile,
     )
     return "FLC_" + re.sub(r"_W\d+(?=_t)", "", job_name, count=1)
 
@@ -579,10 +949,45 @@ def build_env(cfg, include_width=True):
         "TEST_TYPE": cfg["test_type"],
         "BLANK_THICKNESS": str(cfg["thickness"]),
         "MATERIAL_ORIENTATION_ANGLE": str(cfg["angle"]),
+        "MESH_BACKEND": "bm",
         "MESH_REFINEMENT_FACTOR": str(cfg["mesh_factor"]),
+        "N_THICKNESS_SEEDS": str(cfg["thickness_seeds"]),
+        "NUM_CPUS": str(cfg["num_cpus"]),
+        "SLURM_CPUS_PER_TASK": str(cfg["num_cpus"]),
+        "SLURM_MEM_PER_CPU_GB": f"{cfg['slurm_mem_per_cpu_gb']:.6g}",
+        "SLURM_TIME_LIMIT": cfg["slurm_time_limit"],
+        "ABAQUS_MEMORY_PERCENT": str(cfg["abaqus_memory_percent"]),
+        "ENABLE_SYMMETRIES": "1" if cfg.get("enable_symmetries", True) else "0",
+        "BM_MESH_USE_MANUAL": "1" if cfg.get("bm_mesh_manual") else "0",
+        "BM_MIRROR": "0",
         "MASS_SCALING_DT": f"{cfg['mass_scaling']:.2e}",
         "PUNCH_SPEED": f"{cfg['punch_speed']:.6g}",
+        "PUNCH_DISPLACEMENT": f"{cfg['punch_displacement']:.6g}",
+        "PUNCH_VELOCITY_PROFILE": str(cfg.get("punch_velocity_profile", "smoothstep")),
     }
+
+    if cfg.get("bm_mesh_manual"):
+        env.update({
+            "BM_MESH_TAG": re.sub(r"[^A-Za-z0-9]+", "", str(cfg.get("bm_mesh_tag", "")))[:24],
+            "BM_P_INNER_X": str(cfg["bm_p_inner_x"]),
+            "BM_P_INNER_R": str(cfg["bm_p_inner_r"]),
+            "BM_P_CIRCLE_R": str(cfg["bm_p_circle_r"]),
+            "BM_P_XZPLANE_1": str(cfg["bm_p_xzplane_1"]),
+            "BM_W200_SECTION1_Y": str(cfg["bm_w200_section1_y"]),
+            "BM_W200_SECTION2_R": str(cfg["bm_w200_section2_r"]),
+            "BM_W200_SECTION3_R": str(cfg["bm_w200_section3_r"]),
+            "BM_MESH_SECTION1_X": str(cfg["bm_mesh_section1_x"]),
+            "BM_MESH_SECTION1_Y": str(cfg["bm_mesh_section1_y"]),
+            "BM_MESH_SECTION2_X": str(cfg["bm_mesh_section2_x"]),
+            "BM_MESH_SECTION2_Y": str(cfg["bm_mesh_section2_y"]),
+            "BM_MESH_SECTION3_Y": str(cfg["bm_mesh_section3_y"]),
+            "BM_MESH_SECTION3_1_Y": str(cfg["bm_mesh_section3_1_y"]),
+            "BM_MESH_SECTION4_Y": str(cfg["bm_mesh_section4_y"]),
+            "BM_MESH_W200_SECTION1": str(cfg["bm_mesh_w200_section1"]),
+            "BM_MESH_W200_SECTION2": str(cfg["bm_mesh_w200_section2"]),
+            "BM_MESH_W200_SECTION3": str(cfg["bm_mesh_w200_section3"]),
+            "BM_MESH_W200_SECTION4": str(cfg["bm_mesh_w200_section4"]),
+        })
 
     if include_width:
         env["SPECIMEN_WIDTH"] = str(cfg["width"])
@@ -595,6 +1000,142 @@ def build_env(cfg, include_width=True):
     return env
 
 
+def _ceil_div(length, size):
+    size = max(float(size), 1e-9)
+    return max(1, int(math.ceil(max(float(length), 0.0) / size)))
+
+
+def _bm_estimate_for_width(cfg, specimen_width):
+    """Approximate BM element count from the same section sizes used by Nakazima_BM.py."""
+    width = int(specimen_width)
+    thickness_seeds = max(1, int(cfg["thickness_seeds"]))
+    mesh_scale = float(cfg["mesh_factor"])
+    manual = bool(cfg.get("bm_mesh_manual"))
+
+    if width == 20:
+        p_inner_x, p_circle_r, p_xz = 5.0, 55.0, 5.0
+    else:
+        p_inner_x, p_circle_r, p_xz = 10.0, 65.0, 5.0
+
+    if manual:
+        p_inner_x = float(cfg["bm_p_inner_x"])
+        p_circle_r = float(cfg["bm_p_circle_r"])
+        p_xz = float(cfg["bm_p_xzplane_1"])
+        s1x = float(cfg["bm_mesh_section1_x"])
+        s1y = float(cfg["bm_mesh_section1_y"])
+        s2x = float(cfg["bm_mesh_section2_x"])
+        s2y = float(cfg["bm_mesh_section2_y"])
+        s3y = float(cfg["bm_mesh_section3_y"])
+        s31y = float(cfg["bm_mesh_section3_1_y"])
+        s4y = float(cfg["bm_mesh_section4_y"])
+        w200_s1 = float(cfg["bm_mesh_w200_section1"])
+        w200_s2 = float(cfg["bm_mesh_w200_section2"])
+        w200_s3 = float(cfg["bm_mesh_w200_section3"])
+        w200_s4 = float(cfg["bm_mesh_w200_section4"])
+        w200_p1 = float(cfg["bm_w200_section1_y"])
+        w200_p2 = float(cfg["bm_w200_section2_r"])
+        w200_p3 = float(cfg["bm_w200_section3_r"])
+    else:
+        s1x = s1y = 0.2 * mesh_scale
+        s2x = s2y = 0.4 * mesh_scale
+        s3y = s31y = 0.8 * mesh_scale
+        s4y = 1.2 * mesh_scale
+        w200_s1 = 0.2 * mesh_scale
+        w200_s2 = 0.4 * mesh_scale
+        w200_s3 = 0.8 * mesh_scale
+        w200_s4 = 0.4 * mesh_scale
+        w200_p1, w200_p2, w200_p3 = 10.0, 20.0, 50.0
+
+    if width == 200:
+        quarter = math.pi / 4.0
+        a1 = max(w200_p1, 0.0) ** 2
+        a2 = max(quarter * w200_p2 ** 2 - a1, 0.0)
+        a3 = max(quarter * (w200_p3 ** 2 - w200_p2 ** 2), 0.0)
+        a4 = max(quarter * (70.0 ** 2 - w200_p3 ** 2), 0.0)
+        in_plane = (
+            a1 / max(w200_s1 ** 2, 1e-9)
+            + a2 / max(w200_s2 ** 2, 1e-9)
+            + a3 / max(w200_s3 ** 2, 1e-9)
+            + a4 / max(w200_s4 ** 2, 1e-9)
+        )
+        return {
+            "width": width,
+            "in_plane": int(round(in_plane)),
+            "solid": int(round(in_plane * thickness_seeds)),
+            "method": "area",
+        }
+
+    half_width = width / 2.0
+    n1x = _ceil_div(min(p_inner_x, half_width), s1x)
+    n2x = _ceil_div(max(half_width - p_inner_x, 0.0), s2x)
+    n1y = _ceil_div(p_xz, s1y)
+    n2y = _ceil_div(12.5 - p_xz, s2y)
+    if width == 20:
+        n3y = _ceil_div(48.35 - 12.5, s3y)
+        n31y = _ceil_div(p_circle_r - 48.35, s31y)
+    elif width == 50:
+        n3y = _ceil_div(58.21 - 12.5, s3y)
+        n31y = _ceil_div(p_circle_r - 58.21, s31y)
+    else:
+        n3y = _ceil_div(p_circle_r - 12.5, s3y)
+        n31y = 0
+    n4y = _ceil_div(70.0 - p_circle_r, s4y)
+    in_plane = (n1x + n2x) * (n1y + n2y + n3y + n31y + n4y)
+    return {
+        "width": width,
+        "in_plane": int(in_plane),
+        "solid": int(in_plane * thickness_seeds),
+        "method": "seed",
+    }
+
+
+def _bm_mesh_estimates(cfg, widths):
+    sym_factor = 1.0 if cfg.get("enable_symmetries", True) else 4.0
+    rows = []
+    for w in widths:
+        est = _bm_estimate_for_width(cfg, w)
+        # Apply symmetry factor to both in-plane and total solid cells
+        est["in_plane"] = int(round(est["in_plane"] * sym_factor))
+        est["solid"] = int(round(est["solid"] * sym_factor))
+        rows.append(est)
+    total = sum(r["solid"] for r in rows)
+    return rows, total
+
+
+def _bm_suggest_resources(cell_count):
+    """
+    Return a solver resource suggestion based on estimated cell count.
+    User Rule: 1 CPU per 10,000 elements.
+    """
+    cells = max(1, int(cell_count))
+
+    # Calculate CPUs based on 10k rule
+    suggested_cpus = int(math.ceil(cells / 10000.0))
+    # Round to nearest even number for better node alignment
+    if suggested_cpus % 2 != 0:
+        suggested_cpus += 1
+    
+    # Constrain between 4 and 32
+    cpus = max(4, min(32, suggested_cpus))
+
+    # Wall time scaling (conservative estimates for Explicit forming)
+    if cells <= 100000:
+        hours = 24
+    elif cells <= 400000:
+        hours = 48
+    else:
+        hours = 72
+
+    return {
+        "num_cpus": cpus,
+        "slurm_cpus_per_task": cpus,
+        "slurm_mem_per_cpu_gb": 4.0,  # 4GB/CPU is the safe standard for Euler
+        "slurm_time_hours": hours,
+        "slurm_time_limit": f"{hours:02d}:00:00",
+        "abaqus_memory_percent": 90,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Job-progress helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -602,9 +1143,9 @@ _TEST_MAP = {'Naka': 'nakazima', 'Marc': 'marciniak', 'Pip': 'pip'}
 _JOB_RE   = re.compile(r'^(Naka|Marc|Pip)\d*_W\d+_t([\dp]+)_ang(\d+)')
 
 
-# config.py: STEP_TIME = 50 mm / 5 mm/s = 10 s; PiP both steps = 10 s.
-# Speed overrides are captured in the _ps suffix and handled by _job_step_times.
-_STEP_TIMES = {'nakazima': [10.0], 'marciniak': [10.0], 'pip': [10.0, 10.0], '_punch_disp': 50.0}
+# config.py default: STEP_TIME = 35 mm / 5 mm/s = 7 s; PiP both steps = 10 s.
+# Speed/travel overrides are captured in _ps/_pd suffixes and handled below.
+_STEP_TIMES = {'nakazima': [7.0], 'marciniak': [7.0], 'pip': [10.0, 10.0], '_punch_disp': 35.0}
 
 
 def _parse_float_token(token: str) -> float | None:
@@ -614,15 +1155,28 @@ def _parse_float_token(token: str) -> float | None:
         return None
 
 
+def _strip_punch_travel_token(text: str) -> str:
+    """Remove _pdXX from result grouping labels without changing real paths."""
+    cleaned = re.sub(r'(^|_)pd[\dp]+(?=_|$)', '', str(text))
+    cleaned = re.sub(r'__+', '_', cleaned).strip('_')
+    return cleaned
+
+
 def _job_step_times(job_name: str, test_type: str) -> list[float]:
-    """Return expected simulation step time(s), honoring job-name speed suffix."""
+    """Return expected simulation step time(s), honoring job-name speed/travel suffixes."""
     if test_type != "pip":
+        punch_disp = float(_STEP_TIMES.get('_punch_disp', 35.0))
+        m_pd = re.search(r'_pd([\dp]+)(?:_|$)', job_name)
+        if m_pd:
+            parsed_disp = _parse_float_token(m_pd.group(1))
+            if parsed_disp and parsed_disp > 0:
+                punch_disp = parsed_disp
         m_ps = re.search(r'_ps([\dp]+)(?:_|$)', job_name)
         if m_ps:
             speed = _parse_float_token(m_ps.group(1))
-            punch_disp = float(_STEP_TIMES.get('_punch_disp', 50.0))
             if speed and speed > 0:
                 return [punch_disp / speed]
+        return [punch_disp / 5.0]
     return _STEP_TIMES.get(test_type, [10.0])
 
 
@@ -742,16 +1296,95 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
 # Defaults
 # ─────────────────────────────────────────────────────────────────────────────
 defaults = {
+    "mode": "Single",
     "test_type": "nakazima",
     "width": 100,
     "thickness": 1.5,
     "angle": 0,
     "punch_diam": 100.0,
     "mesh_factor": 3.0,
+    "thickness_seeds": 16,
+    "enable_symmetries": True,
+    "bm_mesh_manual": False,
+    "bm_mesh_tag": "",
+    "bm_p_inner_x": 10.0,
+    "bm_p_inner_r": 120.0,
+    "bm_p_circle_r": 65.0,
+    "bm_p_xzplane_1": 5.0,
+    "bm_w200_section1_y": 10.0,
+    "bm_w200_section2_r": 20.0,
+    "bm_w200_section3_r": 50.0,
+    "bm_mesh_section1_x": 0.2,
+    "bm_mesh_section1_y": 0.2,
+    "bm_mesh_section2_x": 0.4,
+    "bm_mesh_section2_y": 0.4,
+    "bm_mesh_section3_y": 0.8,
+    "bm_mesh_section3_1_y": 0.8,
+    "bm_mesh_section4_y": 1.2,
+    "bm_mesh_w200_section1": 0.2,
+    "bm_mesh_w200_section2": 0.4,
+    "bm_mesh_w200_section3": 0.8,
+    "bm_mesh_w200_section4": 0.4,
     "mass_scaling": 1e-5,
     "punch_speed": 5.0,
+    "punch_displacement": 35.0,
+    "punch_velocity_profile": "smoothstep",
     "pip_id": "PUNCH_21",
 }
+
+DEFAULT_KEYS = tuple(defaults.keys())
+USER_DEFAULT_KEYS = (
+    "mode",
+    "test_type",
+    "width",
+    "thickness",
+    "angle",
+    "punch_diam",
+    "mesh_factor",
+    "thickness_seeds",
+    "enable_symmetries",
+    "mass_scaling",
+    "punch_speed",
+    "punch_displacement",
+    "punch_velocity_profile",
+    "pip_id",
+)
+
+
+def _load_user_job_defaults():
+    try:
+        with open(USER_DEFAULTS_PATH, "r", encoding="utf-8") as fp:
+            data = json.load(fp)
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _sanitize_job_defaults(values):
+    cleaned = dict(values)
+    if cleaned.get("mode") not in ("Single", "All widths"):
+        cleaned.pop("mode", None)
+    if cleaned.get("test_type") not in ("nakazima", "marciniak", "pip"):
+        cleaned.pop("test_type", None)
+    if cleaned.get("width") not in WIDTH_OPTIONS:
+        cleaned.pop("width", None)
+    if cleaned.get("mass_scaling") not in MS_OPTIONS:
+        cleaned.pop("mass_scaling", None)
+    if cleaned.get("pip_id") not in PIP_OPTIONS:
+        cleaned.pop("pip_id", None)
+    return cleaned
+
+
+def _save_user_job_defaults(values):
+    cleaned = {k: values[k] for k in USER_DEFAULT_KEYS if k in values}
+    with open(USER_DEFAULTS_PATH, "w", encoding="utf-8") as fp:
+        json.dump(cleaned, fp, indent=2, sort_keys=True)
+        fp.write("\n")
+
+
+defaults.update(_sanitize_job_defaults(_load_user_job_defaults()))
 
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -777,53 +1410,189 @@ if page == "Submit Job":
 
     st.subheader("Submit Job")
 
-    mode = st.segmented_control("Mode", ["Single", "All widths"], default="Single")
+    mode = st.segmented_control("Mode", ["Single", "All widths"], key="mode")
 
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        test_type = st.selectbox("Test Type", ["nakazima", "marciniak", "pip"])
+        test_type = st.selectbox("Test Type", ["nakazima", "marciniak", "pip"], key="test_type")
 
     with c2:
         if mode == "All widths":
             st.text_input("Width", value="—", disabled=True)
             width = WIDTH_OPTIONS[0]
         else:
-            width = st.selectbox("Width", WIDTH_OPTIONS)
+            width = st.selectbox("Width", WIDTH_OPTIONS, key="width")
 
     with c3:
-        thickness = st.number_input("Thickness", value=1.5)
+        thickness = st.number_input("Thickness", key="thickness")
 
     with c4:
-        angle = st.number_input("Angle", value=0)
+        angle = st.number_input("Angle", key="angle")
 
-    c5, c6, c7, c8 = st.columns(4)
+    c5, c6, c7, c8, c9, c10 = st.columns(6)
     with c5:
         if test_type == "pip":
-            pip_id = st.selectbox("PiP Punch", PIP_OPTIONS)
+            pip_id = st.selectbox("PiP Punch", PIP_OPTIONS, key="pip_id")
             punch_diam = None
         else:
-            punch_diam = st.number_input("Punch Diameter", value=100.0)
+            punch_diam = st.number_input("Punch Diameter", key="punch_diam")
             pip_id = None
     with c6:
-        mesh_factor = st.number_input("Mesh Factor", value=3.0)
+        mesh_factor = st.number_input("Mesh Factor", key="mesh_factor")
     with c7:
+        thickness_seeds = st.number_input("Thickness Seeds", min_value=1, max_value=64, step=1, key="thickness_seeds")
+    with c8:
         mass_scaling = st.selectbox(
             "Mass Scaling Δt (s)",
             MS_OPTIONS,
-            index=1,
             format_func=lambda x: f"{x:.1e}",
-            key="cfg_mass_scaling",
+            key="mass_scaling",
         )
-    with c8:
+    with c9:
         punch_speed = st.number_input(
             "Punch Speed (mm/s)",
             min_value=0.1,
-            value=5.0,
             step=0.5,
+            key="punch_speed",
             disabled=(test_type == "pip"),
             help="Standard Nakazima/Marciniak punch speed. PiP uses its two configured step times.",
         )
+    with c10:
+        punch_displacement = st.number_input(
+            "Punch Travel (mm)",
+            min_value=0.1,
+            step=1.0,
+            key="punch_displacement",
+            disabled=(test_type == "pip"),
+            help="Standard Nakazima/Marciniak punch travel. PiP uses its two configured punch displacements.",
+        )
+
+    punch_velocity_profile = st.selectbox(
+        "Punch velocity profile",
+        ["smoothstep", "constant"],
+        key="punch_velocity_profile",
+        disabled=(test_type == "pip"),
+        help=(
+            "smoothstep (default): SmoothStep displacement — velocity 0→peak→0, "
+            "decelerates through fracture (masks the Volk-Hora bifurcation). "
+            "constant: constant punch speed with short smooth end-ramps — keeps "
+            "the strain rate steady through fracture so V&H necking is resolvable. "
+            "Constant runs get a '_vconst' job suffix and a separate ODB, so the "
+            "two can be compared without collision."
+        ),
+    )
+
+    enable_symmetries = st.checkbox(
+        "Enable Symmetries",
+        key="enable_symmetries",
+        help="Apply XSYMM and YSYMM boundary conditions on the x=0 and y=0 specimen symmetry planes.",
+    )
+
+    with st.expander("Advanced mesh settings"):
+        st_components.html(_bm_mesh_zone_diagram_html(), height=720, scrolling=False)
+        bm_mesh_manual = st.checkbox(
+            "Enable manual mesh settings",
+            key="bm_mesh_manual",
+            help="Use absolute BM section sizes below instead of scaling the legacy mesh by Mesh Factor.",
+        )
+        bm_mesh_tag = st.text_input(
+            "Manual mesh tag for directory labeling",
+            max_chars=24,
+            key="bm_mesh_tag",
+            disabled=not bm_mesh_manual,
+            help="Optional suffix for manual mesh comparison jobs.",
+        )
+        bm_general_disabled = (not bm_mesh_manual) or (mode == "Single" and int(width) == 200)
+        st.caption("Partition geometry for W20-W120")
+        pcols = st.columns(4)
+        with pcols[0]:
+            bm_p_inner_x = st.number_input("Inner split x", min_value=0.1, step=0.5,
+                                           key="bm_p_inner_x",
+                                           disabled=bm_general_disabled,
+                                           help="Vertical partition at x = P_inner_x. Not used by W200.")
+        with pcols[1]:
+            bm_p_inner_r = st.number_input("Inner arc radius", min_value=1.0, step=5.0,
+                                           key="bm_p_inner_r",
+                                           disabled=bm_general_disabled,
+                                           help="Radius of the curved partition centered at (P_inner_x + P_inner_r, 12.5). Not used by W200.")
+        with pcols[2]:
+            bm_p_circle_r = st.number_input("Circle radius", min_value=1.0, step=1.0,
+                                            key="bm_p_circle_r",
+                                            disabled=bm_general_disabled,
+                                            help="Radius of the circular partition centered at the specimen origin. Not used by W200.")
+        with pcols[3]:
+            bm_p_xzplane_1 = st.number_input("XZ plane y", min_value=0.1, step=0.5,
+                                             key="bm_p_xzplane_1",
+                                             disabled=bm_general_disabled,
+                                             help="Horizontal partition below y = 12.5 mm. Not used by W200.")
+
+        st.caption("W200 partition geometry")
+        wcols = st.columns(3)
+        with wcols[0]:
+            bm_w200_section1_y = st.number_input("W200 section 1 y", min_value=0.1, step=1.0,
+                                                 key="bm_w200_section1_y",
+                                                 disabled=not bm_mesh_manual)
+        with wcols[1]:
+            bm_w200_section2_r = st.number_input("W200 section 2 r", min_value=0.1, step=1.0,
+                                                 key="bm_w200_section2_r",
+                                                 disabled=not bm_mesh_manual)
+        with wcols[2]:
+            bm_w200_section3_r = st.number_input("W200 section 3 r", min_value=0.1, step=1.0,
+                                                 key="bm_w200_section3_r",
+                                                 disabled=not bm_mesh_manual)
+
+        st.caption("Target element sizes for W20-W120")
+        mcols = st.columns(4)
+        with mcols[0]:
+            bm_mesh_section1_x = st.number_input("S1 x", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section1_x",
+                                                 disabled=not bm_mesh_manual)
+        with mcols[1]:
+            bm_mesh_section1_y = st.number_input("S1 y", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section1_y",
+                                                 disabled=not bm_mesh_manual)
+        with mcols[2]:
+            bm_mesh_section2_x = st.number_input("S2 x", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section2_x",
+                                                 disabled=not bm_mesh_manual)
+        with mcols[3]:
+            bm_mesh_section2_y = st.number_input("S2 y", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section2_y",
+                                                 disabled=not bm_mesh_manual)
+
+        mcols2 = st.columns(4)
+        with mcols2[0]:
+            bm_mesh_section3_y = st.number_input("S3 y", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section3_y",
+                                                 disabled=not bm_mesh_manual)
+        with mcols2[1]:
+            bm_mesh_section3_1_y = st.number_input("S3_1 y", min_value=0.01, step=0.05,
+                                                   key="bm_mesh_section3_1_y",
+                                                   disabled=not bm_mesh_manual)
+        with mcols2[2]:
+            bm_mesh_section4_y = st.number_input("S4 y", min_value=0.01, step=0.05,
+                                                 key="bm_mesh_section4_y",
+                                                 disabled=not bm_mesh_manual)
+
+        st.caption("Target element sizes for W200")
+        wmesh_cols = st.columns(4)
+        with wmesh_cols[0]:
+            bm_mesh_w200_section1 = st.number_input("W200 S1", min_value=0.01, step=0.05,
+                                                    key="bm_mesh_w200_section1",
+                                                    disabled=not bm_mesh_manual)
+        with wmesh_cols[1]:
+            bm_mesh_w200_section2 = st.number_input("W200 S2", min_value=0.01, step=0.05,
+                                                    key="bm_mesh_w200_section2",
+                                                    disabled=not bm_mesh_manual)
+        with wmesh_cols[2]:
+            bm_mesh_w200_section3 = st.number_input("W200 S3", min_value=0.01, step=0.05,
+                                                    key="bm_mesh_w200_section3",
+                                                    disabled=not bm_mesh_manual)
+        with wmesh_cols[3]:
+            bm_mesh_w200_section4 = st.number_input("W200 S4", min_value=0.01, step=0.05,
+                                                    key="bm_mesh_w200_section4",
+                                                    disabled=not bm_mesh_manual)
 
     # ── PiP 3-D punch preview ─────────────────────────────────────────────────
     _STL_VIEWER = (
@@ -888,16 +1657,113 @@ if page == "Submit Job":
                     mime="application/step", key=f"step_{pip_id}",
                 )
 
-    cfg = dict(
+    base_cfg = dict(
         test_type=test_type,
         width=width,
         thickness=thickness,
         angle=angle,
         punch_diam=punch_diam,
         mesh_factor=mesh_factor,
+        thickness_seeds=thickness_seeds,
         mass_scaling=mass_scaling,
         punch_speed=punch_speed,
+        punch_displacement=punch_displacement,
+        punch_velocity_profile=punch_velocity_profile,
         pip_id=pip_id,
+        enable_symmetries=enable_symmetries,
+        bm_mesh_manual=bm_mesh_manual,
+        bm_mesh_tag=bm_mesh_tag,
+        bm_p_inner_x=bm_p_inner_x,
+        bm_p_inner_r=bm_p_inner_r,
+        bm_p_circle_r=bm_p_circle_r,
+        bm_p_xzplane_1=bm_p_xzplane_1,
+        bm_w200_section1_y=bm_w200_section1_y,
+        bm_w200_section2_r=bm_w200_section2_r,
+        bm_w200_section3_r=bm_w200_section3_r,
+        bm_mesh_section1_x=bm_mesh_section1_x,
+        bm_mesh_section1_y=bm_mesh_section1_y,
+        bm_mesh_section2_x=bm_mesh_section2_x,
+        bm_mesh_section2_y=bm_mesh_section2_y,
+        bm_mesh_section3_y=bm_mesh_section3_y,
+        bm_mesh_section3_1_y=bm_mesh_section3_1_y,
+        bm_mesh_section4_y=bm_mesh_section4_y,
+        bm_mesh_w200_section1=bm_mesh_w200_section1,
+        bm_mesh_w200_section2=bm_mesh_w200_section2,
+        bm_mesh_w200_section3=bm_mesh_w200_section3,
+        bm_mesh_w200_section4=bm_mesh_w200_section4,
+    )
+
+    if mode == "Single":
+        estimate_rows, estimate_total = _bm_mesh_estimates(base_cfg, [base_cfg["width"]])
+        resource_basis = estimate_rows[0]["solid"]
+    else:
+        estimate_rows, estimate_total = _bm_mesh_estimates(base_cfg, WIDTH_OPTIONS)
+        resource_basis = max(row["solid"] for row in estimate_rows)
+    resource_hint = _bm_suggest_resources(resource_basis)
+
+    with st.expander("Computational settings"):
+        st.caption(
+            "Suggested from the current mesh estimate: "
+            f"{resource_hint['num_cpus']} CPUs, {resource_hint['slurm_time_limit']} wall time."
+        )
+        if st.button("Use suggested resources", key="apply_compute_hint"):
+            st.session_state["solver_cpus"] = resource_hint["num_cpus"]
+            st.session_state["slurm_mem_per_cpu_gb"] = resource_hint["slurm_mem_per_cpu_gb"]
+            st.session_state["slurm_time_hours"] = resource_hint["slurm_time_hours"]
+            st.session_state["abaqus_memory_percent"] = resource_hint["abaqus_memory_percent"]
+
+        if "solver_cpus" not in st.session_state:
+            st.session_state["solver_cpus"] = resource_hint["num_cpus"]
+        if "slurm_mem_per_cpu_gb" not in st.session_state:
+            st.session_state["slurm_mem_per_cpu_gb"] = resource_hint["slurm_mem_per_cpu_gb"]
+        if "slurm_time_hours" not in st.session_state:
+            st.session_state["slurm_time_hours"] = resource_hint["slurm_time_hours"]
+        if "abaqus_memory_percent" not in st.session_state:
+            st.session_state["abaqus_memory_percent"] = resource_hint["abaqus_memory_percent"]
+
+        ccomp1, ccomp2 = st.columns(2)
+        with ccomp1:
+            solver_cpus = st.number_input(
+                "Solver CPUs",
+                min_value=1,
+                max_value=64,
+                value=int(st.session_state["solver_cpus"]),
+                step=1,
+                key="solver_cpus",
+                help="Used both for Abaqus/Explicit threads and SLURM cpus-per-task.",
+            )
+            abaqus_memory_percent = st.slider(
+                "Abaqus memory (%)",
+                min_value=50,
+                max_value=95,
+                value=int(st.session_state["abaqus_memory_percent"]),
+                step=1,
+                key="abaqus_memory_percent",
+            )
+        with ccomp2:
+            slurm_mem_per_cpu_gb = st.number_input(
+                "SLURM memory per CPU (GB)",
+                min_value=1.0,
+                value=float(st.session_state["slurm_mem_per_cpu_gb"]),
+                step=1.0,
+                key="slurm_mem_per_cpu_gb",
+            )
+            slurm_time_hours = st.number_input(
+                "SLURM wall time (h)",
+                min_value=1,
+                max_value=168,
+                value=int(st.session_state["slurm_time_hours"]),
+                step=1,
+                key="slurm_time_hours",
+            )
+
+    cfg = dict(
+        **base_cfg,
+        num_cpus=int(solver_cpus),
+        abaqus_memory_percent=int(abaqus_memory_percent),
+        slurm_mem_per_cpu_gb=float(slurm_mem_per_cpu_gb),
+        slurm_time_hours=int(slurm_time_hours),
+        slurm_time_limit=f"{int(slurm_time_hours):02d}:00:00",
     )
 
     st.markdown("---")
@@ -912,9 +1778,14 @@ if page == "Submit Job":
             angle=cfg["angle"],
             punch_diameter=cfg["punch_diam"],
             mesh_factor=cfg["mesh_factor"],
+            thickness_seeds=cfg["thickness_seeds"],
             mass_scaling_dt=cfg["mass_scaling"],
             pip_punch2_id=cfg["pip_id"],
             punch_speed=cfg["punch_speed"],
+            punch_displacement=cfg["punch_displacement"],
+            bm_mesh_manual=cfg["bm_mesh_manual"],
+            bm_mesh_tag=cfg["bm_mesh_tag"],
+            punch_velocity_profile=cfg["punch_velocity_profile"],
         )
 
         study_root = make_study_root_name(
@@ -923,13 +1794,26 @@ if page == "Submit Job":
             angle=cfg["angle"],
             punch_diameter=cfg["punch_diam"],
             mesh_factor=cfg["mesh_factor"],
+            thickness_seeds=cfg["thickness_seeds"],
             mass_scaling_dt=cfg["mass_scaling"],
             pip_punch2_id=cfg["pip_id"],
             punch_speed=cfg["punch_speed"],
+            punch_displacement=cfg["punch_displacement"],
+            bm_mesh_manual=cfg["bm_mesh_manual"],
+            bm_mesh_tag=cfg["bm_mesh_tag"],
+            punch_velocity_profile=cfg["punch_velocity_profile"],
         )
 
         st.code(job_name)
         st.caption(f"Study root: {study_root}")
+        estimate_rows, estimate_total = _bm_mesh_estimates(cfg, [cfg["width"]])
+        est = estimate_rows[0]
+        st.metric("Estimated mesh cells", f"{estimate_total:,}")
+        sym_desc = "quarter-model" if cfg.get("enable_symmetries", True) else "full-model (no symmetry)"
+        st.caption(
+            f"Approximate C3D8R elements for {sym_desc} "
+            f"({est['in_plane']:,} in-plane x {int(cfg['thickness_seeds'])} thickness seeds)."
+        )
 
         cmd = [
             "bash", "deploy.sh",
@@ -957,18 +1841,32 @@ if page == "Submit Job":
                 angle=angle,
                 punch_diameter=punch_diam,
                 mesh_factor=mesh_factor,
+                thickness_seeds=thickness_seeds,
                 mass_scaling_dt=mass_scaling,
                 pip_punch2_id=pip_id,
                 punch_speed=punch_speed,
+                punch_displacement=punch_displacement,
+                bm_mesh_manual=cfg["bm_mesh_manual"],
+                bm_mesh_tag=cfg["bm_mesh_tag"],
             )
             for w in WIDTH_OPTIONS
         ]
 
-        st.caption(f"{len(names)} jobs will be submitted")
+        estimate_rows, _ = _bm_mesh_estimates(cfg, WIDTH_OPTIONS)
+        max_cells = max(r["solid"] for r in estimate_rows)
+        st.metric("Max mesh cells per job", f"{max_cells:,}")
+        st.caption(f"{len(names)} independent jobs will be submitted.")
 
         with st.expander("Preview job names"):
             for n in names:
                 st.code(n)
+
+        with st.expander("Preview mesh estimates"):
+            for row in estimate_rows:
+                st.write(
+                    f"W{row['width']}: {row['solid']:,} cells "
+                    f"({row['in_plane']:,} in-plane x {int(cfg['thickness_seeds'])})"
+                )
 
         cmd = [
             "bash", "deploy_all.sh",
@@ -984,9 +1882,45 @@ if page == "Submit Job":
             cmd.append(f"{(cfg['punch_diam'] / 2.0):.6g}")
 
     # ── Submit ───────────────────────────────────────────────────────────────
-    if st.button("Submit", type="primary"):
+    submit_col, default_col, _ = st.columns([1.0, 1.25, 4.0])
+    with default_col:
+        if st.button("Set current as default", key="set_job_defaults"):
+            default_payload = {k: st.session_state.get(k, defaults.get(k)) for k in DEFAULT_KEYS}
+            default_payload.update(
+                mode=mode,
+                test_type=test_type,
+                width=st.session_state.get("width", width),
+                thickness=float(thickness),
+                angle=float(angle),
+                punch_diam=st.session_state.get("punch_diam", defaults["punch_diam"]),
+                mesh_factor=float(mesh_factor),
+                thickness_seeds=int(thickness_seeds),
+                mass_scaling=float(mass_scaling),
+                punch_speed=float(st.session_state.get("punch_speed", punch_speed)),
+                punch_displacement=float(st.session_state.get("punch_displacement", punch_displacement)),
+                pip_id=st.session_state.get("pip_id", defaults["pip_id"]),
+                enable_symmetries=bool(enable_symmetries),
+                bm_mesh_manual=bool(bm_mesh_manual),
+                bm_mesh_tag=str(bm_mesh_tag),
+                solver_cpus=int(solver_cpus),
+                abaqus_memory_percent=int(abaqus_memory_percent),
+                slurm_mem_per_cpu_gb=float(slurm_mem_per_cpu_gb),
+                slurm_time_hours=int(slurm_time_hours),
+            )
+            _save_user_job_defaults(default_payload)
+            st.success("Saved as default for future app runs.")
+
+    with submit_col:
+        submit_clicked = st.button("Submit", type="primary")
+
+    if submit_clicked:
         with st.spinner("Submitting..."):
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                env=build_env(cfg, include_width=(mode == "Single")),
+            )
 
         if result.returncode == 0:
             st.success("Submitted")
@@ -1111,6 +2045,13 @@ elif page == "Job Status":
 
                         entry = progress_data.get(jn)
                         if entry is None or entry.get("total_time") is None:
+                            # Solver job is running but Abaqus hasn't written a
+                            # .sta increment table yet — it's still compiling the
+                            # VUMAT / packaging the input (pre-solve).  Show a
+                            # placeholder so the row isn't silently blank, which
+                            # otherwise looks like the panel is broken.
+                            st.write(f"**{jn}**  `{slurm_time}` elapsed")
+                            st.caption("packaging / pre-solve… (no .sta yet)")
                             continue
 
                         test_key     = _TEST_MAP.get(m.group(1), 'nakazima')
@@ -1169,20 +2110,22 @@ elif page == "Results":
             out.append(sum(values[lo:hi]) / (hi - lo))
         return out
 
-    def _volk_hora_fit(t, rate):
-        t_start = t[0]
-        t_end = t[-1]
-        t_min_fit = t_start + 0.6 * (t_end - t_start)
-        valid_indices = [i for i in range(1, len(t) - 1) if t[i] >= t_min_fit]
-        if len(valid_indices) < 8:
+    def _volk_hora_fit(t, rate, fit_end_time=None):
+        t_fit_end = t[-1] if fit_end_time is None else float(fit_end_time)
+        t_min_fit = t[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (t_fit_end - t[0])
+        valid_indices = [
+            i for i in range(1, len(t) - 1)
+            if t[i] >= t_min_fit and t[i] <= t_fit_end
+        ]
+        if len(valid_indices) < VH_MIN_STABLE_POINTS + VH_MIN_UNSTABLE_POINTS:
             return None
 
         x = [t[i] for i in valid_indices]
         y = [rate[i] for i in valid_indices]
         n = len(x)
-        min_stable = 4
-        min_unstable = 3
-        if n < min_stable + min_unstable + 1:
+        min_stable = VH_MIN_STABLE_POINTS
+        min_unstable = VH_MIN_UNSTABLE_POINTS
+        if n < min_stable + min_unstable:
             return None
 
         best_stable = None
@@ -1242,17 +2185,18 @@ elif page == "Results":
         return fig
 
     def _plotly_chart(fig, *args, **kwargs):
+        kwargs.setdefault("theme", None)
         st.plotly_chart(_strip_plot_descriptions(fig), *args, **kwargs)
 
-    def _volk_hora_rate_fig(job_dir, smoothing_window=20):
+    def _volk_hora_rate_fig(job_dir, smoothing_window=20, override_stable_range=None, override_unstable_range=None):
         fp = os.path.join(job_dir, "strain_path.csv")
         if not os.path.exists(fp):
-            return None, "strain_path.csv not found"
+            return None, "strain_path.csv not found", None
 
         df = _load_csv(fp)
         required = {"time_s", "eps1_major", "eps2_minor"}
         if not required <= set(df.columns):
-            return None, "strain_path.csv is missing time_s / eps1_major / eps2_minor"
+            return None, "strain_path.csv is missing time_s / eps1_major / eps2_minor", None
 
         if "fracture_type" in df.columns:
             fracture_types = {
@@ -1261,71 +2205,201 @@ elif page == "Results":
                 if str(v).strip()
             }
             if fracture_types and "dome" not in fracture_types:
-                return None, "Volk-Hora rate is only shown for dome-zone fracture runs"
+                return None, "Volk-Hora rate is only shown for dome-zone fracture runs", None
 
-        data = df[["time_s", "eps1_major", "eps2_minor"]].apply(pd.to_numeric, errors="coerce")
-        data = data.dropna().drop_duplicates(subset=["time_s"]).sort_values("time_s")
+        cols = ["time_s", "eps1_major", "eps2_minor"]
+        if "thinning_rate" in df.columns:
+            cols.append("thinning_rate")
+        if "EQPS" in df.columns:
+            cols.append("EQPS")
+        if "D" in df.columns:
+            cols.append("D")
+        data = df[cols].apply(pd.to_numeric, errors="coerce")
+        data = data.dropna(subset=["time_s", "eps1_major", "eps2_minor"])
+        data = data.drop_duplicates(subset=["time_s"]).sort_values("time_s")
         if len(data) < 3:
-            return None, "not enough pre-fracture frames"
+            return None, "not enough pre-fracture frames", None
 
         t = data["time_s"].tolist()
-        strain_sum = (data["eps1_major"] + data["eps2_minor"]).tolist()
-        rate = [0.0] * len(t)
-        for i in range(len(t)):
-            if i == 0:
-                dt = t[1] - t[0]
-                rate[i] = (strain_sum[1] - strain_sum[0]) / dt if dt > 1e-12 else 0.0
-            elif i == len(t) - 1:
-                dt = t[i] - t[i - 1]
-                rate[i] = (strain_sum[i] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
-            else:
-                dt = t[i + 1] - t[i - 1]
-                rate[i] = (strain_sum[i + 1] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
+        if "thinning_rate" in data.columns and data["thinning_rate"].notna().all():
+            rate = data["thinning_rate"].tolist()
+        else:
+            strain_sum = (data["eps1_major"] + data["eps2_minor"]).tolist()
+            rate = [0.0] * len(t)
+            for i in range(len(t)):
+                if i == 0:
+                    dt = t[1] - t[0]
+                    rate[i] = (strain_sum[1] - strain_sum[0]) / dt if dt > 1e-12 else 0.0
+                elif i == len(t) - 1:
+                    dt = t[i] - t[i - 1]
+                    rate[i] = (strain_sum[i] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
+                else:
+                    dt = t[i + 1] - t[i - 1]
+                    rate[i] = (strain_sum[i + 1] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
 
         rate_for_fit = _moving_average(rate, smoothing_window)
+        if override_stable_range is not None and override_unstable_range is not None:
+            ts0, ts1 = override_stable_range
+            tu0, tu1 = override_unstable_range
+            _si_idx = [i for i in range(len(t)) if ts0 <= t[i] <= ts1]
+            _ui_idx = [i for i in range(len(t)) if tu0 <= t[i] <= tu1]
+            fit = None
+            if len(_si_idx) >= VH_MIN_STABLE_POINTS and len(_ui_idx) >= VH_MIN_UNSTABLE_POINTS:
+                _xs = [t[i] for i in _si_idx]; _ys = [rate_for_fit[i] for i in _si_idx]
+                _xu = [t[i] for i in _ui_idx]; _yu = [rate_for_fit[i] for i in _ui_idx]
+                _sf = _line_fit(_xs, _ys)
+                _uf = _line_fit(_xu, _yu)
+                if _sf and _uf:
+                    _ss, _si, _ = _sf
+                    _us, _ui, _ = _uf
+                    _dn = _ss - _us
+                    if _dn < 0:
+                        _tc = (_ui - _si) / _dn
+                        _kc = next((i for i, tv in enumerate(t) if tv >= _tc), None)
+                        if _kc and _kc > 0:
+                            fit = {
+                                "t_fit_start": min(ts0, tu0), "t_fit_end": max(ts1, tu1),
+                                "t_cross": _tc, "y_cross": _ss * _tc + _si,
+                                "kcrit": _kc, "kstable": _kc - 1,
+                                "stable":   {"slope": _ss, "intercept": _si, "count": len(_si_idx), "mse": 0},
+                                "unstable": {"slope": _us, "intercept": _ui, "count": len(_ui_idx), "mse": 0},
+                                "stable_range": (ts0, ts1),
+                                "unstable_range": (tu0, tu1),
+                            }
+        else:
+            fit = _volk_hora_fit(t, rate_for_fit)
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        point_color = "#2563eb"
+        stable_color = "seagreen"
+        unstable_color = "firebrick"
+        axis_color = plot_style["axis"]
+        grid_color = plot_style["grid"]
+        text = axis_color
+        template = theme["template"]
 
-        fig = go.Figure()
+        y_min = min(rate_for_fit) if rate_for_fit else 0.0
+        y_max = max(rate_for_fit) if rate_for_fit else 0.0
+        y_pad = max(0.01, 0.08 * (y_max - min(0.0, y_min) + 1e-9))
+        y_range = [min(0.0, y_min) - y_pad, y_max + y_pad]
+
+        if fit is not None:
+            x_fit0 = float(fit["t_fit_start"])
+            x_fit1 = float(fit["t_fit_end"])
+        else:
+            x_fit0 = t[0]
+            x_fit1 = t[-1]
+        if x_fit1 <= x_fit0:
+            x_fit1 = x_fit0 + 1e-3
+
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=("Overview over experiment", "Last %.0f%% of pre-fracture signal" % (VH_FIT_WINDOW_FRAC * 100.0)),
+            horizontal_spacing=0.08,
+        )
+
+        signal_name = f"smoothed signal ({smoothing_window} pts)"
         fig.add_trace(go.Scatter(
             x=t,
             y=rate_for_fit,
-            mode="lines",
-            name=f"smoothed signal ({smoothing_window} pts)",
-            line=dict(width=2.5, color="steelblue"),
+            mode="lines+markers",
+            name=signal_name,
+            line=dict(width=2.5, color=point_color),
+            marker=dict(size=5, color=point_color),
             hovertemplate="t=%{x:.4f} s<br>rate=%{y:.5g} 1/s<extra></extra>",
-        ))
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=t,
+            y=rate_for_fit,
+            mode="lines+markers",
+            name=signal_name,
+            showlegend=False,
+            line=dict(width=2.5, color=point_color),
+            marker=dict(size=5, color=point_color),
+            hovertemplate="t=%{x:.4f} s<br>rate=%{y:.5g} 1/s<extra></extra>",
+        ), row=1, col=2)
 
-        fit = _volk_hora_fit(t, rate_for_fit)
         if fit is not None:
             stable = fit["stable"]
             unstable = fit["unstable"]
-            ts = [fit["t_fit_start"], fit["t_cross"]]
-            ys = [stable["slope"] * tv + stable["intercept"] for tv in ts]
-            tu = [fit["t_cross"], fit["t_fit_end"]]
-            yu = [unstable["slope"] * tv + unstable["intercept"] for tv in tu]
+            left_x = [t[0], t[-1]]
+            right_x = [x_fit0, x_fit1]
+            stable_left = [stable["slope"] * tv + stable["intercept"] for tv in left_x]
+            unstable_left = [unstable["slope"] * tv + unstable["intercept"] for tv in left_x]
+
+            # right subplot: draw each line only over its own fit range if available
+            if "stable_range" in fit:
+                stable_right_x = list(fit["stable_range"])
+                unstable_right_x = list(fit["unstable_range"])
+            else:
+                stable_right_x = right_x
+                unstable_right_x = right_x
+            stable_right = [stable["slope"] * tv + stable["intercept"] for tv in stable_right_x]
+            unstable_right = [unstable["slope"] * tv + unstable["intercept"] for tv in unstable_right_x]
+
+            # shaded windows (right subplot only to avoid noise on overview)
+            if "stable_range" in fit:
+                fig.add_vrect(x0=fit["stable_range"][0], x1=fit["stable_range"][1],
+                              fillcolor=stable_color, opacity=0.10, line_width=0, row=1, col=2)
+                fig.add_vrect(x0=fit["unstable_range"][0], x1=fit["unstable_range"][1],
+                              fillcolor=unstable_color, opacity=0.10, line_width=0, row=1, col=2)
+
             fig.add_trace(go.Scatter(
-                x=ts,
-                y=ys,
-                mode="lines",
-                name="stable fit",
-                line=dict(width=2.5, color="seagreen"),
-                hovertemplate="t=%{x:.4f} s<br>fit=%{y:.5g} 1/s<extra>stable</extra>",
-            ))
+                x=left_x, y=stable_left, mode="lines", name="stable fit",
+                line=dict(width=2.5, color=stable_color, dash="dashdot"),
+                hoverinfo="skip",
+            ), row=1, col=1)
             fig.add_trace(go.Scatter(
-                x=tu,
-                y=yu,
-                mode="lines",
-                name="unstable fit",
-                line=dict(width=2.5, color="firebrick"),
-                hovertemplate="t=%{x:.4f} s<br>fit=%{y:.5g} 1/s<extra>unstable</extra>",
-            ))
+                x=left_x, y=unstable_left, mode="lines", name="unstable fit",
+                line=dict(width=2.5, color=unstable_color, dash="dashdot"),
+                hoverinfo="skip",
+            ), row=1, col=1)
             fig.add_trace(go.Scatter(
-                x=[fit["t_cross"]],
-                y=[fit["y_cross"]],
-                mode="markers",
-                name="intersection",
-                marker=dict(size=11, color="#facc15", symbol="x"),
-                hovertemplate="t=%{x:.4f} s<br>rate=%{y:.5g} 1/s<extra>intersection</extra>",
-            ))
+                x=stable_right_x, y=stable_right, mode="lines", name="stable fit",
+                line=dict(width=2.5, color=stable_color, dash="dashdot"),
+                hoverinfo="skip",
+                showlegend=False,
+            ), row=1, col=2)
+            fig.add_trace(go.Scatter(
+                x=unstable_right_x, y=unstable_right, mode="lines", name="unstable fit",
+                line=dict(width=2.5, color=unstable_color, dash="dashdot"),
+                hoverinfo="skip",
+                showlegend=False,
+            ), row=1, col=2)
+
+            for col in (1, 2):
+                fig.add_trace(go.Scatter(
+                    x=[fit["t_cross"]],
+                    y=[fit["y_cross"]],
+                    mode="markers",
+                    name="intersection" if col == 1 else None,
+                    showlegend=(col == 1),
+                    marker=dict(size=11, color="#facc15", symbol="x", line=dict(width=2, color=axis_color)),
+                    hovertemplate="t=%{x:.4f} s<br>rate=%{y:.5g} 1/s<extra>intersection</extra>",
+                ), row=1, col=col)
+
+            e1_vh = float(data.iloc[fit["kstable"]]["eps1_major"])
+            e2_vh = float(data.iloc[fit["kstable"]]["eps2_minor"])
+            e_eff = 2.0 / math.sqrt(3.0) * math.sqrt(e1_vh ** 2 + e2_vh ** 2 + e1_vh * e2_vh)
+            fig.add_annotation(
+                xref="x2 domain",
+                yref="y2 domain",
+                x=0.03,
+                y=0.96,
+                text=(
+                    "e1:    %.4f<br>"
+                    "e2:    %.4f<br>"
+                    "e_eff: %.4f"
+                ) % (e1_vh, e2_vh, e_eff),
+                showarrow=False,
+                align="left",
+                font=dict(family="monospace", size=11, color=text),
+                bgcolor=plot_style["annotation_bg"],
+                borderpad=4,
+                row=1,
+                col=2,
+            )
         else:
             fig.add_annotation(
                 xref="paper",
@@ -1337,14 +2411,53 @@ elif page == "Results":
                 font=dict(color="firebrick"),
             )
 
+        fig.update_xaxes(title_text="Time [s]", range=[t[0], t[-1]], row=1, col=1)
+        fig.update_xaxes(title_text="Time [s]", range=[x_fit0, x_fit1], row=1, col=2)
+        fig.update_yaxes(title_text="Thinning strain rate d(ε₁+ε₂)/dt [1/s]", range=y_range, row=1, col=1)
+        fig.update_yaxes(range=y_range, row=1, col=2)
+        for col in (1, 2):
+            fig.update_xaxes(
+                row=1, col=col,
+                title_font=dict(color=axis_color),
+                tickfont=dict(color=axis_color),
+                linecolor=axis_color,
+                mirror=True,
+                gridcolor=grid_color,
+                zerolinecolor=grid_color,
+            )
+            fig.update_yaxes(
+                row=1, col=col,
+                title_font=dict(color=axis_color),
+                tickfont=dict(color=axis_color),
+                linecolor=axis_color,
+                mirror=True,
+                gridcolor=grid_color,
+                zerolinecolor=grid_color,
+            )
         fig.update_layout(
-            title="Volk-Hora Time Signal",
-            xaxis_title="Time [s]",
-            yaxis_title="Thinning strain rate d(ε₁+ε₂)/dt [1/s]",
-            template="plotly_white",
-            height=450,
+            title=dict(text="Volk-Hora Time Signal", font=dict(color=axis_color)),
+            template=template,
+            height=520,
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.18,
+                xanchor="center",
+                x=0.5,
+                bgcolor=plot_style["transparent"],
+                bordercolor=plot_style["transparent"],
+                borderwidth=0,
+                font=dict(color=axis_color),
+            ),
+            margin=dict(t=85, r=30, b=100, l=55),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=axis_color),
+            hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
         )
-        return _strip_plot_descriptions(fig), None
+        return _strip_plot_descriptions(fig), None, {
+            "t": t, "rate": rate_for_fit, "data": data, "fit": fit,
+        }
 
     def _cluster_median_df(job_dir):
         fp = _resolve_job_file(job_dir, "strain_cluster.csv")
@@ -1435,6 +2548,11 @@ elif page == "Results":
                                       anchor_hops=None):
         if not os.path.exists(csv_path):
             return None, os.path.basename(csv_path) + " not found"
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        axis_color = plot_style["axis"]
+        grid_color = plot_style["grid"]
+        text = axis_color
         df = _load_csv(csv_path)
         required = {
             "time_s", "element_label", "integration_point",
@@ -1525,9 +2643,9 @@ elif page == "Results":
         if not admissible:
             return None, "no V&H candidates inside fracture-constrained neighborhood"
 
-        k_eval = max(1, len(times) - 2)
+        k_eval = _vh_eval_index(len(times))
         rates_eval = sorted([path_data[p]["rate"][k_eval] for p in admissible], reverse=True)
-        top_n = min(5, len(rates_eval))
+        top_n = min(VH_SEED_COUNT, len(rates_eval))
         rep_max = sum(rates_eval[:top_n]) / float(top_n)
         alpha = VH_ALPHA
         threshold = alpha * rep_max
@@ -1649,6 +2767,9 @@ elif page == "Results":
                      ) if anchor_points and anchor_name else "")
                 ),
                 showarrow=False,
+                font=dict(family="monospace", size=11, color=text),
+                bgcolor=plot_style["annotation_bg"],
+                borderpad=4,
             )
         else:
             fig.add_annotation(
@@ -1658,18 +2779,32 @@ elif page == "Results":
                 font=dict(color="firebrick"),
             )
 
+        fig.update_xaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
+        fig.update_yaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
         fig.update_layout(
-            title=title,
+            title=dict(text=title, font=dict(color=axis_color)),
             xaxis_title="Time [s]",
             yaxis_title="Mean thinning rate d(ε₁+ε₂)/dt [1/s]",
-            template="plotly_white",
+            template=theme["template"],
             height=450,
             legend=dict(
                 orientation="h", yanchor="bottom", y=1.02,
                 xanchor="right", x=1.0, title=None,
                 itemclick="toggleothers",
+                bgcolor=plot_style["transparent"], bordercolor=plot_style["transparent"], borderwidth=0,
+                font=dict(color=axis_color),
             ),
             margin=dict(t=70, r=20),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=axis_color),
+            hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
         )
         return _strip_plot_descriptions(fig), None
 
@@ -1677,6 +2812,11 @@ elif page == "Results":
         csv_path = os.path.join(job_dir, "strain_neighborhood.csv")
         if not os.path.exists(csv_path):
             return None, "strain_neighborhood.csv not found"
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        axis_color = plot_style["axis"]
+        grid_color = plot_style["grid"]
+        text = axis_color
         df = _load_csv(csv_path)
         required = {
             "time_s", "element_label", "integration_point",
@@ -1787,6 +2927,9 @@ elif page == "Results":
                     prefix, times[k_stable], rep_e1[k_stable], rep_e2[k_stable]
                 ),
                 showarrow=False,
+                font=dict(family="monospace", size=11, color=text),
+                bgcolor=plot_style["annotation_bg"],
+                borderpad=4,
             )
         else:
             fig.add_annotation(
@@ -1796,18 +2939,32 @@ elif page == "Results":
                 font=dict(color="firebrick"),
             )
 
+        fig.update_xaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
+        fig.update_yaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
         fig.update_layout(
-            title="Volk-Hora Signal from Fracture-Element Cluster Neighborhood",
+            title=dict(text="Volk-Hora Signal from Fracture-Element Cluster Neighborhood", font=dict(color=axis_color)),
             xaxis_title="Time [s]",
             yaxis_title="Mean thinning rate d(ε₁+ε₂)/dt [1/s]",
-            template="plotly_white",
+            template=theme["template"],
             height=450,
             legend=dict(
                 orientation="h", yanchor="bottom", y=1.02,
                 xanchor="right", x=1.0, title=None,
                 itemclick="toggleothers",
+                bgcolor=plot_style["transparent"], bordercolor=plot_style["transparent"], borderwidth=0,
+                font=dict(color=axis_color),
             ),
             margin=dict(t=70, r=20),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=axis_color),
+            hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
         )
         return _strip_plot_descriptions(fig), None
 
@@ -1870,11 +3027,11 @@ elif page == "Results":
             if len(path_data) < 3:
                 return None, "not enough complete neighborhood paths"
 
-            k_eval = max(1, len(times) - 2)
+            k_eval = _vh_eval_index(len(times))
             rates_eval = sorted([v["rate"][k_eval] for v in path_data.values()], reverse=True)
             if not rates_eval:
                 return None, "no thinning-rate values available"
-            top_n = min(5, len(rates_eval))
+            top_n = min(VH_SEED_COUNT, len(rates_eval))
             rep_max = sum(rates_eval[:top_n]) / float(top_n)
             alpha = VH_ALPHA
             threshold = alpha * rep_max
@@ -1940,6 +3097,11 @@ elif page == "Results":
                 rep_e1.append(sum(path_data[p]["e1"][i] for p in zone) / float(len(zone)))
                 rep_e2.append(sum(path_data[p]["e2"][i] for p in zone) / float(len(zone)))
 
+            theme = _plot_theme()
+            plot_style = _streamlit_plot_style(theme)
+            axis_color = plot_style["axis"]
+            grid_color = plot_style["grid"]
+            text = axis_color
             rate_for_fit = _moving_average(rep_rate, smoothing_window)
             fig = go.Figure()
             fig.add_trace(go.Scatter(
@@ -1982,6 +3144,9 @@ elif page == "Results":
                         len(zone), alpha, times[k_stable], rep_e1[k_stable], rep_e2[k_stable]
                     ),
                     showarrow=False,
+                    font=dict(family="monospace", size=11, color=text),
+                    bgcolor=plot_style["annotation_bg"],
+                    borderpad=4,
                 )
             else:
                 fig.add_annotation(
@@ -1991,18 +3156,32 @@ elif page == "Results":
                     font=dict(color="firebrick"),
                 )
 
+            fig.update_xaxes(
+                title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+                linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+            )
+            fig.update_yaxes(
+                title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+                linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+            )
             fig.update_layout(
-                title="Volk-Hora Signal from Connected High-Thinning-Rate Zone",
+                title=dict(text="Volk-Hora Signal from Connected High-Thinning-Rate Zone", font=dict(color=axis_color)),
                 xaxis_title="Time [s]",
                 yaxis_title="Mean thinning rate d(ε₁+ε₂)/dt [1/s]",
-                template="plotly_white",
+                template=theme["template"],
                 height=450,
                 legend=dict(
                     orientation="h", yanchor="bottom", y=1.02,
                     xanchor="right", x=1.0, title=None,
                     itemclick="toggleothers",
+                    bgcolor=plot_style["transparent"], bordercolor=plot_style["transparent"], borderwidth=0,
+                    font=dict(color=axis_color),
                 ),
                 margin=dict(t=70, r=20),
+                paper_bgcolor=plot_style["transparent"],
+                plot_bgcolor=plot_style["transparent"],
+                font=dict(color=axis_color),
+                hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
             )
             return _strip_plot_descriptions(fig), None
 
@@ -2026,6 +3205,11 @@ elif page == "Results":
                 dt = t[i + 1] - t[i - 1]
                 rate[i] = (strain_sum[i + 1] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
 
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        axis_color = plot_style["axis"]
+        grid_color = plot_style["grid"]
+        text = axis_color
         rate_for_fit = _moving_average(rate, smoothing_window)
 
         fig = go.Figure()
@@ -2080,6 +3264,9 @@ elif page == "Results":
                     t[k_stable], e1[k_stable], e2[k_stable]
                 ),
                 showarrow=False,
+                font=dict(family="monospace", size=11, color=text),
+                bgcolor=plot_style["annotation_bg"],
+                borderpad=4,
             )
         else:
             fig.add_annotation(
@@ -2092,11 +3279,19 @@ elif page == "Results":
                 font=dict(color="firebrick"),
             )
 
+        fig.update_xaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
+        fig.update_yaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
         fig.update_layout(
-            title="Volk-Hora Signal from Top-5 Fracture-Neighborhood Median",
+            title=dict(text="Volk-Hora Signal from " + VH_SEED_LABEL + " Fracture-Neighborhood Median", font=dict(color=axis_color)),
             xaxis_title="Time [s]",
             yaxis_title="d(ε₁+ε₂)/dt [1/s]",
-            template="plotly_white",
+            template=theme["template"],
             height=450,
             legend=dict(
                 orientation="h",
@@ -2106,12 +3301,68 @@ elif page == "Results":
                 x=1.0,
                 title=None,
                 itemclick="toggleothers",
+                bgcolor=plot_style["transparent"], bordercolor=plot_style["transparent"], borderwidth=0,
+                font=dict(color=axis_color),
             ),
             margin=dict(t=70, r=20),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=axis_color),
+            hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
         )
         return _strip_plot_descriptions(fig), None
 
     def _volk_hora_path(job_dir, smoothing_window=1, constrained=True):
+        path_csv = os.path.join(job_dir, "strain_path.csv")
+        if os.path.exists(path_csv):
+            df = _load_csv(path_csv)
+            required = {"time_s", "eps1_major", "eps2_minor"}
+            if required <= set(df.columns):
+                cols = ["time_s", "eps1_major", "eps2_minor"]
+                if "thinning_rate" in df.columns:
+                    cols.append("thinning_rate")
+                if "selected_n" in df.columns:
+                    cols.append("selected_n")
+                data = df[cols].apply(pd.to_numeric, errors="coerce")
+                data = data.dropna(subset=["time_s", "eps1_major", "eps2_minor"])
+                data = data.drop_duplicates(subset=["time_s"]).sort_values("time_s")
+                if len(data) >= 3:
+                    times = data["time_s"].tolist()
+                    e1 = data["eps1_major"].tolist()
+                    e2 = data["eps2_minor"].tolist()
+                    if "thinning_rate" in data.columns and data["thinning_rate"].notna().all():
+                        rate = data["thinning_rate"].tolist()
+                    else:
+                        strain_sum = (data["eps1_major"] + data["eps2_minor"]).tolist()
+                        rate = [0.0] * len(times)
+                        for i in range(len(times)):
+                            if i == 0:
+                                dt = times[1] - times[0]
+                                rate[i] = (strain_sum[1] - strain_sum[0]) / dt if dt > 1e-12 else 0.0
+                            elif i == len(times) - 1:
+                                dt = times[i] - times[i - 1]
+                                rate[i] = (strain_sum[i] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
+                            else:
+                                dt = times[i + 1] - times[i - 1]
+                                rate[i] = (strain_sum[i + 1] - strain_sum[i - 1]) / dt if dt > 1e-12 else 0.0
+                    fit = _volk_hora_fit(times, _moving_average(rate, smoothing_window))
+                    k_stable = fit["kstable"] if fit is not None else len(times) - 1
+                    zone_n = int(data["selected_n"].dropna().iloc[-1]) if "selected_n" in data.columns and data["selected_n"].notna().any() else 1
+                    return {
+                        "time": times,
+                        "e1": e1,
+                        "e2": e2,
+                        "rate": rate,
+                        "end_e1": float(e1[k_stable]),
+                        "end_e2": float(e2[k_stable]),
+                        "end_time": float(times[k_stable]),
+                        "zone_n": zone_n,
+                        "constraint_n": zone_n,
+                        "constrained": bool(constrained),
+                        "top_n": VH_SEED_COUNT,
+                        "alpha": VH_ALPHA,
+                    }
+
         csv_path = os.path.join(job_dir, "strain_dome.csv")
         if not os.path.exists(csv_path):
             return None
@@ -2188,15 +3439,19 @@ elif page == "Results":
             anchor_points, fracture_n = _fracture_cluster_anchor(job_dir)
             if not anchor_points:
                 return None
-            admissible &= _paths_within_anchor_hops(
-                pids, centroids, anchor_points, conn_radius, VH_FRACTURE_HOPS
-            )
+            admissible &= {
+                pid for pid in pids
+                if min(
+                    math.hypot(centroids[pid][0] - ax, centroids[pid][1] - ay)
+                    for ax, ay in anchor_points
+                ) <= VH_FRACTURE_RADIUS_MM
+            }
             if not admissible:
                 return None
 
-        k_eval = max(1, len(times) - 2)
+        k_eval = _vh_eval_index(len(times))
         rates_eval = sorted([path_data[p]["rate"][k_eval] for p in admissible], reverse=True)
-        top_n = min(5, len(rates_eval))
+        top_n = min(VH_SEED_COUNT, len(rates_eval))
         if top_n <= 0:
             return None
         rep_max = sum(rates_eval[:top_n]) / float(top_n)
@@ -2256,19 +3511,74 @@ elif page == "Results":
             "alpha": VH_ALPHA,
         }
 
-    def _volk_hora_dome_rate_fig(job_dir, smoothing_window=20):
-        anchor_points, fracture_n = _fracture_cluster_anchor(job_dir)
-        if not anchor_points:
-            return None, "fracture cluster not found; rerun postprocessing to generate strain_cluster_faces.csv"
-        return _volk_hora_connected_zone_fig(
-            os.path.join(job_dir, "strain_dome.csv"),
-            "Fracture-Constrained Volk-Hora Signal",
-            prefer_fracture_center=True,
-            smoothing_window=smoothing_window,
-            anchor_points=anchor_points,
-            anchor_name="fracture cluster",
-            anchor_hops=VH_FRACTURE_HOPS,
+    def _zone_ab_plot_fig(job_dir):
+        """Zone A/B numerical ratio over time from strain_path.csv."""
+        fp = os.path.join(job_dir, "strain_path.csv")
+        if not os.path.exists(fp):
+            return None, "strain_path.csv not found"
+        df = _load_csv(fp)
+        if "time_s" not in df.columns or "ratio_B_A" not in df.columns:
+            return None, "ratio_B_A column not found"
+
+        df = df.apply(pd.to_numeric, errors="coerce").dropna(subset=["time_s", "ratio_B_A"])
+        df = df.sort_values("time_s")
+        # Mean across IPs/elements in each frame
+        g = df.groupby("time_s", as_index=False)[["ratio_B_A"]].mean()
+
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        fig = go.Figure()
+
+        # Ratio threshold line
+        ratio_threshold = 7.0
+        fig.add_trace(go.Scatter(
+            x=[g["time_s"].min(), g["time_s"].max()], y=[ratio_threshold, ratio_threshold],
+            mode="lines", name=f"Threshold ({ratio_threshold})",
+            line=dict(color="#d62728", width=1.5, dash="dash"),
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=g["time_s"], y=g["ratio_B_A"],
+            mode="lines", name="$\dot{\epsilon}_B / \dot{\epsilon}_A$",
+            line=dict(color="#8c564b", width=2.5),
+        ))
+
+        # Find limit point
+        lim_row = g[g["ratio_B_A"] >= ratio_threshold].head(1)
+        if not lim_row.empty:
+            t_lim = lim_row["time_s"].iloc[0]
+            fig.add_trace(go.Scatter(
+                x=[t_lim], y=[lim_row["ratio_B_A"].iloc[0]],
+                mode="markers", name="Instability Limit",
+                marker=dict(color="#d62728", size=10, symbol="x"),
+            ))
+            fig.add_annotation(
+                x=t_lim, y=lim_row["ratio_B_A"].iloc[0],
+                text=f"Limit at {t_lim:.3f}s",
+                showarrow=True, arrowhead=1, ax=40, ay=-40,
+                bgcolor=plot_style["annotation_bg"], bordercolor="#d62728",
+            )
+
+        fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                         linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"],
+                         title_text="Time [s]")
+        fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                         linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"],
+                         title_text="Ratio $\dot{\epsilon}_{maj, B} / \dot{\epsilon}_{maj, A}$")
+        fig.update_layout(
+            title="Zone A/B Numerical Instability Ratio",
+            template=theme["template"],
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=plot_style["axis"]),
         )
+        return fig, None
+
+    def _volk_hora_dome_rate_fig(job_dir, smoothing_window=20, override_stable_range=None, override_unstable_range=None):
+        return _volk_hora_rate_fig(job_dir, smoothing_window=smoothing_window,
+                                   override_stable_range=override_stable_range,
+                                   override_unstable_range=override_unstable_range)
 
     def _volk_hora_zone_location_fig(csv_path, title, prefer_fracture_center,
                                      weight_by_area=False, anchor_points=None,
@@ -2276,6 +3586,11 @@ elif page == "Results":
                                      allowed_labels=None, anchor_hops=None):
         if not os.path.exists(csv_path):
             return None, os.path.basename(csv_path) + " not found"
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        axis_color = plot_style["axis"]
+        grid_color = plot_style["grid"]
+        text = axis_color
         df = _load_csv(csv_path)
         required = {
             "time_s", "element_label", "integration_point",
@@ -2365,9 +3680,9 @@ elif page == "Results":
         if not admissible:
             return None, "no V&H candidates inside fracture-constrained neighborhood"
 
-        k_eval = max(1, len(times) - 2)
+        k_eval = _vh_eval_index(len(times))
         rates_eval = sorted([path_data[p]["rate"][k_eval] for p in admissible], reverse=True)
-        top_n = min(5, len(rates_eval))
+        top_n = min(VH_SEED_COUNT, len(rates_eval))
         rep_max = sum(rates_eval[:top_n]) / float(top_n)
         alpha = VH_ALPHA
         threshold = alpha * rep_max
@@ -2422,30 +3737,29 @@ elif page == "Results":
         zone = set(max(components, key=comp_score))
         zone_weight = sum(path_data[p]["weight"] for p in zone)
         hot_set_all = set(hot)
-        top5_set = set(sorted(admissible, key=lambda p: path_data[p]["rate"][k_eval], reverse=True)[:top_n])
+        top_seed_set = set(sorted(admissible, key=lambda p: path_data[p]["rate"][k_eval], reverse=True)[:top_n])
         hot_list = sorted(hot, key=lambda p: path_data[p]["rate"][k_eval], reverse=True)
-        top5_list = sorted(top5_set, key=lambda p: path_data[p]["rate"][k_eval], reverse=True)
+        top_seed_list = sorted(top_seed_set, key=lambda p: path_data[p]["rate"][k_eval], reverse=True)
         admissible_list = sorted(admissible - set(hot), key=lambda p: path_data[p]["rate"][k_eval], reverse=True)
 
         fig = go.Figure()
+        outline_xs = []
+        outline_ys = []
         outline_fp = os.path.join(os.path.dirname(csv_path), "specimen_outline.csv")
         if os.path.exists(outline_fp):
             outline = _load_csv(outline_fp)
             needed = {"x1", "y1", "x2", "y2"}
             if needed <= set(outline.columns):
-                xs = []
-                ys = []
+                outline = outline.copy()
+                for col in needed:
+                    outline[col] = pd.to_numeric(outline[col], errors="coerce")
+                outline = outline.dropna(subset=list(needed))
                 for _, row in outline.iterrows():
-                    xs.extend([row["x1"], row["x2"], None])
-                    ys.extend([row["y1"], row["y2"], None])
-                fig.add_trace(go.Scatter(
-                    x=xs,
-                    y=ys,
-                    mode="lines",
-                    name="specimen contour",
-                    line=dict(color="#e5e7eb", width=2),
-                    hoverinfo="skip",
-                ))
+                    outline_xs.extend([row["x1"], row["x2"], None])
+                    outline_ys.extend([row["y1"], row["y2"], None])
+                if len(outline) < 8:
+                    outline_xs = []
+                    outline_ys = []
         if admissible_list:
             fig.add_trace(go.Scattergl(
                 x=[centroids[p][0] for p in admissible_list],
@@ -2466,24 +3780,18 @@ elif page == "Results":
                 customdata=[path_data[p]["rate"][k_eval] for p in hot_list],
                 hovertemplate="x=%{x:.3f} mm<br>y=%{y:.3f} mm<br>rate=%{customdata:.5g}<extra>thresholded</extra>",
             ))
-        if top5_list:
+        if top_seed_list:
             fig.add_trace(go.Scattergl(
-                x=[centroids[p][0] for p in top5_list],
-                y=[centroids[p][1] for p in top5_list],
+                x=[centroids[p][0] for p in top_seed_list],
+                y=[centroids[p][1] for p in top_seed_list],
                 mode="markers",
-                name="top 5 max set",
+                name=VH_SEED_LABEL + " max set",
                 marker=dict(size=10, color="#2563eb", symbol="diamond", line=dict(width=1, color="white")),
-                customdata=[path_data[p]["rate"][k_eval] for p in top5_list],
-                hovertemplate="x=%{x:.3f} mm<br>y=%{y:.3f} mm<br>rate=%{customdata:.5g}<extra>top 5 max set</extra>",
-            ))
-        if center_xy is not None:
-            fig.add_trace(go.Scatter(
-                x=[center_xy[0]],
-                y=[center_xy[1]],
-                mode="markers",
-                name="first deletion",
-                marker=dict(size=13, symbol="x", color="red", line=dict(width=2, color="red")),
-                hovertemplate="x=%{x:.3f} mm<br>y=%{y:.3f} mm<extra>first deletion</extra>",
+                customdata=[path_data[p]["rate"][k_eval] for p in top_seed_list],
+                hovertemplate=(
+                    "x=%{x:.3f} mm<br>y=%{y:.3f} mm<br>rate=%{customdata:.5g}"
+                    "<extra>" + VH_SEED_LABEL + " max set</extra>"
+                ),
             ))
         if anchor_points:
             fig.add_trace(go.Scattergl(
@@ -2511,12 +3819,30 @@ elif page == "Results":
                     line=dict(color="rgba(220, 38, 38, 0.75)", width=1.2, dash="dash"),
                     hoverinfo="skip",
                 ))
+        if outline_xs and outline_ys:
+            fig.add_trace(go.Scatter(
+                x=outline_xs,
+                y=outline_ys,
+                mode="lines",
+                name="specimen contour",
+                line=dict(color=axis_color, width=3),
+                hoverinfo="skip",
+            ))
 
+        fig.update_xaxes(
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
+        fig.update_yaxes(
+            scaleanchor="x", scaleratio=1,
+            title_font=dict(color=axis_color), tickfont=dict(color=axis_color),
+            linecolor=axis_color, mirror=True, gridcolor=grid_color, zerolinecolor=grid_color,
+        )
         fig.update_layout(
-            title=title,
+            title=dict(text=title, font=dict(color=axis_color)),
             xaxis_title="X [mm]",
             yaxis_title="Y [mm]",
-            template="plotly_white",
+            template=theme["template"],
             height=430,
             hovermode="closest",
             legend=dict(
@@ -2526,10 +3852,15 @@ elif page == "Results":
                 xanchor="center",
                 x=0.5,
                 title=None,
+                bgcolor=plot_style["transparent"], bordercolor=plot_style["transparent"], borderwidth=0,
+                font=dict(color=axis_color),
             ),
             margin=dict(t=65, r=20, b=95),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=axis_color),
+            hoverlabel=dict(bgcolor=plot_style["hover_bg"], font=dict(color=axis_color)),
         )
-        fig.update_yaxes(scaleanchor="x", scaleratio=1)
         fig.add_annotation(
             xref="paper", yref="paper", x=0.01, y=0.98,
             text=(
@@ -2554,6 +3885,9 @@ elif page == "Results":
                  ) if anchor_points and anchor_name else "")
             ),
             showarrow=False,
+            font=dict(family="monospace", size=11, color=text),
+            bgcolor=plot_style["annotation_bg"],
+            borderpad=4,
         )
         return _strip_plot_descriptions(fig), None
 
@@ -2588,8 +3922,18 @@ elif page == "Results":
             data["integration_point"].astype(str)
         )
 
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        path_col = "rgba(255,255,255,0.20)" if theme["base"] == "dark" else "rgba(0,0,0,0.15)"
+
         fig = go.Figure()
-        for path_id, grp in data.groupby("path_id", sort=False):
+        path_groups = list(data.groupby("path_id", sort=False))
+        n_paths = len(path_groups)
+        display_paths = [
+            (pid, grp) for pid, grp in path_groups
+            if int(grp["selection_rank"].iloc[0]) <= CLUSTER_PATH_DISPLAY_MAX
+        ]
+        for path_id, grp in display_paths:
             rank = int(grp["selection_rank"].iloc[0])
             fig.add_trace(go.Scatter(
                 x=grp["eps2_minor"],
@@ -2598,11 +3942,10 @@ elif page == "Results":
                 name=path_id,
                 legendgroup="cluster",
                 showlegend=False,
-                opacity=0.18,
-                line=dict(color="#4b5563", width=1),
+                line=dict(color=path_col, width=1),
                 hovertemplate=(
                     path_id + "<br>rank=" + str(rank) +
-                "<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>top-5 cluster</extra>"
+                "<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>" + VH_SEED_LABEL + " cluster</extra>"
                 ),
             ))
 
@@ -2610,31 +3953,29 @@ elif page == "Results":
         if grouped is not None and data["time_s"].notna().any():
             med = grouped[["eps1_major", "eps2_minor"]].median().reset_index()
             med = med.sort_values("time_s")
-            avg = grouped[["eps1_major", "eps2_minor"]].mean().reset_index()
-            avg = avg.sort_values("time_s")
             fig.add_trace(go.Scatter(
                 x=med["eps2_minor"],
                 y=med["eps1_major"],
                 mode="lines",
-                name="median",
-                line=dict(color="#dc2626", width=3),
-                hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>median</extra>",
-            ))
-            fig.add_trace(go.Scatter(
-                x=avg["eps2_minor"],
-                y=avg["eps1_major"],
-                mode="lines",
-                name="average",
-                line=dict(color="#2563eb", width=3, dash="dash"),
-                hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>average</extra>",
+                name="Cluster median",
+                line=dict(color="#FF0000", width=2.5),
+                hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>Cluster median</extra>",
             ))
 
-        n_paths = data["path_id"].nunique()
+        n_display = len(display_paths)
+        fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                         linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
+        fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                         linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
+        subtitle = "%d paths · %d shown · cluster median" % (n_paths, n_display)
         fig.update_layout(
-            title="Top-5 Fracture-Neighborhood Strain-Path Cluster",
+            title=dict(
+                text="Strain Path<br><sup>%s</sup>" % subtitle,
+                font=dict(size=16),
+            ),
             xaxis_title="ε₂ minor strain (-)",
             yaxis_title="ε₁ major strain (-)",
-            template="plotly_white",
+            template=theme["template"],
             height=520,
             hovermode="closest",
             legend=dict(
@@ -2646,12 +3987,10 @@ elif page == "Results":
                 title=None,
                 itemclick="toggleothers",
             ),
-            margin=dict(t=80, r=20),
-        )
-        fig.add_annotation(
-            xref="paper", yref="paper", x=0.01, y=0.99,
-            text="%d paths: top-surface elements near first deletion with highest pre-fracture ε₁" % n_paths,
-            showarrow=False,
+            margin=dict(t=95, r=20),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=plot_style["axis"]),
         )
         fig.add_vline(x=0, line_width=0.6, line_dash="dot", line_color="gray")
         fig.add_hline(y=0, line_width=0.6, line_dash="dot", line_color="gray")
@@ -2663,28 +4002,22 @@ elif page == "Results":
             return None, reason
         vh = _volk_hora_path(job_dir, smoothing_window=1)
         if vh is None:
-            return None, "V&H representative path unavailable; rerun postprocessing to generate strain_dome.csv"
+            return None, "V&H representative path unavailable; rerun postprocessing to generate strain_path.csv"
+        vh_col = "#0072BD"   # MATLAB blue
         fig.add_trace(go.Scatter(
             x=vh["e2"],
             y=vh["e1"],
             mode="lines",
-            name="constrained V&H zone average",
-            line=dict(color="#111827", width=3.2),
-            hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>constrained V&H zone average</extra>",
+            name="V&H zone average",
+            line=dict(color=vh_col, width=2.5),
+            hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>V&H zone average</extra>",
         ))
-        fig.add_trace(go.Scatter(
-            x=[vh["end_e2"]],
-            y=[vh["end_e1"]],
-            mode="markers",
-            name="constrained V&H limit",
-            marker=dict(size=11, symbol="x", color="#111827", line=dict(width=2, color="#111827")),
-            hovertemplate=(
-                "ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<br>"
-                + "t=%.4f s<br>zone n=%d<extra>constrained V&H limit</extra>"
-                % (vh["end_time"], vh["zone_n"])
+        fig.update_layout(
+            title=dict(
+                text="Strain Path<br><sup>cluster median (red) · V&H zone average (blue)</sup>",
+                font=dict(size=16),
             ),
-        ))
-        fig.update_layout(title="Strain Path Comparison")
+        )
         return _strip_plot_descriptions(fig), None
 
     def _cluster_location_fig(job_dir):
@@ -2710,6 +4043,8 @@ elif page == "Results":
         else:
             data_last = data.copy()
 
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
         fig = make_subplots(
             rows=1,
             cols=2,
@@ -2735,19 +4070,58 @@ elif page == "Results":
             outline = _load_csv(outline_fp)
             needed = {"x1", "y1", "x2", "y2"}
             if needed <= set(outline.columns):
-                xs = []
-                ys = []
-                for _, row in outline.iterrows():
-                    xs.extend([row["x1"], row["x2"], None])
-                    ys.extend([row["y1"], row["y2"], None])
-                _add_trace_both(go.Scatter(
-                    x=xs,
-                    y=ys,
-                    mode="lines",
-                    name="outline",
-                    line=dict(color="#e5e7eb", width=2),
-                    hoverinfo="skip",
-                ))
+                outline = outline.copy()
+                for col in needed:
+                    outline[col] = pd.to_numeric(outline[col], errors="coerce")
+                outline = outline.dropna(subset=list(needed))
+                if len(outline) >= 8:
+                    # Chain unsorted boundary edges into a continuous polygon
+                    edges = [
+                        ((row["x1"], row["y1"]), (row["x2"], row["y2"]))
+                        for _, row in outline.iterrows()
+                    ]
+                    # Build adjacency: endpoint → list of edge indices
+                    def _pt_key(p, tol=1e-4):
+                        return (round(p[0] / tol), round(p[1] / tol))
+                    adj = {}
+                    for ei, (a, b) in enumerate(edges):
+                        adj.setdefault(_pt_key(a), []).append(ei)
+                        adj.setdefault(_pt_key(b), []).append(ei)
+                    used = [False] * len(edges)
+                    chains = []
+                    for start in range(len(edges)):
+                        if used[start]:
+                            continue
+                        chain = [edges[start][0], edges[start][1]]
+                        used[start] = True
+                        while True:
+                            tip = chain[-1]
+                            tip_key = _pt_key(tip)
+                            found = False
+                            for ei in adj.get(tip_key, []):
+                                if used[ei]:
+                                    continue
+                                a, b = edges[ei]
+                                next_pt = b if _pt_key(a) == tip_key else a
+                                chain.append(next_pt)
+                                used[ei] = True
+                                found = True
+                                break
+                            if not found:
+                                break
+                        chains.append(chain)
+                    xs, ys = [], []
+                    for chain in chains:
+                        xs.extend([p[0] for p in chain] + [None])
+                        ys.extend([p[1] for p in chain] + [None])
+                    _add_trace_both(go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode="lines",
+                        name="outline",
+                        line=dict(color="#e5e7eb", width=2),
+                        hoverinfo="skip",
+                    ))
 
         face_fp = _resolve_job_file(job_dir, "strain_cluster_faces.csv")
         drew_faces = False
@@ -2771,7 +4145,6 @@ elif page == "Results":
                     "cluster": 1,
                     "fracture_deleted": 2,
                     "crack_deleted": 2,
-                    "first_deleted": 3,
                 }).fillna(1)
                 faces = faces.sort_values([
                     "role_priority", "selection_rank", "element_label", "point_order"
@@ -2786,13 +4159,10 @@ elif page == "Results":
                     xs.append(xs[0])
                     ys.append(ys[0])
                     role_s = str(role)
-                    is_first = role_s == "first_deleted"
+                    if role_s == "first_deleted":
+                        continue
                     is_fracture_cluster = role_s in {"fracture_deleted", "crack_deleted"}
-                    if is_first:
-                        name = "first deletion"
-                        color = "rgba(255, 255, 255, 0.05)"
-                        line_color = "#ffffff"
-                    elif is_fracture_cluster:
+                    if is_fracture_cluster:
                         name = "fracture element cluster"
                         color = "rgba(220, 38, 38, 0.68)"
                         line_color = "#ffffff"
@@ -2810,7 +4180,7 @@ elif page == "Results":
                         showlegend=name not in shown,
                         line=dict(
                             color=line_color,
-                            width=2.3 if (is_first or is_fracture_cluster) else 1.0,
+                            width=2.3 if is_fracture_cluster else 1.0,
                         ),
                         fillcolor=color,
                         hovertemplate=(
@@ -2841,15 +4211,7 @@ elif page == "Results":
             ))
 
         if center_xy is not None:
-                x0, y0 = center_xy
-                if not drew_faces:
-                    _add_trace_both(go.Scatter(
-                        x=[x0], y=[y0],
-                        mode="markers",
-                        name="first deletion",
-                        marker=dict(size=14, symbol="x", color="red", line=dict(width=2, color="red")),
-                        hovertemplate="x=%{x:.3f} mm<br>y=%{y:.3f} mm<extra>first deleted</extra>",
-                    ))
+                pass
 
         _add_trace_both(go.Scatter(
             x=[0.0],
@@ -2867,10 +4229,10 @@ elif page == "Results":
             fig.update_yaxes(range=[y0 - zoom_radius, y0 + zoom_radius], row=1, col=2)
 
         fig.update_layout(
-            title="Top-5 Cluster Location",
+            title=VH_SEED_LABEL + " Cluster Location",
             xaxis_title="X [mm]",
             yaxis_title="Y [mm]",
-            template="plotly_white",
+            template=theme["template"],
             height=560,
             hovermode="closest",
             legend=dict(
@@ -2883,7 +4245,17 @@ elif page == "Results":
                 itemclick="toggleothers",
             ),
             margin=dict(t=80, r=35, b=95),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=plot_style["axis"]),
         )
+        for _r, _c in [(1, 1), (1, 2)]:
+            fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"],
+                             zerolinecolor=plot_style["grid"], row=_r, col=_c)
+            fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"],
+                             zerolinecolor=plot_style["grid"], row=_r, col=_c)
         fig.update_xaxes(title_text="X [mm]", row=1, col=1)
         fig.update_yaxes(title_text="Y [mm]", row=1, col=1)
         fig.update_xaxes(title_text="X [mm]", row=1, col=2)
@@ -2959,7 +4331,6 @@ elif page == "Results":
         strain_path.csv at that time.  Returns (eps1, eps2) or (None, None)
         if data is missing or the job didn't reach u3_ref_mm.
         """
-        import numpy as np
         fd_fp = os.path.join(job_dir, "punch_fd.csv")
         sp_fp = os.path.join(job_dir, "strain_path.csv")
         if not os.path.exists(fd_fp) or not os.path.exists(sp_fp):
@@ -2998,6 +4369,8 @@ elif page == "Results":
             df = _load_csv(fp)
             if "U3_mm" not in df.columns or "RF3_N" not in df.columns:
                 continue
+            theme = _plot_theme()
+            plot_style = _streamlit_plot_style(theme)
             fig = go.Figure()
             fig.add_trace(go.Scatter(
                 x=df["U3_mm"], y=df["RF3_N"],
@@ -3013,13 +4386,20 @@ elif page == "Results":
                     mode="lines", name=leg_name,
                     line=dict(color="#d62728", width=1.5, dash="dash"),
                 ))
+            fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
+            fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
             fig.update_layout(
                 title=f"Punch Force–Displacement{title_suffix}",
                 xaxis_title="Displacement [mm]",
                 yaxis_title="Force [N]",
-                template="plotly_white",
+                template=theme["template"],
                 legend=dict(orientation="h", yanchor="bottom", y=1.02,
                             xanchor="right", x=1),
+                paper_bgcolor=plot_style["transparent"],
+                plot_bgcolor=plot_style["transparent"],
+                font=dict(color=plot_style["axis"]),
             )
             return _strip_plot_descriptions(fig)
         return None
@@ -3041,16 +4421,21 @@ elif page == "Results":
 
         has_d     = "d_dome_max" in g.columns
         has_triax = "TRIAX" in g.columns
+        has_ratio = "ratio_B_A" in g.columns
         panels = [
             ("Strain ratio  β = ε₂/ε₁",      "β  [–]",         "beta",     "#ff7f0e", "β = ε₂/ε₁  (strain ratio)"),
             ("Thinning  ε₁+ε₂  =  −ε₃",       "ε₁+ε₂  [–]",    "thinning", "#2ca02c", "ε₁+ε₂ = −ε₃  (thinning magnitude)"),
         ]
+        if has_ratio:
+            panels.append(("Zone A/B ratio  $\dot{\epsilon}_B / \dot{\epsilon}_A$", "Ratio [–]", "ratio_B_A", "#8c564b", "Numerical ratio B/A"))
         if has_triax:
             panels.append(("Stress triaxiality  η", "η  [–]", "TRIAX", "#e377c2", "η = σ_m / σ_eq  (triaxiality)"))
         if has_d:
             panels.append(("Damage variable  D", "D  [–]", "d_dome_max", "#9467bd", "D_max  (max dome damage)"))
 
         n_rows = len(panels)
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
         fig = make_subplots(
             rows=n_rows, cols=1, shared_xaxes=True,
             vertical_spacing=0.10,
@@ -3066,12 +4451,22 @@ elif page == "Results":
             ), row=row_i, col=1)
             fig.update_yaxes(title_text=y_title, row=row_i, col=1)
         fig.update_xaxes(title_text="Time [s]", row=n_rows, col=1)
+        for _r in range(1, n_rows + 1):
+            fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"],
+                             zerolinecolor=plot_style["grid"], row=_r, col=1)
+            fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"],
+                             zerolinecolor=plot_style["grid"], row=_r, col=1)
         fig.update_layout(
             height=190 * n_rows,
-            template="plotly_white",
+            template=theme["template"],
             margin=dict(t=60),
             legend=dict(orientation="h", yanchor="top", y=-0.10,
                         xanchor="center", x=0.5),
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=plot_style["axis"]),
         )
         return _strip_plot_descriptions(fig)
 
@@ -3095,6 +4490,8 @@ elif page == "Results":
             x_min   = float(df[x_col].min())
             x_max   = float(df[x_col].max())
 
+            theme = _plot_theme()
+            plot_style = _streamlit_plot_style(theme)
             fig = go.Figure()
             # Main ratio curve
             fig.add_trace(go.Scatter(
@@ -3118,13 +4515,20 @@ elif page == "Results":
                     mode="lines", name=leg_name,
                     line=dict(color="#d62728", width=1.5, dash="solid"),
                 ))
+            fig.update_xaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
+            fig.update_yaxes(tickfont=dict(color=plot_style["axis"]), title_font=dict(color=plot_style["axis"]),
+                             linecolor=plot_style["axis"], gridcolor=plot_style["grid"], zerolinecolor=plot_style["grid"])
             fig.update_layout(
                 title="KE / IE — quasi-static check",
                 xaxis_title=x_label,
                 yaxis_title="ALLKE / ALLIE",
-                template="plotly_white",
+                template=theme["template"],
                 legend=dict(orientation="h", yanchor="bottom", y=1.02,
                             xanchor="right", x=1),
+                paper_bgcolor=plot_style["transparent"],
+                plot_bgcolor=plot_style["transparent"],
+                font=dict(color=plot_style["axis"]),
             )
             return _strip_plot_descriptions(fig)
         return None
@@ -3201,15 +4605,66 @@ elif page == "Results":
                                          annotation_text=label,
                                          annotation_position="right",
                                          annotation_font_color="#888888")
+                    _tx_theme = _plot_theme()
+                    _tx_ps = _streamlit_plot_style(_tx_theme)
+                    fig_tx.update_xaxes(tickfont=dict(color=_tx_ps["axis"]), title_font=dict(color=_tx_ps["axis"]),
+                                        linecolor=_tx_ps["axis"], gridcolor=_tx_ps["grid"], zerolinecolor=_tx_ps["grid"])
+                    fig_tx.update_yaxes(tickfont=dict(color=_tx_ps["axis"]), title_font=dict(color=_tx_ps["axis"]),
+                                        linecolor=_tx_ps["axis"], gridcolor=_tx_ps["grid"], zerolinecolor=_tx_ps["grid"])
                     fig_tx.update_layout(
                         title="Stress-state path: η vs EQPS",
                         xaxis_title="Equivalent plastic strain (EQPS)",
                         yaxis_title="Triaxiality η = σ_m / σ_eq",
-                        template="plotly_white",
+                        template=_tx_theme["template"],
                         showlegend=False,
                         height=360,
+                        paper_bgcolor=_tx_ps["transparent"],
+                        plot_bgcolor=_tx_ps["transparent"],
+                        font=dict(color=_tx_ps["axis"]),
                     )
                     _plotly_chart(fig_tx, use_container_width=True)
+
+    def _job_fracture_point(job_dir):
+        fp = os.path.join(job_dir, "forming_limits.csv")
+        if not os.path.exists(fp):
+            return None
+        try:
+            df = _load_csv(fp)
+        except Exception:
+            return None
+        if "method" not in df.columns:
+            return None
+        row = df[df["method"] == "fracture"]
+        if row.empty:
+            return None
+        r = row.iloc[0]
+        try:
+            pt = {
+                "name": os.path.basename(os.path.abspath(job_dir)),
+                "dir": job_dir,
+                "e2": float(r["eps2_minor"]),
+                "e1": float(r["eps1_major"]),
+                "valid": str(r.get("fracture_type", "dome")) == "dome",
+            }
+        except Exception:
+            return None
+        return pt
+
+    def _job_strain_path(job_dir):
+        for fname, c1, c2 in [
+            ("strain_path.csv", "eps1_major", "eps2_minor"),
+            ("elout.csv", "eps1_le", "eps2_le"),
+        ]:
+            fp = os.path.join(job_dir, fname)
+            if not os.path.exists(fp):
+                continue
+            try:
+                df = _load_csv(fp)
+            except Exception:
+                continue
+            if c1 in df.columns and c2 in df.columns:
+                return df[c1].tolist(), df[c2].tolist()
+        return None, None
 
     st.subheader("Results Viewer")
 
@@ -3233,7 +4688,7 @@ elif page == "Results":
     if do_sync:
         os.makedirs(results_dir, exist_ok=True)
         sync_cmd = [
-            "rsync", "-avz", "--prune-empty-dirs",
+            "rsync", "-av", "--prune-empty-dirs",
             "--include=*/",
             "--include=*.csv",
             "--include=*.pdf",
@@ -3274,6 +4729,7 @@ elif page == "Results":
     modes = []
     if job_dirs:
         modes.append("Single Job")
+        modes.append("Direct FLC")
     if flc_dirs:
         modes.append("Full FLC")
         modes.append("Compare FLC")
@@ -3298,7 +4754,298 @@ elif page == "Results":
         key="results_view_mode",
     )
 
+    if job_dirs:
+        _sort_col, _ = st.columns([3, 5])
+        with _sort_col:
+            _job_sort = st.radio(
+                "Sort jobs by",
+                ["Newest first", "Oldest first", "Name (A→Z)"],
+                horizontal=True,
+                index=0,
+                key="results_job_sort",
+            )
+        if _job_sort == "Newest first":
+            job_dirs = dict(sorted(job_dirs.items(), key=lambda kv: _job_mtime(kv[1]), reverse=True))
+        elif _job_sort == "Oldest first":
+            job_dirs = dict(sorted(job_dirs.items(), key=lambda kv: _job_mtime(kv[1]), reverse=False))
+
     st.markdown("---")
+
+    # ── Shared rendering helpers ──────────────────────────────────────────────
+
+    def _render_job_media(job_dir):
+        pngs = sorted(f for f in os.listdir(job_dir) if f.endswith(".png"))
+        if pngs:
+            img_cols = st.columns(min(len(pngs), 3))
+            for i, png in enumerate(pngs):
+                img_cols[i % 3].image(os.path.join(job_dir, png), use_container_width=True)
+        _display_job_videos(job_dir)
+
+    def _render_pdf_downloads(job_dir, key_prefix):
+        pdfs = sorted(f for f in os.listdir(job_dir) if f.endswith(".pdf"))
+        if not pdfs:
+            return
+        st.markdown("---")
+        dl_cols = st.columns(len(pdfs))
+        for i, pdf in enumerate(pdfs):
+            with open(os.path.join(job_dir, pdf), "rb") as fh:
+                dl_cols[i].download_button(
+                    f"Download {pdf}", fh, file_name=pdf,
+                    mime="application/pdf", key=f"{key_prefix}_dl_{pdf}",
+                )
+
+    def _render_job_tabs(job_dir, key_prefix):
+        (tab_fd, tab_en, tab_sp,
+         tab_vh, tab_ab,
+         tab_fl, tab_loc, tab_diag) = st.tabs([
+         "Force-Disp.", "Energy", "Strain Path",
+            "V&H", "Zone A/B",
+            "Forming Limits", "Cluster Location", "Diagnostics",
+        ])
+
+        with tab_fd:
+            fig_fd = _fd_with_fracture_fig(job_dir)
+            if fig_fd is not None:
+                _plotly_chart(fig_fd, use_container_width=True, key=f"{key_prefix}_fd")
+            else:
+                st.info("Force–displacement data unavailable")
+
+        with tab_en:
+            fig_en = _energy_fig_v2(job_dir)
+            if fig_en is not None:
+                _plotly_chart(fig_en, use_container_width=True, key=f"{key_prefix}_en")
+            else:
+                st.info("Energy data unavailable")
+
+        with tab_sp:
+            # Show cluster paths + V&H representative overlay; fall back to plain cluster
+            fig, reason = _strain_path_compare_fig(job_dir)
+            if fig is None:
+                fig, reason = _strain_cluster_fig(job_dir)
+            if fig is not None:
+                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_sp")
+            else:
+                st.info(reason or "Strain-path data unavailable")
+            fig_extras = _strain_path_extras_fig(job_dir)
+            if fig_extras is not None:
+                _plotly_chart(fig_extras, use_container_width=True, key=f"{key_prefix}_sp_extras")
+
+        with tab_vh:
+            @st.fragment
+            def _vh_content(_job_dir=job_dir, _kp=key_prefix):
+                sw = st.number_input(
+                    "V&H fit smoothing", min_value=1, max_value=101, value=1, step=2,
+                    key=f"{_kp}_vh_smoothing",
+                )
+
+                # ── Auto-fit (always run first; gives correct defaults) ────
+                fig_auto, reason_auto, _vh_data_auto = _volk_hora_dome_rate_fig(
+                    _job_dir, smoothing_window=int(sw),
+                )
+
+                # ── Range sliders (defaults from real auto-fit) ────────────
+                _stable_range = None
+                _unstable_range = None
+                _def_stable = _def_unstable = None
+                if _vh_data_auto is not None:
+                    _t_all = _vh_data_auto["t"]
+                    _n = len(_t_all)
+                    _t_min = _t_all[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (_t_all[-1] - _t_all[0])
+                    _win = [i for i in range(1, _n - 1) if _t_all[i] >= _t_min]
+                    if len(_win) >= VH_MIN_STABLE_POINTS + VH_MIN_UNSTABLE_POINTS:
+                        _fit_auto = _vh_data_auto["fit"]
+                        _nsc = _fit_auto["stable"]["count"] if _fit_auto else max(VH_MIN_STABLE_POINTS, len(_win) // 2)
+                        _nsc = min(max(_nsc, VH_MIN_STABLE_POINTS), len(_win) - VH_MIN_UNSTABLE_POINTS)
+                        # default windows: stable = first _nsc pts of fit window; unstable = rest
+                        _def_stable   = (_win[0], _win[_nsc - 1])          # (idx_start, idx_end)
+                        _def_unstable = (_win[_nsc], _win[-1])
+
+                        _c1, _c2 = st.columns(2)
+                        with _c1:
+                            _is0, _is1 = st.slider(
+                                "Stable fit window",
+                                min_value=0, max_value=_n - 1,
+                                value=_def_stable,
+                                key=f"{_kp}_vh_stable_range",
+                                help="Green region — data used for the stable (pre-necking) line.",
+                            )
+                            _stable_range = (_t_all[_is0], _t_all[_is1])
+                        with _c2:
+                            _iu0, _iu1 = st.slider(
+                                "Unstable fit window",
+                                min_value=0, max_value=_n - 1,
+                                value=_def_unstable,
+                                key=f"{_kp}_vh_unstable_range",
+                                help="Red region — data used for the unstable (post-necking) line.",
+                            )
+                            _unstable_range = (_t_all[_iu0], _t_all[_iu1])
+
+                # ── Chart: reuse auto-fit result unless sliders were moved ──
+                _using_auto = (
+                    _stable_range is None
+                    or (
+                        _def_stable is not None and _def_unstable is not None
+                        and (_is0, _is1) == _def_stable
+                        and (_iu0, _iu1) == _def_unstable
+                    )
+                )
+                if _using_auto:
+                    fig, reason, _vh_data = fig_auto, reason_auto, _vh_data_auto
+                else:
+                    fig, reason, _vh_data = _volk_hora_dome_rate_fig(
+                        _job_dir, smoothing_window=int(sw),
+                        override_stable_range=_stable_range,
+                        override_unstable_range=_unstable_range,
+                    )
+                if fig is not None:
+                    _plotly_chart(fig, use_container_width=True, key=f"{_kp}_vh_rate")
+                else:
+                    st.info(reason or "V&H dome rate unavailable")
+
+                anchor_points, _ = _fracture_cluster_anchor(_job_dir)
+                if anchor_points:
+                    zone_fig, zone_reason = _volk_hora_zone_location_fig(
+                        os.path.join(_job_dir, "strain_cluster.csv"),
+                        "V&H Zone Location",
+                        prefer_fracture_center=True,
+                        anchor_points=anchor_points,
+                        anchor_name="fracture cluster",
+                    )
+                else:
+                    zone_fig, zone_reason = None, "Fracture cluster not found — rerun postprocessing"
+                if zone_fig is not None:
+                    _plotly_chart(zone_fig, use_container_width=True, key=f"{_kp}_vh_zone")
+                else:
+                    st.info(zone_reason)
+
+                # ── Write button ──────────────────────────────────────────
+                with st.expander("Overwrite VH forming limit"):
+                    fl_path = os.path.join(_job_dir, "forming_limits.csv")
+                    if _vh_data is None or _vh_data["fit"] is None or not os.path.exists(fl_path):
+                        st.info("No valid intersection — adjust the sliders above.")
+                    else:
+                        _fit = _vh_data["fit"]
+                        _data = _vh_data["data"]
+                        _tc   = _fit["t_cross"]
+                        _ks   = _fit["kstable"]
+                        _rr   = _data.iloc[_ks]
+                        _e1   = float(_rr["eps1_major"])
+                        _e2   = float(_rr["eps2_minor"])
+                        _eqps = float(_rr["EQPS"]) if "EQPS" in _rr.index else float("nan")
+                        _d    = float(_rr["D"])    if "D"    in _rr.index else float("nan")
+
+                        fl_df = _load_csv(fl_path).copy()
+                        fl_df["time_s"] = pd.to_numeric(fl_df["time_s"], errors="coerce")
+                        _vh_row = fl_df[fl_df["method"] == "volk_hora"]
+                        if not _vh_row.empty:
+                            _st = float(_vh_row["time_s"].iloc[0])
+                            _se1 = float(pd.to_numeric(_vh_row["eps1_major"].iloc[0], errors="coerce"))
+                            _se2 = float(pd.to_numeric(_vh_row["eps2_minor"].iloc[0], errors="coerce"))
+                            st.caption(f"Stored: t = {_st:.4f} s  ε₁ = {_se1:.4f}  ε₂ = {_se2:.4f}")
+
+                        _oc1, _oc2, _oc3 = st.columns(3)
+                        _oc1.metric("t_cross (s)", f"{_tc:.4f}")
+                        _oc2.metric("ε₁", f"{_e1:.4f}")
+                        _oc3.metric("ε₂", f"{_e2:.4f}")
+
+                        _u3 = float("nan")
+                        _gl = _resolve_job_file(_job_dir, "global.csv")
+                        if os.path.exists(_gl):
+                            _gdf = _load_csv(_gl).copy()
+                            _gdf["time_s"] = pd.to_numeric(_gdf["time_s"], errors="coerce")
+                            _gdf["U3_mm"]  = pd.to_numeric(_gdf["U3_mm"],  errors="coerce")
+                            _gdf = _gdf.dropna(subset=["time_s"])
+                            if not _gdf.empty:
+                                _u3 = float(_gdf.iloc[(_gdf["time_s"] - _tc).abs().argmin()]["U3_mm"])
+                                st.caption(f"U3 = {_u3:.4f} mm")
+
+                        if st.button("Overwrite", type="primary", key=f"{_kp}_vh_override_btn"):
+                            _fw = _load_csv(fl_path).copy()
+                            _mask = _fw["method"] == "volk_hora"
+                            _upd = {"time_s": _tc, "eps1_major": _e1, "eps2_minor": _e2}
+                            if not math.isnan(_u3):                               _upd["U3_mm"] = _u3
+                            if not math.isnan(_eqps) and "EQPS" in _fw.columns:  _upd["EQPS"]  = _eqps
+                            if not math.isnan(_d)    and "D"    in _fw.columns:   _upd["D"]     = _d
+                            if _mask.any():
+                                for _col, _val in _upd.items():
+                                    if _col in _fw.columns:
+                                        _fw.loc[_mask, _col] = _val
+                            else:
+                                _nr = {c: "" for c in _fw.columns}
+                                _nr.update({"method": "volk_hora", "fracture_type": "dome"})
+                                _nr.update(_upd)
+                                _fw = pd.concat([_fw, pd.DataFrame([_nr])], ignore_index=True)
+                            _fw.to_csv(fl_path, index=False)
+                            _load_csv.clear()
+                            st.success(f"Written → t = {_tc:.4f} s  ε₁ = {_e1:.4f}  ε₂ = {_e2:.4f}")
+            _vh_content()
+
+        with tab_ab:
+            fig, reason = _zone_ab_plot_fig(job_dir)
+            if fig is not None:
+                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_ab")
+            else:
+                st.info(reason or "Zone A/B plot unavailable")
+
+        with tab_fl:
+            fp = os.path.join(job_dir, "forming_limits.csv")
+            if not os.path.exists(fp):
+                st.info("forming_limits.csv not found")
+            else:
+                raw = _load_csv(fp)
+                _METHOD_LABEL = {
+                    "fracture":     "Fracture",
+                    "volk_hora":    "Volk-Hora",
+                    "zone_ab":      "Zone A/B",
+                    "sdv6":         "SDV6/damage",
+                }
+                _PATH_LABEL = {
+                    "critical_element":                       "Single element",
+                    "volk_hora_selected_region":              "V&H zone",
+                    "fracture_neighborhood_selected_region":  "Fracture neighbourhood",
+                }
+                rows = []
+                for _, r in raw.iterrows():
+                    method   = str(r.get("method", ""))
+                    ft       = str(r.get("fracture_type", "—"))
+                    ps_raw   = str(r.get("path_source", ""))
+                    ps       = next((v for k, v in _PATH_LABEL.items() if ps_raw.startswith(k)), ps_raw)
+                    valid    = ft == "dome"
+                    e1       = pd.to_numeric(r.get("eps1_major"), errors="coerce")
+                    e2       = pd.to_numeric(r.get("eps2_minor"), errors="coerce")
+                    t        = pd.to_numeric(r.get("time_s"),     errors="coerce")
+                    u3       = pd.to_numeric(r.get("U3_mm"),      errors="coerce")
+                    rows.append({
+                        "Criterion":      _METHOD_LABEL.get(method, method),
+                        "ε₁ major":       round(float(e1), 4) if pd.notna(e1) else "—",
+                        "ε₂ minor":       round(float(e2), 4) if pd.notna(e2) else "—",
+                        "Time [s]":       round(float(t),  4) if pd.notna(t)  else "—",
+                        "U3 [mm]":        round(float(u3), 2) if pd.notna(u3) else "—",
+                        "Fracture zone":  ft,
+                        "Path source":    ps,
+                        "Valid":          "✓" if valid else "✗",
+                    })
+                summary = pd.DataFrame(rows)
+
+                def _style_row(row):
+                    color = ("#14532d" if row["Valid"] == "✓" else "#7c2d12")
+                    return [f"background-color: {color}; color: white"] * len(row)
+
+                st.dataframe(
+                    summary.style.apply(_style_row, axis=1),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+        with tab_loc:
+            fig, reason = _cluster_location_fig(job_dir)
+            if fig is not None:
+                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_loc")
+            else:
+                st.info(reason or "Cluster location unavailable")
+
+        with tab_diag:
+            _diagnostics_render(job_dir, key_prefix=f"{key_prefix}_diag")
 
     # ══════════════════════════════════════════════════════════════════════════
     # Single Job view
@@ -3308,109 +5055,136 @@ elif page == "Results":
         sel = _persisted_choice("Job", list(job_dirs.keys()), "results_single_job")
         job_dir = job_dirs[sel]
 
-        pngs = sorted(f for f in os.listdir(job_dir) if f.endswith(".png"))
-        if pngs:
-            img_cols = st.columns(min(len(pngs), 3))
-            for i, png in enumerate(pngs):
-                img_cols[i % 3].image(os.path.join(job_dir, png), use_container_width=True)
+        _render_job_media(job_dir)
+        _render_job_tabs(job_dir, key_prefix=f"single_{sel}")
+        _render_pdf_downloads(job_dir, key_prefix=f"single_{sel}")
 
-        _display_job_videos(job_dir)
+    # ══════════════════════════════════════════════════════════════════════════
+    # Direct FLC view
+    # ══════════════════════════════════════════════════════════════════════════
+    elif view_mode == "Direct FLC":
 
-        tab_fd, tab_sp, tab_cmp, tab_loc, tab_vh, tab_en, tab_fl, tab_diag = st.tabs(
-            ["Force-Disp.", "Strain Path", "Path Compare", "Cluster Location", "V&H", "Energy", "Forming Limits", "Diagnostics"]
+        direct_pts = []
+        for nm, jd in job_dirs.items():
+            pt = _job_fracture_point(jd)
+            if pt is not None:
+                direct_pts.append(pt)
+
+        if not direct_pts:
+            st.info("No completed fracture CSVs found — run postprocessing and sync results first.")
+            st.stop()
+
+        direct_pts.sort(key=lambda p: int(re.search(r'W(\d+)', p["name"]).group(1))
+                        if re.search(r'W(\d+)', p["name"]) else 0)
+
+        selected = st.multiselect(
+            "Jobs to plot",
+            [p["name"] for p in direct_pts],
+            default=[p["name"] for p in direct_pts],
+            key="results_direct_flc_jobs",
         )
 
-        with tab_fd:
-            fig_fd = _fd_with_fracture_fig(job_dir)
-            if fig_fd is not None:
-                _plotly_chart(fig_fd, use_container_width=True, key=f"fd_{sel}")
-            else:
-                st.info("Force–displacement data unavailable")
+        if not selected:
+            st.info("Select at least one completed job.")
+            st.stop()
 
-        with tab_sp:
-            fig, reason = _strain_cluster_fig(job_dir)
-            if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"strain_path_cluster_{sel}")
-            else:
-                st.info(reason or "top-5 cluster strain path unavailable")
-            fig_extras = _strain_path_extras_fig(job_dir)
-            if fig_extras is not None:
-                _plotly_chart(fig_extras, use_container_width=True, key=f"sp_extras_{sel}")
+        pts = [p for p in direct_pts if p["name"] in selected]
+        pts.sort(key=lambda p: int(re.search(r'W(\d+)', p["name"]).group(1))
+                 if re.search(r'W(\d+)', p["name"]) else 0)
 
-        with tab_cmp:
-            fig, reason = _strain_path_compare_fig(job_dir)
-            if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"strain_path_compare_{sel}")
-            else:
-                st.info(reason or "strain-path comparison unavailable")
+        @st.fragment
+        def _direct_flc_fragment(_pts=pts):
+            fig = go.Figure()
+            all_e1, all_e2 = [], []
+            _path_indices = []
+            for p in _pts:
+                col = "#1f77b4" if p["valid"] else "#d62728"
+                lbl_m = re.search(r'W\d+', p["name"])
+                lbl = lbl_m.group(0) if lbl_m else p["name"]
+                e1p, e2p = _job_strain_path(p["dir"])
+                if e1p:
+                    all_e1.extend(e1p)
+                    all_e2.extend(e2p)
+                    _path_indices.append(len(fig.data))
+                    fig.add_trace(go.Scatter(
+                        x=e2p, y=e1p, mode="lines",
+                        visible=False, showlegend=False, hoverinfo="skip",
+                        line=dict(color=col, width=1.3), opacity=0.35,
+                    ))
+                all_e1.append(p["e1"])
+                all_e2.append(p["e2"])
+                fig.add_trace(go.Scatter(
+                    x=[p["e2"]], y=[p["e1"]],
+                    mode="markers", name=lbl, legendgroup=lbl,
+                    marker=dict(size=10, color=col,
+                                symbol="circle" if p["valid"] else "x",
+                                line=dict(width=2, color=col)),
+                    hovertemplate=lbl + "<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>fracture point</extra>",
+                ))
 
-        with tab_loc:
-            fig, reason = _cluster_location_fig(job_dir)
-            if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"cluster_location_{sel}")
-            else:
-                st.info(reason or "Cluster location data unavailable")
+            if len(_pts) >= 2:
+                fig.add_trace(go.Scatter(
+                    x=[p["e2"] for p in _pts], y=[p["e1"] for p in _pts],
+                    mode="lines+markers", name="FLC (direct from jobs)",
+                    line=dict(color="red", width=2.5), marker=dict(size=8, color="red"),
+                    hovertemplate="%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra></extra>",
+                    text=[re.search(r'W\d+', p["name"]).group(0) if re.search(r'W\d+', p["name"]) else p["name"] for p in _pts],
+                ))
 
-        with tab_vh:
-            smoothing_window_combined = st.number_input(
-                "V&H fit smoothing",
-                min_value=1,
-                max_value=101,
-                value=1,
-                step=2,
-                key=f"vh_combined_smoothing_{sel}",
+            if not all_e1:
+                return
+            pad = 0.20
+            xr = max(abs(min(all_e2)), abs(max(all_e2)), 1e-6)
+            x0, x1 = -(1 + pad) * xr, (1 + pad) * xr
+            y0 = min(0.0, min(all_e1)) - pad * (max(all_e1) - min(all_e1) + 1e-6)
+            y1 = max(all_e1) + pad * (max(all_e1) - min(all_e1) + 1e-6)
+            fig.add_trace(go.Scatter(x=[x0, 0], y=[-2*x0, 0], mode='lines', name='Uniaxial tension',
+                line=dict(color='lightgray', width=1.2, dash='dashdot'), hoverinfo='skip'))
+            fig.add_trace(go.Scatter(x=[0, x1], y=[0, x1], mode='lines', name='Equibiaxial',
+                line=dict(color='lightgray', width=1.2, dash='dash'), hoverinfo='skip'))
+            _dflc_theme = _plot_theme()
+            _dflc_ps = _streamlit_plot_style(_dflc_theme)
+            fig.update_xaxes(tickfont=dict(color=_dflc_ps["axis"]), title_font=dict(color=_dflc_ps["axis"]),
+                             linecolor=_dflc_ps["axis"], gridcolor=_dflc_ps["grid"], zerolinecolor=_dflc_ps["grid"])
+            fig.update_yaxes(tickfont=dict(color=_dflc_ps["axis"]), title_font=dict(color=_dflc_ps["axis"]),
+                             linecolor=_dflc_ps["axis"], gridcolor=_dflc_ps["grid"], zerolinecolor=_dflc_ps["grid"])
+            fig.update_layout(
+                xaxis=dict(title='ε₂  minor strain  (–)', range=[x0, x1]),
+                yaxis=dict(title='ε₁  major strain  (–)', range=[y0, y1]),
+                title='Forming Limit Curve (direct from completed jobs)',
+                legend_title='Specimen', hovermode='closest',
+                template=_dflc_theme["template"], height=550,
+                paper_bgcolor=_dflc_ps["transparent"], plot_bgcolor=_dflc_ps["transparent"],
+                font=dict(color=_dflc_ps["axis"]),
             )
-            fig, reason = _volk_hora_dome_rate_fig(
-                job_dir,
-                smoothing_window=int(smoothing_window_combined),
-            )
-            if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"vh_dome_{sel}")
-            else:
-                st.info(reason or "Independent dome Volk-Hora data unavailable")
-            anchor_points, _fracture_n = _fracture_cluster_anchor(job_dir)
-            if anchor_points:
-                zone_fig, zone_reason = _volk_hora_zone_location_fig(
-                    os.path.join(job_dir, "strain_dome.csv"),
-                    "Fracture-Constrained V&H Zone Selection",
-                    prefer_fracture_center=True,
-                    anchor_points=anchor_points,
-                    anchor_name="fracture cluster",
-                    anchor_hops=VH_FRACTURE_HOPS,
+            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color=_dflc_ps["guide"])
+            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color=_dflc_ps["guide"])
+            _plotly_chart(fig, use_container_width=True)
+            _path_toggle_switch(_path_indices)
+
+        _direct_flc_fragment()
+
+        with st.expander("Export plot"):
+            import plotly.io as _pio
+            c_name, c_scale, c_fmt = st.columns([3, 1, 1])
+            with c_name:
+                fname = st.text_input("Filename", value="FLC_direct")
+            with c_scale:
+                scale = st.selectbox("Resolution", [1, 2, 3, 4],
+                                     index=1, format_func=lambda s: f"{s}× ({s*1200}×{s*500}px)")
+            with c_fmt:
+                fmt = st.selectbox("Format", ["png", "pdf", "svg"])
+
+            if st.button("Render & download", type="primary", key="direct_flc_export"):
+                with st.spinner("Rendering…"):
+                    img_bytes = _pio.to_image(fig, format=fmt, width=1200, height=500, scale=scale)
+                st.download_button(
+                    label=f"Download {fname}.{fmt}",
+                    data=img_bytes,
+                    file_name=f"{fname}.{fmt}",
+                    mime=f"image/{fmt}" if fmt != "pdf" else "application/pdf",
+                    key="direct_flc_download",
                 )
-            else:
-                zone_fig, zone_reason = None, "fracture cluster not found; rerun postprocessing to generate strain_cluster_faces.csv"
-            if zone_fig is not None:
-                _plotly_chart(zone_fig, use_container_width=True, key=f"vh_dome_zone_{sel}")
-            else:
-                st.info(zone_reason or "V&H dome zone location unavailable")
-
-        with tab_en:
-            fig_en = _energy_fig_v2(job_dir)
-            if fig_en is not None:
-                _plotly_chart(fig_en, use_container_width=True, key=f"energy_{sel}")
-            else:
-                st.info("Energy data unavailable")
-
-        with tab_fl:
-            fp = os.path.join(job_dir, "forming_limits.csv")
-            if os.path.exists(fp):
-                df = _load_csv(fp)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-
-        with tab_diag:
-            _diagnostics_render(job_dir, key_prefix=f"diag_{sel}")
-
-        pdfs = sorted(f for f in os.listdir(job_dir) if f.endswith(".pdf"))
-        if pdfs:
-            st.markdown("---")
-            dl_cols = st.columns(len(pdfs))
-            for i, pdf in enumerate(pdfs):
-                with open(os.path.join(job_dir, pdf), "rb") as fh:
-                    dl_cols[i].download_button(
-                        f"Download {pdf}", fh, file_name=pdf,
-                        mime="application/pdf", key=f"dl_{pdf}_{sel}",
-                    )
 
     # ══════════════════════════════════════════════════════════════════════════
     # Full FLC view
@@ -3437,7 +5211,7 @@ elif page == "Results":
         # ── Variant selector: filter to one suffix when multiple exist ────────
         def _job_variant(name):
             m = re.search(r'_ang\d+_(.*)', name)
-            return m.group(1) if m else ''
+            return _strip_punch_travel_token(m.group(1)) if m else ''
 
         _variants = sorted(set(_job_variant(n) for n in sub_jobs))
         if len(_variants) > 1:
@@ -3492,7 +5266,27 @@ elif page == "Results":
                     })
 
         _pts.sort(key=lambda p: _flc_w(p['name']))
-        _cmap_flc = {p['name']: _FLC_COLORS[i % len(_FLC_COLORS)] for i, p in enumerate(_pts)}
+        # Build colour map from all sub_jobs so strain paths get a colour even
+        # when no fracture forming-limit row exists for that job.
+        _all_names = list(dict.fromkeys([p['name'] for p in _pts] + list(sub_jobs.keys())))
+        _cmap_flc = {name: _FLC_COLORS[i % len(_FLC_COLORS)] for i, name in enumerate(_all_names)}
+
+        # ── Collect VH forming limit points (same samples as FFLC) ───────────
+        _vh_pts = []
+        for _p in _pts:
+            if not _p.get('dir') or not os.path.isdir(_p['dir']):
+                continue
+            _flim = os.path.join(_p['dir'], 'forming_limits.csv')
+            if not os.path.exists(_flim):
+                continue
+            _dfl = _load_csv(_flim)
+            _vhr = _dfl[_dfl['method'] == 'volk_hora']
+            if not _vhr.empty:
+                _e1v = pd.to_numeric(_vhr.iloc[0]['eps1_major'], errors='coerce')
+                _e2v = pd.to_numeric(_vhr.iloc[0]['eps2_minor'], errors='coerce')
+                if not (math.isnan(_e1v) or math.isnan(_e2v)):
+                    _vh_pts.append({'name': _p['name'], 'e1': float(_e1v), 'e2': float(_e2v)})
+        _vh_pts.sort(key=lambda p: _flc_w(p['name']))
 
         def _cluster_path(job_dir, reducer="median"):
             fp = _resolve_job_file(job_dir, "strain_cluster.csv")
@@ -3532,6 +5326,8 @@ elif page == "Results":
             ))
 
         def _cluster_flc_fig(points, reducer="median"):
+            _theme = _plot_theme()
+            _ps = _streamlit_plot_style(_theme)
             cluster_pts = []
             for p in points:
                 if not p.get("dir") or not os.path.isdir(p["dir"]):
@@ -3564,12 +5360,12 @@ elif page == "Results":
                     hovertemplate=(
                         lbl + "<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}"
                         "<br>t=" + ("%.4f" % p["end_time"]) + " s"
-                        "<extra>top-5 " + reducer + " endpoint</extra>"
+                        "<extra>" + VH_SEED_LABEL + " " + reducer + " endpoint</extra>"
                     ),
                 ))
 
             curve_pts = sorted(cluster_pts, key=lambda p: p["end_e2"])
-            curve_name = "FLC (top-5 cluster %s)" % reducer
+            curve_name = "FLC (%s cluster %s)" % (VH_SEED_LABEL, reducer)
             curve_color = "red" if reducer == "median" else "#2563eb"
             fig.add_trace(go.Scatter(
                 x=[p["end_e2"] for p in curve_pts],
@@ -3583,31 +5379,54 @@ elif page == "Results":
                     if re.search(r'W\d+', p["name"]) else p["name"]
                     for p in curve_pts
                 ],
-                hovertemplate="%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>top-5 " + reducer + " FLC</extra>",
+                hovertemplate="%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>" + VH_SEED_LABEL + " " + reducer + " FLC</extra>",
             ))
 
-            _e2v = [p["end_e2"] for p in cluster_pts]
-            _e1v = [p["end_e1"] for p in cluster_pts]
+            _vh_sorted_c = sorted(_vh_pts, key=lambda p: p['e2'])
+            if _vh_sorted_c:
+                fig.add_trace(go.Scatter(
+                    x=[p['e2'] for p in _vh_sorted_c],
+                    y=[p['e1'] for p in _vh_sorted_c],
+                    mode='lines+markers', name='FLC (V&H)',
+                    line=dict(color='#2563eb', width=2, dash='dash'),
+                    marker=dict(symbol='diamond', size=8, color='#2563eb'),
+                    text=[re.search(r'W\d+', p['name']).group(0)
+                          if re.search(r'W\d+', p['name']) else p['name']
+                          for p in _vh_sorted_c],
+                    hovertemplate='%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>V&H necking</extra>',
+                ))
+
+            _e2v = [p["end_e2"] for p in cluster_pts] + [p['e2'] for p in _vh_pts]
+            _e1v = [p["end_e1"] for p in cluster_pts] + [p['e1'] for p in _vh_pts]
             _add_fld_reference_lines(fig, _e1v)
             _pad = 0.2
             _xr = max(abs(min(_e2v)), abs(max(_e2v)), 1e-6)
             _x0, _x1 = -(1 + _pad) * _xr, (1 + _pad) * _xr
             _y0 = min(0.0, min(_e1v)) - _pad * (max(_e1v) - min(_e1v) + 1e-6)
             _y1 = max(_e1v) + _pad * (max(_e1v) - min(_e1v) + 1e-6)
+            fig.update_xaxes(tickfont=dict(color=_ps["axis"]), title_font=dict(color=_ps["axis"]),
+                             linecolor=_ps["axis"], gridcolor=_ps["grid"], zerolinecolor=_ps["grid"])
+            fig.update_yaxes(tickfont=dict(color=_ps["axis"]), title_font=dict(color=_ps["axis"]),
+                             linecolor=_ps["axis"], gridcolor=_ps["grid"], zerolinecolor=_ps["grid"])
             fig.update_layout(
                 xaxis=dict(title='ε₂  minor strain  (–)', range=[_x0, _x1]),
                 yaxis=dict(title='ε₁  major strain  (–)', range=[_y0, _y1]),
-                title='Forming Limit Curve from Top-5 Fracture-Neighborhood ' + reducer.title(),
+                title='Forming Limit Curve from ' + VH_SEED_LABEL + ' Fracture-Neighborhood ' + reducer.title(),
                 legend_title='Specimen',
                 hovermode='closest',
-                template='plotly_white',
+                template=_theme["template"],
                 height=550,
+                paper_bgcolor=_ps["transparent"],
+                plot_bgcolor=_ps["transparent"],
+                font=dict(color=_ps["axis"]),
             )
-            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color='gray')
-            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color='gray')
+            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color=_ps["guide"])
+            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color=_ps["guide"])
             return fig
 
         def _vh_flc_fig(points):
+            _theme = _plot_theme()
+            _ps = _streamlit_plot_style(_theme)
             vh_pts = []
             for p in points:
                 if not p.get("dir") or not os.path.isdir(p["dir"]):
@@ -3651,8 +5470,8 @@ elif page == "Results":
                 y=[p["end_e1"] for p in curve_pts],
                 mode="lines+markers",
                 name="FLC (constrained V&H average)",
-                line=dict(color="#111827", width=2.5),
-                marker=dict(symbol="circle", size=8, color="#111827"),
+                line=dict(color=_ps["axis"], width=2.5),
+                marker=dict(symbol="circle", size=8, color=_ps["axis"]),
                 text=[
                     re.search(r'W\d+', p["name"]).group(0)
                     if re.search(r'W\d+', p["name"]) else p["name"]
@@ -3661,42 +5480,69 @@ elif page == "Results":
                 hovertemplate="%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>constrained V&H FLC</extra>",
             ))
 
-            _e2v = [p["end_e2"] for p in vh_pts]
-            _e1v = [p["end_e1"] for p in vh_pts]
+            _vh_sorted_v = sorted(_vh_pts, key=lambda p: p['e2'])
+            if _vh_sorted_v:
+                fig.add_trace(go.Scatter(
+                    x=[p['e2'] for p in _vh_sorted_v],
+                    y=[p['e1'] for p in _vh_sorted_v],
+                    mode='lines+markers', name='FLC (V&H)',
+                    line=dict(color='#2563eb', width=2, dash='dash'),
+                    marker=dict(symbol='diamond', size=8, color='#2563eb'),
+                    text=[re.search(r'W\d+', p['name']).group(0)
+                          if re.search(r'W\d+', p['name']) else p['name']
+                          for p in _vh_sorted_v],
+                    hovertemplate='%{text}<br>ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra>V&H necking</extra>',
+                ))
+
+            _e2v = [p["end_e2"] for p in vh_pts] + [p['e2'] for p in _vh_pts]
+            _e1v = [p["end_e1"] for p in vh_pts] + [p['e1'] for p in _vh_pts]
             _add_fld_reference_lines(fig, _e1v)
             _pad = 0.2
             _xr = max(abs(min(_e2v)), abs(max(_e2v)), 1e-6)
             _x0, _x1 = -(1 + _pad) * _xr, (1 + _pad) * _xr
             _y0 = min(0.0, min(_e1v)) - _pad * (max(_e1v) - min(_e1v) + 1e-6)
             _y1 = max(_e1v) + _pad * (max(_e1v) - min(_e1v) + 1e-6)
+            fig.update_xaxes(tickfont=dict(color=_ps["axis"]), title_font=dict(color=_ps["axis"]),
+                             linecolor=_ps["axis"], gridcolor=_ps["grid"], zerolinecolor=_ps["grid"])
+            fig.update_yaxes(tickfont=dict(color=_ps["axis"]), title_font=dict(color=_ps["axis"]),
+                             linecolor=_ps["axis"], gridcolor=_ps["grid"], zerolinecolor=_ps["grid"])
             fig.update_layout(
                 xaxis=dict(title='ε₂  minor strain  (–)', range=[_x0, _x1]),
                 yaxis=dict(title='ε₁  major strain  (–)', range=[_y0, _y1]),
                 title='Forming Limit Curve from Fracture-Constrained V&H Average',
                 legend_title='Specimen',
                 hovermode='closest',
-                template='plotly_white',
+                template=_theme["template"],
                 height=550,
+                paper_bgcolor=_ps["transparent"],
+                plot_bgcolor=_ps["transparent"],
+                font=dict(color=_ps["axis"]),
             )
-            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color='gray')
-            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color='gray')
+            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color=_ps["guide"])
+            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color=_ps["guide"])
             return fig
 
         # ── Draw FLC chart ────────────────────────────────────────────────────
-        if _pts:
+        @st.fragment
+        def _flc_chart_fragment(_pts=_pts, _vh_pts=_vh_pts, _sub_jobs=sub_jobs,
+                                _cmap=_cmap_flc):
+            if not (_pts or _vh_pts or _sub_jobs):
+                return
+
             chart_tab, median_tab, average_tab, vh_tab = st.tabs([
-                "Fracture FLC", "Top-5 Median FLC", "Top-5 Average FLC", "Constrained V&H FLC"
+                "Fracture FLC", VH_SEED_LABEL + " Median FLC", VH_SEED_LABEL + " Average FLC", "Constrained V&H FLC"
             ])
             flc_fig = go.Figure()
 
-            # Faint strain paths per specimen
-            for _p in _pts:
-                if not _p['dir'] or not os.path.isdir(_p['dir']):
+            # Strain paths — hidden by default, toggled via Plotly button (client-side, no rerun)
+            _path_indices = []
+            for _nm, _jd in _sub_jobs.items():
+                if not os.path.isdir(_jd):
                     continue
                 _e1p, _e2p = None, None
                 for _fn, _c1, _c2 in [('strain_path.csv', 'eps1_major', 'eps2_minor'),
                                        ('elout.csv',       'eps1_le',    'eps2_le')]:
-                    _fp2 = os.path.join(_p['dir'], _fn)
+                    _fp2 = os.path.join(_jd, _fn)
                     if os.path.exists(_fp2):
                         _dfsp = _load_csv(_fp2)
                         if _c1 in _dfsp.columns and _c2 in _dfsp.columns:
@@ -3704,30 +5550,47 @@ elif page == "Results":
                             _e2p = _dfsp[_c2].tolist()
                             break
                 if _e1p:
+                    _path_indices.append(len(flc_fig.data))
                     flc_fig.add_trace(go.Scatter(
                         x=_e2p, y=_e1p, mode='lines',
-                        legendgroup=_p['name'], showlegend=False, hoverinfo='skip',
-                        line=dict(color=_cmap_flc[_p['name']], width=1.2), opacity=0.35,
+                        visible=False, showlegend=False, hoverinfo='skip',
+                        line=dict(color=_cmap.get(_nm, '#888888'), width=1.2), opacity=0.35,
                     ))
 
-            # Red FFLC — fracture curve (sorted left → right, dome points only)
+            # Red FFLC — fracture curve (solid, slight transparency)
             _dome_pts = sorted([p for p in _pts if p['valid']], key=lambda p: p['e2'])
             if _dome_pts:
                 flc_fig.add_trace(go.Scatter(
                     x=[p['e2'] for p in _dome_pts],
                     y=[p['e1'] for p in _dome_pts],
                     mode='lines+markers', name='FFLC (fracture)',
-                    line=dict(color='red', width=2),
+                    line=dict(color='red', width=2, dash='solid'),
                     marker=dict(symbol='circle', size=8, color='red'),
+                    opacity=0.85,
                     hovertemplate='%{text}<br>ε₂=%{x:.3f}<br>ε₁=%{y:.3f}<extra>Fracture</extra>',
                     text=[re.search(r'W\d+', p['name']).group(0)
                           if re.search(r'W\d+', p['name']) else p['name']
                           for p in _dome_pts],
                 ))
 
-            # Per-specimen markers
+            # Blue FLC — Volk-Hora necking curve (dashed)
+            _vh_sorted = sorted(_vh_pts, key=lambda p: p['e2'])
+            if _vh_sorted:
+                flc_fig.add_trace(go.Scatter(
+                    x=[p['e2'] for p in _vh_sorted],
+                    y=[p['e1'] for p in _vh_sorted],
+                    mode='lines+markers', name='FLC (V&H)',
+                    line=dict(color='#2563eb', width=2, dash='dash'),
+                    marker=dict(symbol='diamond', size=8, color='#2563eb'),
+                    hovertemplate='%{text}<br>ε₂=%{x:.3f}<br>ε₁=%{y:.3f}<extra>V&H necking</extra>',
+                    text=[re.search(r'W\d+', p['name']).group(0)
+                          if re.search(r'W\d+', p['name']) else p['name']
+                          for p in _vh_sorted],
+                ))
+
+            # Per-specimen markers (fracture endpoints — only when available)
             for _p in _pts:
-                _col = _cmap_flc[_p['name']]
+                _col = _cmap[_p['name']]
                 _m = re.search(r'W\d+', _p['name'])
                 _lbl = _m.group(0) if _m else _p['name']
                 flc_fig.add_trace(go.Scatter(
@@ -3739,8 +5602,25 @@ elif page == "Results":
                     hovertemplate=(_lbl + '<br>ε₂=%{x:.3f}<br>ε₁=%{y:.3f}<extra></extra>'),
                 ))
 
-            # Reference lines
-            _L = max(max(p['e1'] for p in _pts), 0.8) * 1.3
+            # Axis range — from forming-limit points; fallback to strain path endpoints
+            _all_plot_pts = _pts + _vh_pts
+            _e2v = [p['e2'] for p in _all_plot_pts]
+            _e1v = [p['e1'] for p in _all_plot_pts]
+            if not _e1v:
+                for _nm, _jd in _sub_jobs.items():
+                    for _fn, _c1, _c2 in [('strain_path.csv', 'eps1_major', 'eps2_minor'),
+                                           ('elout.csv',       'eps1_le',    'eps2_le')]:
+                        _fp2 = os.path.join(_jd, _fn)
+                        if os.path.exists(_fp2):
+                            _dfsp2 = _load_csv(_fp2)
+                            if _c1 in _dfsp2.columns and _c2 in _dfsp2.columns:
+                                _e1v.append(float(pd.to_numeric(_dfsp2[_c1], errors='coerce').dropna().iloc[-1]))
+                                _e2v.append(float(pd.to_numeric(_dfsp2[_c2], errors='coerce').dropna().iloc[-1]))
+                                break
+            if not _e1v:
+                _e1v, _e2v = [0.5], [0.0]
+
+            _L = max(max(_e1v), 0.8) * 1.3
             flc_fig.add_trace(go.Scatter(
                 x=[-_L / 2, 0], y=[_L, 0], mode='lines', name='Uniaxial tension',
                 line=dict(color='lightgray', width=1.2, dash='dashdot'), hoverinfo='skip',
@@ -3750,39 +5630,47 @@ elif page == "Results":
                 line=dict(color='lightgray', width=1.2, dash='dash'), hoverinfo='skip',
             ))
 
-            _e2v = [p['e2'] for p in _pts]
-            _e1v = [p['e1'] for p in _pts]
             _pad = 0.2
-            _xr  = max(abs(min(_e2v)), abs(max(_e2v))) + 1e-6
+            _xr  = max(abs(min(_e2v)), abs(max(_e2v)), 1e-6)
             _x0, _x1 = -(1 + _pad) * _xr, (1 + _pad) * _xr
             _y0 = min(0.0, min(_e1v)) - _pad * (max(_e1v) - min(_e1v) + 1e-6)
             _y1 = max(_e1v) + _pad * (max(_e1v) - min(_e1v) + 1e-6)
 
+            _flc_theme = _plot_theme()
+            _flc_ps = _streamlit_plot_style(_flc_theme)
+            flc_fig.update_xaxes(tickfont=dict(color=_flc_ps["axis"]), title_font=dict(color=_flc_ps["axis"]),
+                                 linecolor=_flc_ps["axis"], gridcolor=_flc_ps["grid"], zerolinecolor=_flc_ps["grid"])
+            flc_fig.update_yaxes(tickfont=dict(color=_flc_ps["axis"]), title_font=dict(color=_flc_ps["axis"]),
+                                 linecolor=_flc_ps["axis"], gridcolor=_flc_ps["grid"], zerolinecolor=_flc_ps["grid"])
             flc_fig.update_layout(
                 xaxis=dict(title='ε₂  minor strain  (–)', range=[_x0, _x1]),
                 yaxis=dict(title='ε₁  major strain  (–)', range=[_y0, _y1]),
                 title='Forming Limit Curve',
                 legend_title='Specimen',
                 hovermode='closest',
-                template='plotly_white',
+                template=_flc_theme["template"],
                 height=550,
+                paper_bgcolor=_flc_ps["transparent"],
+                plot_bgcolor=_flc_ps["transparent"],
+                font=dict(color=_flc_ps["axis"]),
             )
-            flc_fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color='gray')
-            flc_fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color='gray')
+            flc_fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color=_flc_ps["guide"])
+            flc_fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color=_flc_ps["guide"])
             with chart_tab:
                 _plotly_chart(flc_fig, use_container_width=True)
+                _path_toggle_switch(_path_indices)
             with median_tab:
                 cluster_fig = _cluster_flc_fig(_pts, reducer="median")
                 if cluster_fig is not None:
                     _plotly_chart(cluster_fig, use_container_width=True)
                 else:
-                    st.info("No top-5 cluster median data found yet. Rerun postprocessing and sync results.")
+                    st.info("No selected-region cluster median data found yet. Rerun postprocessing and sync results.")
             with average_tab:
                 cluster_fig = _cluster_flc_fig(_pts, reducer="average")
                 if cluster_fig is not None:
                     _plotly_chart(cluster_fig, use_container_width=True)
                 else:
-                    st.info("No top-5 cluster average data found yet. Rerun postprocessing and sync results.")
+                    st.info("No selected-region cluster average data found yet. Rerun postprocessing and sync results.")
             with vh_tab:
                 vh_fig = _vh_flc_fig(_pts)
                 if vh_fig is not None:
@@ -3790,6 +5678,8 @@ elif page == "Results":
                 else:
                     st.info("No V&H necking-zone path data found yet. Rerun postprocessing and sync results.")
 
+        if _pts or _vh_pts or sub_jobs:
+            _flc_chart_fragment()
         elif has_png:
             st.image(flc_png, use_container_width=True)
         else:
@@ -3815,79 +5705,9 @@ elif page == "Results":
             )
             job_dir = sub_jobs[sel_sub]
 
-            pngs = sorted(f for f in os.listdir(job_dir) if f.endswith(".png"))
-            if pngs:
-                img_cols = st.columns(min(len(pngs), 3))
-                for i, png in enumerate(pngs):
-                    img_cols[i % 3].image(os.path.join(job_dir, png), use_container_width=True)
-
-            _display_job_videos(job_dir)
-
-            tab_fd2, tab_sp2, tab_vh2, tab_en2, tab_fl2, tab_diag2 = st.tabs(
-                ["Force-Disp.", "Strain Path", "V&H Rate", "Energy", "Forming Limits", "Diagnostics"]
-            )
-
-            with tab_fd2:
-                fig_fd2 = _fd_with_fracture_fig(job_dir)
-                if fig_fd2 is not None:
-                    _plotly_chart(fig_fd2, use_container_width=True, key=f"fd2_{sel_sub}")
-                else:
-                    st.info("Force–displacement data unavailable")
-
-            with tab_sp2:
-                fig, reason = _strain_cluster_fig(job_dir)
-                if fig is not None:
-                    _plotly_chart(fig, use_container_width=True, key=f"strain_path_cluster2_{sel_sub}")
-                else:
-                    st.info(reason or "top-5 cluster strain path unavailable")
-                fig_extras2 = _strain_path_extras_fig(job_dir)
-                if fig_extras2 is not None:
-                    _plotly_chart(fig_extras2, use_container_width=True, key=f"sp_extras2_{sel_sub}")
-
-            with tab_vh2:
-                smoothing_window2 = st.number_input(
-                    "Fit smoothing",
-                    min_value=1,
-                    max_value=101,
-                    value=20,
-                    step=2,
-                    key=f"vh_fit_smoothing2_{sel_sub}",
-                )
-                fig, reason = _volk_hora_rate_fig(
-                    job_dir,
-                    smoothing_window=int(smoothing_window2),
-                )
-                if fig is not None:
-                    _plotly_chart(fig, use_container_width=True, key=f"vh_rate2_{sel_sub}")
-                else:
-                    st.info(reason or "Volk-Hora rate data unavailable")
-
-            with tab_en2:
-                fig_en2 = _energy_fig_v2(job_dir)
-                if fig_en2 is not None:
-                    _plotly_chart(fig_en2, use_container_width=True, key=f"energy2_{sel_sub}")
-                else:
-                    st.info("Energy data unavailable")
-
-            with tab_fl2:
-                fp = os.path.join(job_dir, "forming_limits.csv")
-                if os.path.exists(fp):
-                    df = _load_csv(fp)
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-
-            with tab_diag2:
-                _diagnostics_render(job_dir, key_prefix=f"diag2_{sel_sub}")
-
-            pdfs = sorted(f for f in os.listdir(job_dir) if f.endswith(".pdf"))
-            if pdfs:
-                st.markdown("---")
-                dl_cols = st.columns(len(pdfs))
-                for i, pdf in enumerate(pdfs):
-                    with open(os.path.join(job_dir, pdf), "rb") as fh:
-                        dl_cols[i].download_button(
-                            f"Download {pdf}", fh, file_name=pdf,
-                            mime="application/pdf", key=f"subdl_{pdf}_{sel_sub}",
-                        )
+            _render_job_media(job_dir)
+            _render_job_tabs(job_dir, key_prefix=f"flc_{sel_flc}_{sel_sub}")
+            _render_pdf_downloads(job_dir, key_prefix=f"flc_{sel_flc}_{sel_sub}")
 
     # ══════════════════════════════════════════════════════════════════════════
     # Compare FLC view
@@ -3901,6 +5721,7 @@ elif page == "Results":
                 thickness = m.group(2).replace('p', '.')
                 angle     = m.group(3)
                 suffix    = m.group(4).lstrip('_')
+                suffix    = _strip_punch_travel_token(suffix)
                 label = f"{test}  t = {thickness} mm"
                 if angle != '0':
                     label += f"  {angle}°"
@@ -3911,7 +5732,7 @@ elif page == "Results":
 
         def _job_variant_in_dir(name):
             m = re.search(r'_ang\d+_(.*)', name)
-            return m.group(1) if m else ''
+            return _strip_punch_travel_token(m.group(1)) if m else ''
 
         def _fracture_points(flc_dir, variant=None):
             pts = []
@@ -3948,6 +5769,29 @@ elif page == "Results":
                 if c1 in df_sp.columns and c2 in df_sp.columns:
                     return df_sp[c1].tolist(), df_sp[c2].tolist()
             return None, None
+
+        def _vh_points(flc_dir, variant=None):
+            pts = []
+            try:
+                for entry in sorted(os.scandir(flc_dir), key=lambda e: e.name):
+                    if not entry.is_dir():
+                        continue
+                    if variant is not None and _job_variant_in_dir(entry.name) != variant:
+                        continue
+                    fp = os.path.join(entry.path, 'forming_limits.csv')
+                    if not os.path.exists(fp):
+                        continue
+                    df_lim = _load_csv(fp)
+                    row = df_lim[df_lim['method'] == 'volk_hora']
+                    if not row.empty:
+                        _e1 = pd.to_numeric(row.iloc[0]['eps1_major'], errors='coerce')
+                        _e2 = pd.to_numeric(row.iloc[0]['eps2_minor'], errors='coerce')
+                        if not (math.isnan(_e1) or math.isnan(_e2)):
+                            pts.append({'e2': float(_e2), 'e1': float(_e1), 'job': entry.name})
+            except PermissionError:
+                pass
+            pts.sort(key=lambda p: p['e2'])
+            return pts
 
         def _has_csv_data(flc_dir):
             try:
@@ -3996,113 +5840,101 @@ elif page == "Results":
             st.info("Select at least one FLC set above.")
             st.stop()
 
-        show_paths = st.checkbox("Show strain paths", value=False)
+        _PALETTE = ['#1b7837','#762a83','#d6604d','#4393c3','#e08214','#2d004b','#543005','#01665e']
+        _DASHES  = ['solid', 'dash', 'dashdot', 'dot', 'longdash', 'longdashdot']
+        _MARKERS = ['circle', 'square', 'diamond', 'triangle-up', 'cross', 'star', 'pentagon', 'hexagram']
 
-        # Paper-friendly palette: distinct hues + varying luminance → readable in B&W
-        # Colors from ColorBrewer Dark2 (perceptually distinct, print-safe)
-        _PALETTE = [
-            '#1b7837',  # dark green
-            '#762a83',  # purple
-            '#d6604d',  # brick red
-            '#4393c3',  # steel blue
-            '#e08214',  # amber
-            '#2d004b',  # very dark purple
-            '#543005',  # dark brown
-            '#01665e',  # teal
-        ]
-        _DASHES   = ['solid', 'dash', 'dashdot', 'dot', 'longdash', 'longdashdot']
-        _MARKERS  = ['circle', 'square', 'diamond', 'triangle-up', 'cross', 'star', 'pentagon', 'hexagram']
+        def _cmp_flc_fragment(_sel=selected, _opts=flc_options):
+            fig = go.Figure()
+            no_data = []
+            all_e1, all_e2 = [], []
+            _path_indices = []
 
-        fig = go.Figure()
-        no_data = []
-        all_e1, all_e2 = [], []
+            for i, label in enumerate(_sel):
+                color  = _PALETTE[i % len(_PALETTE)]
+                marker = _MARKERS[i % len(_MARKERS)]
 
-        for i, label in enumerate(selected):
-            color   = _PALETTE[i % len(_PALETTE)]
-            dash    = _DASHES[i % len(_DASHES)]
-            marker  = _MARKERS[i % len(_MARKERS)]
+                _flc_path, _flc_var = _opts[label]
+                pts = _fracture_points(_flc_path, variant=_flc_var)
+                if not pts:
+                    no_data.append(label)
+                    continue
 
-            _flc_path, _flc_var = flc_options[label]
-            pts = _fracture_points(_flc_path, variant=_flc_var)
-            if not pts:
-                no_data.append(label)
-                continue
+                all_e2.extend(p['e2'] for p in pts)
+                all_e1.extend(p['e1'] for p in pts)
 
-            all_e2.extend(p['e2'] for p in pts)
-            all_e1.extend(p['e1'] for p in pts)
-
-            # Strain paths first so FLC curve renders on top
-            if show_paths:
                 for pt in pts:
                     e1_path, e2_path = _read_strain_path(pt['dir'])
                     if e1_path:
                         all_e1.extend(e1_path)
                         all_e2.extend(e2_path)
+                        _path_indices.append(len(fig.data))
                         fig.add_trace(go.Scatter(
-                            x=e2_path, y=e1_path,
-                            mode='lines',
-                            name=label,
-                            legendgroup=label,
-                            showlegend=False,
-                            hoverinfo='skip',
-                            line=dict(color=color, width=1, dash='dot'),
-                            opacity=0.4,
+                            x=e2_path, y=e1_path, mode='lines',
+                            visible=False, showlegend=False, hoverinfo='skip',
+                            line=dict(color=color, width=1, dash='dot'), opacity=0.4,
                         ))
 
-            fig.add_trace(go.Scatter(
-                x=[p['e2'] for p in pts],
-                y=[p['e1'] for p in pts],
-                mode='lines+markers',
-                name=label,
-                legendgroup=label,
-                text=[p['job'] for p in pts],
-                hovertemplate='%{text}<br>ε₂ = %{x:.3f}<br>ε₁ = %{y:.3f}<extra></extra>',
-                marker=dict(size=8, symbol=marker, color=color),
-                line=dict(color=color, width=2, dash=dash),
-            ))
+                fig.add_trace(go.Scatter(
+                    x=[p['e2'] for p in pts], y=[p['e1'] for p in pts],
+                    mode='lines+markers', name=label, legendgroup=label,
+                    text=[p['job'] for p in pts],
+                    hovertemplate='%{text}<br>ε₂ = %{x:.3f}<br>ε₁ = %{y:.3f}<extra>FFLC</extra>',
+                    marker=dict(size=8, symbol=marker, color=color),
+                    line=dict(color=color, width=2, dash='solid'), opacity=0.85,
+                ))
 
-        # Compute axis range from data with padding
-        pad = 0.15
-        if all_e1 and all_e2:
-            x0 = min(all_e2) - pad * (max(all_e2) - min(all_e2) + 1e-6)
-            x1 = max(all_e2) + pad * (max(all_e2) - min(all_e2) + 1e-6)
-            y0 = min(0.0, min(all_e1)) - pad * (max(all_e1) - min(all_e1) + 1e-6)
-            y1 = max(all_e1) + pad * (max(all_e1) - min(all_e1) + 1e-6)
-        else:
-            x0, x1, y0, y1 = -0.5, 0.5, 0.0, 1.0
+                _vh_cmp = _vh_points(_flc_path, variant=_flc_var)
+                if _vh_cmp:
+                    all_e2.extend(p['e2'] for p in _vh_cmp)
+                    all_e1.extend(p['e1'] for p in _vh_cmp)
+                    fig.add_trace(go.Scatter(
+                        x=[p['e2'] for p in _vh_cmp], y=[p['e1'] for p in _vh_cmp],
+                        mode='lines+markers', name=label + ' (V&H)',
+                        legendgroup=label + '_vh', text=[p['job'] for p in _vh_cmp],
+                        hovertemplate='%{text}<br>ε₂ = %{x:.3f}<br>ε₁ = %{y:.3f}<extra>V&H FLC</extra>',
+                        marker=dict(size=7, symbol='diamond', color=color),
+                        line=dict(color=color, width=2, dash='dash'),
+                    ))
 
-        # Reference guidelines clipped to data range
-        fig.add_trace(go.Scatter(
-            x=[x0, 0], y=[-2 * x0, 0],
-            mode='lines', name='Uniaxial tension',
-            legendgroup='_guides', legendgrouptitle_text='Reference',
-            line=dict(color='lightgray', width=1.2, dash='dashdot'),
-            hoverinfo='skip',
-        ))
-        fig.add_trace(go.Scatter(
-            x=[0, x1], y=[0, x1],
-            mode='lines', name='Equibiaxial',
-            legendgroup='_guides',
-            line=dict(color='lightgray', width=1.2, dash='dash'),
-            hoverinfo='skip',
-        ))
+            pad = 0.15
+            if all_e1 and all_e2:
+                x0 = min(all_e2) - pad * (max(all_e2) - min(all_e2) + 1e-6)
+                x1 = max(all_e2) + pad * (max(all_e2) - min(all_e2) + 1e-6)
+                y0 = min(0.0, min(all_e1)) - pad * (max(all_e1) - min(all_e1) + 1e-6)
+                y1 = max(all_e1) + pad * (max(all_e1) - min(all_e1) + 1e-6)
+            else:
+                x0, x1, y0, y1 = -0.5, 0.5, 0.0, 1.0
 
-        fig.update_layout(
-            xaxis=dict(title='ε₂  minor strain  (–)', range=[x0, x1]),
-            yaxis=dict(title='ε₁  major strain  (–)', range=[y0, y1]),
-            title='Forming Limit Curve Comparison',
-            legend_title='FLC set',
-            hovermode='closest',
-            template='plotly_white',
-            width=1200, height=500,
-        )
-        fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color='gray')
-        fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color='gray')
+            fig.add_trace(go.Scatter(x=[x0, 0], y=[-2*x0, 0], mode='lines', name='Uniaxial tension',
+                legendgroup='_guides', legendgrouptitle_text='Reference',
+                line=dict(color='lightgray', width=1.2, dash='dashdot'), hoverinfo='skip'))
+            fig.add_trace(go.Scatter(x=[0, x1], y=[0, x1], mode='lines', name='Equibiaxial',
+                legendgroup='_guides', line=dict(color='lightgray', width=1.2, dash='dash'), hoverinfo='skip'))
 
-        _plotly_chart(fig, use_container_width=True)
+            _cmp_theme = _plot_theme()
+            _cmp_ps = _streamlit_plot_style(_cmp_theme)
+            fig.update_xaxes(tickfont=dict(color=_cmp_ps["axis"]), title_font=dict(color=_cmp_ps["axis"]),
+                             linecolor=_cmp_ps["axis"], gridcolor=_cmp_ps["grid"], zerolinecolor=_cmp_ps["grid"])
+            fig.update_yaxes(tickfont=dict(color=_cmp_ps["axis"]), title_font=dict(color=_cmp_ps["axis"]),
+                             linecolor=_cmp_ps["axis"], gridcolor=_cmp_ps["grid"], zerolinecolor=_cmp_ps["grid"])
+            fig.update_layout(
+                xaxis=dict(title='ε₂  minor strain  (–)', range=[x0, x1]),
+                yaxis=dict(title='ε₁  major strain  (–)', range=[y0, y1]),
+                title='Forming Limit Curve Comparison', legend_title='FLC set',
+                hovermode='closest', template=_cmp_theme["template"],
+                width=1200, height=500,
+                paper_bgcolor=_cmp_ps["transparent"], plot_bgcolor=_cmp_ps["transparent"],
+                font=dict(color=_cmp_ps["axis"]),
+            )
+            fig.add_vline(x=0, line_width=0.6, line_dash='dot', line_color=_cmp_ps["guide"])
+            fig.add_hline(y=0, line_width=0.6, line_dash='dot', line_color=_cmp_ps["guide"])
+            _plotly_chart(fig, use_container_width=True)
+            _path_toggle_switch(_path_indices)
+            if no_data:
+                st.caption(f"No fracture CSV data found for: {', '.join(no_data)}")
 
-        if no_data:
-            st.caption(f"No fracture CSV data found for: {', '.join(no_data)}")
+        _cmp_flc_fragment()
 
         # ── Export ────────────────────────────────────────────────────────────
         with st.expander("Export plot"):
@@ -4206,7 +6038,6 @@ elif page == "Results":
         job_runtimes = st.session_state.get(sacct_key, {})  # jname → "HH:MM:SS"
 
         # ── Load thinning curves for all study jobs ───────────────────────────
-        import numpy as np
 
         job_curves = {}   # jname → DataFrame(U3_mm, thinning)
         job_meta   = {}   # jname → {mr, ms, is_partial}
@@ -4323,11 +6154,20 @@ elif page == "Results":
                                             line=dict(width=2, color=color)),
                                 showlegend=False,
                             ))
+                _s_theme = _plot_theme()
+                _s_ps = _streamlit_plot_style(_s_theme)
+                fig.update_xaxes(tickfont=dict(color=_s_ps["axis"]), title_font=dict(color=_s_ps["axis"]),
+                                 linecolor=_s_ps["axis"], gridcolor=_s_ps["grid"], zerolinecolor=_s_ps["grid"])
+                fig.update_yaxes(tickfont=dict(color=_s_ps["axis"]), title_font=dict(color=_s_ps["axis"]),
+                                 linecolor=_s_ps["axis"], gridcolor=_s_ps["grid"], zerolinecolor=_s_ps["grid"])
                 fig.update_layout(
                     xaxis_title="Punch displacement U3 [mm]",
                     yaxis_title="Thinning strain ε₁ + ε₂",
-                    title=title, template="plotly_white",
+                    title=title, template=_s_theme["template"],
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+                    paper_bgcolor=_s_ps["transparent"],
+                    plot_bgcolor=_s_ps["transparent"],
+                    font=dict(color=_s_ps["axis"]),
                 )
                 return fig
 
@@ -4401,12 +6241,21 @@ elif page == "Results":
                     mode="lines", name=f"{ke_tol_pct:.0f}% limit",
                     line=dict(color="black", dash="dash", width=1),
                 ))
+                _ke_theme = _plot_theme()
+                _ke_ps = _streamlit_plot_style(_ke_theme)
+                fig_ke.update_xaxes(tickfont=dict(color=_ke_ps["axis"]), title_font=dict(color=_ke_ps["axis"]),
+                                    linecolor=_ke_ps["axis"], gridcolor=_ke_ps["grid"], zerolinecolor=_ke_ps["grid"])
+                fig_ke.update_yaxes(tickfont=dict(color=_ke_ps["axis"]), title_font=dict(color=_ke_ps["axis"]),
+                                    linecolor=_ke_ps["axis"], gridcolor=_ke_ps["grid"], zerolinecolor=_ke_ps["grid"])
                 fig_ke.update_layout(
                     xaxis_title="Punch displacement U3 [mm]",
                     yaxis_title="ALLKE / ALLIE [%]",
                     title=f"Quasi-staticity check (mr = {sel_mr_str})",
-                    template="plotly_white",
+                    template=_ke_theme["template"],
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+                    paper_bgcolor=_ke_ps["transparent"],
+                    plot_bgcolor=_ke_ps["transparent"],
+                    font=dict(color=_ke_ps["axis"]),
                 )
                 _plotly_chart(fig_ke, use_container_width=True)
 
