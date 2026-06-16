@@ -2,15 +2,15 @@
 
 \section{Motivation}
 
-Sheet metal forming is a fundamental manufacturing process in the automotive, aerospace, and consumer goods industries. A key challenge in forming operations is predicting the onset of localised necking and fracture, which limits the deformation that a blank can undergo before failure. The \textit{Forming Limit Diagram} (FLD) is the standard tool used to characterise this limit: it maps, in principal strain space $(\varepsilon_2, \varepsilon_1)$, the boundary between safe forming and failure. This boundary is known as the Forming Limit Curve (FLC).
+Sheet metal forming is a fundamental manufacturing process in the automotive, aerospace, and consumer goods industries. A key challenge in forming operations is predicting the onset of localised necking and fracture, since this limit determines whether a blank can be formed into a target geometry without failure. The \textit{Forming Limit Diagram} (FLD) is the standard engineering representation of this limit. It maps the major and minor principal strains, $(\varepsilon_1,\varepsilon_2)$, at the onset of instability and defines the Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
 
-Despite its broad industrial acceptance, the experimental determination of FLCs is known to be sensitive to test setup, specimen geometry, sheet thickness, material behaviour, and the data evaluation methodology used to detect the onset of necking~\cite{ISO120042}. Two standardised test configurations exist: the \textit{Nakazima} test, which uses a hemispherical punch, and the \textit{Marciniak} test, which uses a flat cylindrical punch. Both are described in ISO~12004-2~\cite{ISO120042}. The Marciniak configuration is generally considered to produce more linear strain paths than Nakazima, making it better suited for FLC determination in certain strain path regimes.
+Despite its broad industrial acceptance, the experimental determination of FLCs is sensitive to the test setup, specimen geometry, sheet thickness, material behaviour, and the criterion used to detect necking~\cite{ISO120042}. Two standardised test configurations are commonly used: the Nakazima test, which deforms the specimen with a hemispherical punch, and the Marciniak test, which uses a flat cylindrical punch. Both are described in ISO~12004-2~\cite{ISO120042}. The Marciniak configuration generally produces more linear strain paths than Nakazima, while Nakazima tests remain attractive because of their simpler specimen and tooling requirements.
 
-As forming processes move towards thinner sheets, smaller characteristic dimensions, and higher levels of automation, potential size effects on the FLC become increasingly relevant. Numerical simulation via Finite Element Analysis (FEA) offers a complementary approach to physical testing: once a calibrated material model is available, FLCs can be computed efficiently for a wide range of conditions without additional specimens.
+Numerical simulation provides a complementary approach to physical testing. Once a calibrated material model is available, finite element simulations can be used to vary specimen geometry, sheet thickness, material orientation, and process parameters without manufacturing additional samples. This makes simulation particularly useful for studying size effects and for generating consistent data for the evaluation of different FLC identification criteria.
 
 \section{Project Context}
 
-This work is part of a larger semester project titled \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}, comprising three tasks:
+This work is part of the project \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}. The overall project is divided into three connected tasks:
 
 \begin{description}
   \item[Task I] Experimental forming campaign on Nakazima and Marciniak test benches, investigating size effects across a range of geometries and sheet thicknesses.
@@ -20,15 +20,15 @@ This work is part of a larger semester project titled \textit{Towards Robust For
 
 \section{Objectives}
 
-The objective of this semester project is to build a complete, automated FEA pipeline for the numerical generation of Forming Limit Curves. Specifically, the goals are:
+The objective of this semester thesis is to build a complete automated FEA pipeline for the numerical generation of forming limits. The specific goals are:
 
 \begin{enumerate}
   \item Implement Nakazima, Marciniak, and Punch-in-Punch test geometries in Abaqus/Explicit with a VUMAT user material subroutine based on the Hosford-Coulomb (HC) fracture criterion.
-  \item Simulate a range of specimen widths (W20 to W200) to cover the full strain path spectrum from uniaxial tension to equibiaxial stretching.
-  \item Automate the complete pipeline — from model building to post-processing and FLC plotting — on the ETH Euler HPC cluster, with all forming speeds compliant with ISO~12004-2.
+  \item Simulate a range of specimen widths (W20 to W200) to cover the strain path spectrum from uniaxial tension to equibiaxial stretching.
+  \item Automate the complete pipeline, from model building to post-processing and FLC plotting, on the ETH Euler HPC cluster.
   \item Extract the critical principal strains at the onset of failure and assemble the numerical FLC, providing reference data for the identification criteria of Task~II.
 \end{enumerate}
 
 \section{Report Structure}
 
-Chapter~\ref{chap:theory} introduces the theoretical background: the Nakazima, Marciniak, and Punch-in-Punch test methods, the FLC concept, the Hosford-Coulomb failure criterion, and an overview of experimental FLC identification criteria. Chapter~\ref{chap:numerical_model} describes the FE model, the simulation pipeline, and the post-processing methodology. Chapter~\ref{chap:results} presents the simulation results and the resulting FLC. Chapter~\ref{chap:conclusion} summarises the findings and outlines directions for future work.
+Chapter~\ref{chap:theory} introduces the theoretical background, including the FLC concept, the test methods, the Hosford-Coulomb failure criterion, and selected FLC identification criteria. Chapter~\ref{chap:numerical_model} describes the FE model, the simulation pipeline, and the post-processing methodology. Chapter~\ref{chap:results} presents the simulation results and the resulting forming-limit data. Chapter~\ref{chap:conclusion} summarises the findings, while Chapter~\ref{chap:future_work} outlines recommended future work.

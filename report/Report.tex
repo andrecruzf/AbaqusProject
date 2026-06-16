@@ -14,13 +14,13 @@
 %             2013/03/08	(Soren Ebbesen)
 %             2014/03/13	(Soren Ebbesen)
 % ______________________________________________________________________________
-\documentclass[10pt,twoside,a4paper,fleqn]{report}
+\documentclass[11pt,twoside,a4paper,fleqn]{report}
 
 \usepackage[utf8]{inputenc}
 
 \usepackage[english,st]{ethidsc} % Special IDSC styles and commands      	
-								 % {german}/english: language of headings, etc.
-								 % {st}/bt/mt: {semester}/bachelor/master thesis
+									 % {german}/english: language of headings, etc.
+									 % {st}/bt/mt: {semester}/bachelor/master thesis
 							
 % Page header (don't change)____________________________________________________
 \setlength{\parindent}{0em}                 % Disable parindent
@@ -38,8 +38,8 @@
 \semesterA{3}
 \emailA{acruzfaria@student.ethz.ch}
 
-\supervision{Prof. V. Grolleau\\ Dr. C. Roth}
-\date{April 2026}
+\supervision{Prof. Dr. Vincent Grolleau\\ Dr. Christian Roth}
+\date{February 2026 -- June 2026}
 
 \identification{} 		% Project identifier
 
@@ -49,7 +49,41 @@
 % Begin document________________________________________________________________
 \begin{document}
 
-\maketitle 							% Create title page
+\begin{titlepage}
+\pagestyle{empty}
+\centering
+
+{\large Chair of Artificial Intelligence in Mechanics and Manufacturing\par}
+\vspace{3.2cm}
+
+{\LARGE\bfseries Automated FEA Pipeline for Forming Limit Curve Determination\par}
+\vspace{0.35cm}
+{\LARGE\bfseries via Nakazima, Marciniak, and Punch-in-Punch Simulations\par}
+\vspace{2.2cm}
+
+{\Large Semester Thesis\par}
+\vspace{2.0cm}
+
+{\Large André Cruz Faria\par}
+\vspace{0.5cm}
+{\large February 2026 -- June 2026\par}
+
+\vfill
+
+\begin{minipage}[t]{0.44\textwidth}
+\raggedright
+Supervisor:\\[0.4ex]
+Prof. Dr. Vincent Grolleau
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.44\textwidth}
+\raggedright
+Advisor:\\[0.4ex]
+Dr. Christian Roth
+\end{minipage}
+
+\end{titlepage}
+\cleardoublepage
 
 
 % Preamble______________________________________________________________________

@@ -1,9 +1,52 @@
 %---------------------------------------------------------------------------
-% Preface
+% Abstract
 
-\chapter*{Preface}
+\chapter*{Abstract}
 
-This report presents the results of a semester project conducted at the Chair of Artificial Intelligence in Mechanics and Manufacturing, ETH Zürich, under the supervision of Prof.\ V.\ Grolleau and Dr.\ C.\ Roth. The project is part of a broader research initiative titled \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}, which combines experimental testing (Task~I), numerical identification criteria (Task~II), and automated simulation (Task~III). This work addresses Task~III: the development of a fully automated numerical simulation framework for the generation of Forming Limit Curves using Nakazima, Marciniak, and Punch-in-Punch test geometries in Abaqus/Explicit, deployed on the ETH Euler HPC cluster.
+Forming Limit Curves (FLCs) are widely used to assess the onset of necking and
+fracture in sheet metal forming. Conventionally, FLCs are obtained from
+Nakazima or Marciniak experiments by testing a series of specimen widths and
+evaluating the strain field shortly before failure. Although this procedure is
+well established, it remains time consuming and sensitive to specimen geometry,
+test configuration, and the selected post-processing criterion.
+
+This thesis develops an automated finite element simulation framework for the
+numerical determination of forming limits. The framework generates Nakazima,
+Marciniak, and Punch-in-Punch models in Abaqus/Explicit, submits the
+simulations to the ETH Euler cluster, and post-processes the resulting output
+databases without manual intervention. A VUMAT implementation of the
+Hosford-Coulomb fracture criterion is used to model failure. Seven specimen
+widths, $W \in \{20,50,80,90,100,120,200\}$\,mm, are considered in order to
+cover strain states from uniaxial tension to equibiaxial stretching.
+
+The post-processing pipeline extracts punch force--displacement histories,
+energy histories, forming-limit points, strain paths, and diagnostic
+visualisations. The fracture frame is detected from the punch force drop and
+classified using element deletion within the ISO-compliant dome zone. The
+resulting data products are structured for direct comparison between test
+configurations and for subsequent use in FLC identification criteria.
+
+The work provides a reproducible numerical basis for parametric studies of
+sheet thickness, material orientation, mesh density, mass scaling, and test
+configuration. It also establishes a practical link between automated FE model
+generation and the experimental FLC identification workflow used in the broader
+project.
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% Acknowledgements
+
+\chapter*{Acknowledgements}
+
+I would like to thank Prof. Dr. Vincent Grolleau and Dr. Christian Roth for
+their guidance and technical feedback throughout this project. I am also
+grateful to the Chair of Artificial Intelligence in Mechanics and Manufacturing
+for providing the research context, computational resources, and previous
+experimental and numerical work on which this project builds.
+
+The simulations presented in this report were carried out on the ETH Euler
+high-performance computing cluster.
 
 \cleardoublepage
 
@@ -16,77 +59,78 @@ This report presents the results of a semester project conducted at the Chair of
 \cleardoublepage
 
 %---------------------------------------------------------------------------
-% List of figures
+% List of abbreviations
 
-\listoffigures
-\addcontentsline{toc}{chapter}{List of Figures}
+\chapter*{List of Abbreviations}\label{chap:abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+
+\begin{tabbing}
+ \hspace*{2.4cm} \= \kill
+ALLIE \> Internal energy history output in Abaqus \\[0.5ex]
+ALLKE \> Kinetic energy history output in Abaqus \\[0.5ex]
+BC \> Boundary condition \\[0.5ex]
+CAE \> Complete Abaqus Environment \\[0.5ex]
+DIC \> Digital Image Correlation \\[0.5ex]
+EQPS \> Equivalent Plastic Strain \\[0.5ex]
+FE \> Finite Element \\[0.5ex]
+FEA \> Finite Element Analysis \\[0.5ex]
+FFLC \> Fracture Forming Limit Curve \\[0.5ex]
+FLC \> Forming Limit Curve \\[0.5ex]
+FLD \> Forming Limit Diagram \\[0.5ex]
+HC \> Hosford-Coulomb \\[0.5ex]
+HPC \> High-performance computing \\[0.5ex]
+ODB \> Output database \\[0.5ex]
+PiP \> Punch-in-Punch \\[0.5ex]
+SDV \> Solution-dependent variable \\[0.5ex]
+SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
+VUMAT \> Abaqus/Explicit user material subroutine
+\end{tabbing}
 
 \cleardoublepage
 
 %---------------------------------------------------------------------------
-% List of tables
+% Symbols
 
-\listoftables
-\addcontentsline{toc}{chapter}{List of Tables}
+\chapter*{Symbols}\label{chap:symbols}
+\addcontentsline{toc}{chapter}{Symbols}
 
-\cleardoublepage
-
-%---------------------------------------------------------------------------
-% Abstract
-
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-
-This work presents a fully automated finite element simulation framework for the numerical determination of Forming Limit Curves (FLCs) using three test configurations: Nakazima (hemispherical punch), Marciniak (flat punch), and Punch-in-Punch (PiP, two coaxial punches). The FE models are built in Abaqus/Explicit with a VUMAT user material subroutine implementing the Hosford-Coulomb fracture criterion. Seven specimen widths ($W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm) are simulated per configuration to cover the full strain path spectrum from uniaxial tension to equibiaxial stretching. Critical major and minor principal strains at the onset of failure are extracted automatically from the output database using a dome-zone filter consistent with ISO~12004-2, and assembled into the FLC. The pipeline runs end-to-end on the ETH Euler HPC cluster from a single deployment command, enabling systematic parametric studies of the influence of specimen geometry, sheet thickness, material orientation, and test configuration on the forming limit. Quasi-static validity is verified post-hoc by monitoring the kinetic-to-internal energy ratio throughout each simulation.
-
-\cleardoublepage
-
-%---------------------------------------------------------------------------
-% Nomenclature
-
-\chapter*{Nomenclature}\label{chap:nomenclature}
-\addcontentsline{toc}{chapter}{Nomenclature}
-
-\section*{Symbols}
 \begin{tabbing}
  \hspace*{2.0cm} \= \hspace*{8cm} \= \kill
  $\varepsilon_1$ \> Major principal strain \> [$-$] \\[0.5ex]
  $\varepsilon_2$ \> Minor principal strain \> [$-$] \\[0.5ex]
- $\bar{\varepsilon}^p$ \> Equivalent plastic strain (EQPS) \> [$-$] \\[0.5ex]
- $\bar{\varepsilon}^p_f$ \> Critical fracture strain (HC criterion) \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p$ \> Equivalent plastic strain \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p_f$ \> Critical fracture strain \> [$-$] \\[0.5ex]
  $\dot{\bar{\varepsilon}}^p$ \> Equivalent plastic strain rate \> [s$^{-1}$] \\[0.5ex]
- $\sigma$ \> Cauchy stress tensor \> [MPa] \\[0.5ex]
  $\eta$ \> Stress triaxiality \> [$-$] \\[0.5ex]
  $\bar{\theta}$ \> Lode angle parameter \> [$-$] \\[0.5ex]
- $D$ \> Damage variable (HC criterion) \> [$-$] \\[0.5ex]
+ $D$ \> Damage variable \> [$-$] \\[0.5ex]
  $t$ \> Blank thickness \> [mm] \\[0.5ex]
  $W$ \> Specimen width \> [mm] \\[0.5ex]
  $R$ \> Punch radius \> [mm] \\[0.5ex]
- $R_\mathrm{dome}$ \> Dome-zone observation radius (ISO~12004-2) \> [mm] \\[0.5ex]
- $f$ \> Punch edge fillet radius (Marciniak) \> [mm] \\[0.5ex]
- $\alpha$ \> Material orientation angle (rolling direction) \> [$^\circ$] \\[0.5ex]
- $\Delta t$ \> Stable time increment (mass scaling target) \> [s] \\[0.5ex]
+ $R_\mathrm{dome}$ \> Dome-zone observation radius \> [mm] \\[0.5ex]
+ $\alpha$ \> Material orientation angle \> [$^\circ$] \\[0.5ex]
+ $\Delta t$ \> Stable time increment or mass-scaling target \> [s] \\[0.5ex]
  $\mu$ \> Coulomb friction coefficient \> [$-$]
 \end{tabbing}
 
-\section*{Acronyms and Abbreviations}
-\begin{tabbing}
- \hspace*{2.0cm} \= \kill
- BC \> Boundary condition \\[0.5ex]
- CAE \> Complete Abaqus Environment \\[0.5ex]
- DIC \> Digital Image Correlation \\[0.5ex]
- EQPS \> Equivalent Plastic Strain \\[0.5ex]
- FE \> Finite Element \\[0.5ex]
- FEA \> Finite Element Analysis \\[0.5ex]
- FLC \> Forming Limit Curve \\[0.5ex]
- FLD \> Forming Limit Diagram \\[0.5ex]
- HC \> Hosford-Coulomb (failure criterion) \\[0.5ex]
- HPC \> High-Performance Computing \\[0.5ex]
- ODB \> Output Database (Abaqus result file) \\[0.5ex]
- PiP \> Punch-in-Punch \\[0.5ex]
- SDV \> Solution-Dependent Variable \\[0.5ex]
- SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
- VUMAT \> Vectorized User MATerial subroutine (Abaqus/Explicit)
-\end{tabbing}
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% List of figures and tables
+
+\chapter*{List of Figures and Tables}
+\addcontentsline{toc}{chapter}{List of Figures and Tables}
+
+\section*{Figures}
+\makeatletter
+\@starttoc{lof}
+\makeatother
+
+\vspace{2em}
+
+\section*{Tables}
+\makeatletter
+\@starttoc{lot}
+\makeatother
 
 \cleardoublepage
