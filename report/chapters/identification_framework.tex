@@ -1,0 +1,44 @@
+\chapter{FLC Identification Framework}\label{chap:identification_framework}
+
+\section{Role in the Project}
+
+Task~II develops the data evaluation layer of the project. Its purpose is to
+identify forming-limit points from experimental DIC data and from numerical
+strain histories in a modular, robust, and user-friendly way. This is necessary
+because FLC values can vary strongly with the selected detection criterion,
+noise treatment, frame selection, and crack-section definition.
+
+\section{Criterion Families}
+
+The framework is structured around several criterion families rather than a
+single fixed method:
+\begin{itemize}
+  \item the ISO~12004-2 position-dependent method;
+  \item time-dependent criteria such as Volk-Hora and Merklein;
+  \item the Pham-Sigvant coefficient-of-variation approach;
+  \item Stoughton-type curvature and instability criteria.
+\end{itemize}
+
+Keeping these methods in one framework allows direct comparison of the
+criterion-dependent FLC values for the same test. This is especially important
+for materials where the ISO evaluation can become unstable, for example when
+dynamic strain ageing produces non-smooth strain localisation.
+
+\section{Data Interface}
+
+The identification framework consumes strain-field or strain-history data and
+returns forming-limit points in a common schema. The numerical post-processing
+pipeline therefore exports \texttt{strain\_path.csv} and
+\texttt{forming\_limits.csv} with fixed column names, while the experimental
+workflow provides equivalent DIC-derived strain histories. This shared interface
+allows the same identification logic to be applied to both Task~I experiments
+and Task~III simulations.
+
+\section{Connection to the Numerical Model}
+
+The numerical model does not replace the experimental identification framework.
+Instead, it supplies controlled reference data where geometry, mesh size,
+material orientation, punch motion, and failure frame can be inspected directly.
+This makes the simulations useful for testing whether a criterion responds to
+physical strain localisation or to artefacts introduced by sampling, smoothing,
+or endpoint selection.
