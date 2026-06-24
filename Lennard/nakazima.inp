@@ -1,0 +1,186 @@
+*INCLUDE, INPUT=parameter_naka.inp
+**---------------------------------------------------
+** Geometry and Orientation
+**---------------------------------------------------
+*SYSTEM
+44., 0., 0., 44., 0., 1.,
+44., -1., 0.
+*INCLUDE, INPUT=W02.inp
+*NMAP, TYPE=RECTANGULAR, NSET=NALL
+ 0., 0., 0., 0., 0., 1., 
+ 1., 0., 0.,
+** SCALING FACTOR
+1., 1., 1.
+** 90deg axis aligned with y-direction
+*ORIENTATION, name=Ori-90
+         1.,     0.,     0.,	0.,     1.,     0.
+3, 0.
+*ORIENTATION, name=Ori-p45
+         1.,     1.,     0.,	-1.,     1.,     0.
+3, 0.
+*ORIENTATION, name=Ori-m45
+         -1.,     1.,     0.,	-1.,    -1.,     0.
+3, 0.
+** 0deg axis aligned with y-direction
+*ORIENTATION, name=Ori-00
+         0.,     1.,     0.,	-1.,     0.,     0.
+3, 0.
+**-----------------------------------------------------
+** Material Data
+**-----------------------------------------------------
+*SECTION CONTROLS, NAME=SOLID_CONTROLS, HOURGLASS=RELAX STIFFNESS, ELEMENT DELETION=YES
+1.0, 1.0, 1.0, 1.0, 1.0, , , 
+*SOLID SECTION, elset=ELALL, CONTROLS=SOLID_CONTROLS, orientation=Ori-90, material=mat
+**
+*MATERIAL,NAME=mat
+*INCLUDE, INPUT=material.inp
+**
+**
+*DEPVAR, DELETE=7
+17
+1,EQPS,"Equivalent Plastic Strain"
+2,Seq,"Equivalent stress"
+3,Qeq,"Equivalent Hill stress"
+4,TRIAX,"Triaxiality"
+5,LODE,"Lode parameter"
+6,D,"Damage"
+7,FAIL,"Failure switch"
+8,Beta,"Softening function"
+9,eeV,"Volumetric strain"
+10,T,"Temperature"
+11,EQPSdot,"Equivalent Plastic Strain rate"
+12,ySRH,"Strain rate hardening"
+13,yTS,"Thermal softening"
+14,fSR,"Failure strain rate"
+15,fTS,"Failure thermal softening"
+16,Wcl,"CL plastic work"
+17,EQPSf,"EQPSf"
+**-----------------------------------------------------
+** Rigid Bodies
+**-----------------------------------------------------
+*SYSTEM
+0., 0., 0., 1., 0., 0.,
+*NODE, NSET=NPUNCH
+1000000,  0,          50.,           0.
+*Nset, nset=punch-1-RefPt_
+1000000, 
+*Nset, nset=rp_punch
+1000000,
+*Surface, type=REVOLUTION, name=PUNCH
+0., 0., -6., 0., 0., 100.
+ START,           0.,          50.
+ CIRCL,          50.,           0.,           0.,           0.
+**
+*NODE, NSET=NBLANK
+1000001,         54.5,           0.,           0.
+*Nset, nset=blankholder-1-RefPt_
+1000001, 
+*Nset, nset=BLANK_ENCASTRE
+1000001,
+*Surface, type=REVOLUTION, name=BLANK
+0., 0., 0., 0., 0., 100.
+START,         54.5,           0.
+ LINE,         52.5,           2.
+ LINE,         52.5,          42.
+ LINE,         54.5,          44.
+ LINE, 73.0010678118655,          44.
+**
+*NODE, NSET=NDIE
+1000002,          73.,           0.,           0.
+*Nset, nset=die-1-RefPt_
+1000002, 
+*Nset, nset=rp_die
+1000002,
+*Surface, type=REVOLUTION, name=DIE
+0., 0., <DIE_POS>, 0., 0., 100.
+START,          73.,           0.
+ LINE,         60.5,           0.
+ CIRCL,         52.5,           8.,         60.5,           8.
+ LINE,         52.5,          38.
+ **
+*Rigid Body, ref node=NPUNCH, analytical surface=PUNCH
+*Rigid Body, ref node=NBLANK, analytical surface=BLANK
+*Rigid Body, ref node=NDIE, analytical surface=DIE
+**---------------------------------------------------------- 
+** INTERACTION PROPERTIES
+**---------------------------------------------------------- 
+*Surface Interaction, name=WPUNCH
+*Friction
+ <FR_PUNCH>,
+*Surface Interaction, name=WDIE
+*Friction
+ <FR_CLAMP>,
+*Surface Interaction, name=WBLANK
+*Friction
+ <FR_CLAMP>,
+**---------------------------------------------------------- 
+** BOUNDARY CONDITIONS
+**---------------------------------------------------------- 
+*BOUNDARY
+NBLANK, 1, 1
+NBLANK, 2, 2
+NBLANK, 3, 3
+NBLANK, 4, 4
+NBLANK, 5, 5
+NBLANK, 6, 6
+*BOUNDARY
+NDIE, 1, 1
+NDIE, 2, 2
+NDIE, 3, 3
+NDIE, 4, 4
+NDIE, 5, 5
+NDIE, 6, 6
+*BOUNDARY
+XSYMM, XSYMM
+*BOUNDARY
+YSYMM, YSYMM
+*BOUNDARY
+EDGE, ENCASTRE
+*Amplitude, name=Amp-1, DEFINITION=SMOOTH STEP
+             0.,              0.,             <STEP_TIME>,              1.
+** ---------------------------------------------------------
+** STEP: Step-1
+** 
+*Step, name=Step-1, nlgeom=YES
+*Dynamic, Explicit
+, <STEP_TIME>
+*FIXED MASS SCALING, TYPE=UNIFORM, DT = <DTIME>
+*Bulk Viscosity
+0.06, 1.2
+**---------------------------------------------------------- 
+** BOUNDARY CONDITIONS
+**---------------------------------------------------------- 
+*BOUNDARY, amplitude=Amp-1
+NPUNCH, 1, 1
+NPUNCH, 2, 2
+NPUNCH, 3, 3, <DISPL>
+NPUNCH, 4, 4
+NPUNCH, 5, 5
+NPUNCH, 6, 6
+**-----------------------------------------------------------------
+** INTERACTIONS
+**-----------------------------------------------------------------
+*Contact Pair, interaction=WPUNCH, mechanical constraint=KINEMATIC, cpset=WPUNCH
+ZMIN, PUNCH
+*Contact Pair, interaction=WDIE, mechanical constraint=KINEMATIC, cpset=WDIE
+ZMAX, DIE
+*Contact Pair, interaction=WBLANK, mechanical constraint=KINEMATIC, cpset=BLANK
+ZMIN, BLANK 
+**---------------------------------------------------------- 
+** OUTPUT REQUESTS
+**---------------------------------------------------------- 
+*OUTPUT, FIELD, number interval=50
+*ELEMENT OUTPUT
+ S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ, STATUS
+*NODE OUTPUT
+ U, V, RF
+**
+*Output, history, variable=PRESELECT
+*OUTPUT, HISTORY, FREQUENCY=1000
+*NODE OUTPUT, NSET=rp_punch
+ U3, RF3
+*ELEMENT OUTPUT, ELSET=ELOUT
+ S, LE, SDV, TRIAX, SP, MISES, LEP, PEEQ
+**----------------------------------------------------------
+*End Step
+

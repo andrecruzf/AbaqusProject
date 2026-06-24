@@ -1,0 +1,45 @@
+\chapter{Introduction}\label{chap:introduction}
+
+\section{Motivation}
+
+Sheet metal forming is a fundamental manufacturing process used across a wide range of industries, including automotive, aerospace, consumer goods, and energy applications. In recent decades, increasing demands for lightweight structures, improved energy efficiency, and reduced material consumption have driven the adoption of thinner sheet materials and more complex formed components. While these developments offer significant performance and sustainability benefits, they also increase the susceptibility of sheet metals to localized necking and fracture during forming operations. Consequently, the accurate prediction of forming limits has become a critical aspect of component design and process optimization.
+
+Although forming limit curves have been studied extensively over the past decades, most investigations have focused on standardized testing procedures as defined by ISO~12004. While these studies have significantly improved the understanding of sheet metal formability, the coupled influence of specimen geometry, sheet thickness, punch geometry, and loading path remains less well understood. In particular, relatively few systematic studies have investigated the interactions between these parameters across different testing configurations. This knowledge gap becomes increasingly relevant as modern manufacturing trends move towards thinner sheets, smaller characteristic dimensions, and highly automated forming processes. Furthermore, alternative loading conditions, such as those introduced by the recently developed Punch-in-Punch configuration, offer the possibility of exploring strain paths that cannot be readily reproduced using conventional Nakazima or Marciniak tests. A better understanding of how these parameters influence experimentally measured and numerically predicted forming limits is therefore essential for improving the robustness and transferability of FLC determination methods.
+
+The \textit{Forming Limit Diagram} (FLD) is the standard engineering representation used to characterize these limits. It maps the major and minor principal strains, $(\varepsilon_1,\varepsilon_2)$, at the onset of instability and defines the Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
+
+Despite its broad industrial acceptance, the experimental determination of FLCs is sensitive to the test setup, specimen geometry, sheet thickness, material behaviour, and the criterion used to detect necking~\cite{ISO120042}. Two standardized test configurations are commonly used: the Nakazima test, which deforms the specimen with a hemispherical punch, and the Marciniak test, which uses a flat cylindrical punch. Both are described in ISO12004-2\cite{ISO120042}. The Marciniak configuration generally produces more linear strain paths than Nakazima, while Nakazima tests remain attractive because of their simpler specimen and tooling requirements.
+
+Numerical simulation provides a complementary approach to physical testing. Once a calibrated material model is available, finite element simulations can be used to vary specimen geometry, sheet thickness, punch radius, material orientation, and process parameters without manufacturing additional samples. This makes simulation particularly useful for studying size effects, investigating alternative loading paths, and generating consistent data for the evaluation of different FLC identification criteria.
+
+\section{Project Context}
+
+This work is part of the research project \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}. The project is structured around three complementary tasks:
+
+\begin{description}
+\item[Task I – Forming Experiment Campaign] A large-scale study on several engineering materials using a high-throughput Nakazima/Marciniak test bench to investigate potential size effects on the Forming Limit Curve (FLC). A range of specimen geometries, sheet thicknesses, punch radii, and a novel Punch-in-Punch setup are investigated. In addition, the robustness of the automated specimen loading system is assessed and measures are introduced to further improve its reliability.
+
+\item[Task II – Forming Limit Curve Identification Criteria] Development of a modular, robust, and user-friendly framework for FLC identification. The framework integrates established necking detection criteria, including the methods proposed by Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, and Pham-Sigvant~\cite{Pham2023}, while addressing unstable ISO12004 evaluations and incorporating a criterion based on the work of Stoughton~\cite{Min2017}.
+
+\item[Task III – Numerical Simulation Framework] Development of an automated numerical simulation framework for the creation, execution, and post-processing of all specimen and punch configurations investigated in Task~I. Particular attention is given to maintaining identical element sizes across configurations and to performing systematic mesh-size studies through automated mesh modification procedures.
+\end{description}
+
+Together, these three tasks provide a comprehensive framework for investigating the influence of geometry, material, tooling, loading path, and evaluation methodology on the determination of forming limit curves.
+
+\section{Objectives}
+
+The objective of this semester thesis is to contribute to the development of a robust and reproducible methodology for Forming Limit Curve (FLC) determination through a combination of experimental investigations, advanced data evaluation techniques, and numerical simulations.
+
+The specific goals are:
+
+\begin{enumerate}
+\item Conduct a large-scale experimental campaign using Nakazima, Marciniak, and Punch-in-Punch tests to investigate the influence of specimen geometry, sheet thickness, punch diameter, and loading path on the measured forming limits.
+\item Extend the existing Digital Image Correlation (DIC) post-processing framework through the implementation and validation of the Stoughton forming limit identification criterion and compare its performance with previously implemented methodologies.
+\item Develop a fully parameterized numerical simulation framework capable of automatically generating, executing, and post-processing the forming configurations investigated experimentally.
+
+
+\end{enumerate}
+
+\section{Report Structure}
+
+Chapter~\ref{chap:theory} introduces the theoretical background, including sheet metal formability, Forming Limit Curves (FLCs), standardized forming tests, and forming limit identification methodologies. Chapter~\ref{chap:experimental} presents the experimental campaign, including the investigated materials, specimen geometries, testing configurations, and Digital Image Correlation (DIC) measurements. Chapter~\ref{chap:flc_identification} describes the DIC post-processing framework and the forming limit identification criteria used throughout this work, including the implementation of the Stoughton method. Chapter~\ref{chap:numerical_model} presents the numerical simulation framework, including model generation, meshing strategy, automation workflow, and post-processing procedures. Chapter~\ref{chap:results} discusses the experimental and numerical results, together with comparisons between different geometries, thicknesses, punch configurations, and loading paths. Finally, Chapter~\ref{chap:conclusion} summarizes the main findings and Chapter~\ref{chap:future_work} outlines recommendations for future work.

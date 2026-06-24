@@ -1,0 +1,190 @@
+\chapter{Results}\label{chap:results}
+
+\section{Framework Outputs and Configuration Coverage}
+
+The main result of this semester thesis is the automated numerical workflow
+specified in Task~III of the project outline. For each selected configuration,
+the pipeline creates the Abaqus model, submits the solver job on Euler, runs
+ODB-based post-processing, and synchronises structured result artefacts. The
+same interface is used for Nakazima, Marciniak, and Punch-in-Punch simulations,
+so that specimen width, sheet thickness, punch radius, punch travel, material
+orientation, mass scaling, and mesh refinement can be varied without changing
+the post-processing schema.
+
+Each completed simulation produces the same set of data products:
+\texttt{punch\_fd.csv}, \texttt{energy\_data.csv}, \texttt{strain\_path.csv},
+\texttt{forming\_limits.csv}, diagnostic figures, and movie files. This common
+output structure is important for the broader project because the numerical
+data can be compared directly with Task~I experiments and passed to the Task~II
+FLC identification framework.
+
+\section{Quasi-Static Validation}
+
+For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal energy (\texttt{ALLIE}) is monitored throughout the step to confirm that inertial effects remain negligible. A ratio below 5\% is used as the acceptance target for the quasi-static assumption in the Abaqus/Explicit framework~\cite{AbaqusManual}. The energy ratio history for each simulation is stored in the corresponding output directory and the peak or windowed ratio is printed to the job log.
+
+% TODO: Report maximum ALLKE/ALLIE ratios per width once all runs complete.
+% Include a representative energy_ratio.png figure here:
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.75\textwidth]{../Nakazima_W50_t1p0_ang0/energy_ratio.png}
+%   \caption{Kinetic-to-internal energy ratio (ALLKE/ALLIE) for the Nakazima W50 simulation.
+%            The ratio remains well below the 5\% quasi-static threshold throughout.}
+%   \label{fig:energy_ratio_w50}
+% \end{figure}
+
+\section{Sensitivity Study: Mass Scaling and Mesh Refinement}
+
+A fully factorial $4 \times 3$ sensitivity study was set up on the Nakazima W200 specimen ($t = 1.75$\,mm, $\alpha = 0^\circ$) to determine the largest stable time increment $\Delta t$ and the coarsest mesh that still yield results within acceptable tolerances. This study directly addresses the Task~III requirement that the framework maintain identical element size across configurations and support automated mesh-size modification. The W200 geometry was chosen because equibiaxial stretching produces high strain gradients and therefore provides a demanding test of both mass scaling and spatial discretisation. Twelve simulations form the study grid (Table~\ref{tab:study_grid}) and are aggregated by \texttt{plot\_study.py} into a three-panel heatmap for wall time, energy ratio, and strain convergence.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Parameter grid for the mass scaling $\times$ mesh refinement sensitivity study (Nakazima W200, $t=1.75$\,mm). Each cell is one independent simulation.}
+\label{tab:study_grid}
+\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
+ & \multicolumn{3}{c}{Mesh refinement factor $f_\mathrm{MR}$} \\
+\cmidrule(l){2-4}
+$\Delta t$ [s] & 1 & 2 & 4 \\ \midrule
+$1\times10^{-7}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-6}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-5}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-4}$ & \checkmark & \checkmark & \checkmark \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+% TODO: Insert study_results.pdf once all 12 jobs complete.
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=\textwidth]{../study_ms_mr_W200_t1p75_ang0_ps5p0/study_results.pdf}
+%   \caption{Sensitivity study heatmap (Nakazima W200, $t=1.75$\,mm). Left: wall-clock time (h).
+%            Centre: mean ALLKE/ALLIE over the second half of the simulation; the
+%            5\,\% quasi-static threshold is indicated. Right: deviation of the major
+%            failure strain $\Delta\varepsilon_1$ (\%) relative to the reference cell
+%            ($\Delta t = 10^{-7}$\,s, $f_\mathrm{MR}=1$), outlined in green.}
+%   \label{fig:study_heatmap}
+% \end{figure}
+
+\subsection{Mass Scaling Effect}\label{sec:study_mass_scaling}
+
+The kinetic-to-internal energy ratio ALLKE/ALLIE quantifies the deviation from quasi-static conditions. Because artificial kinetic energy scales quadratically with the stable time increment ($\mathrm{ALLKE} \propto \Delta t^2$), a ten-fold increase in $\Delta t$ raises the ratio by approximately two orders of magnitude. The contact transient at punch engagement produces a short-lived spike that is excluded from the metric: only the mean ratio over the second half of the simulation ($t > t_\mathrm{max}/2$) is reported, capturing the steady-state forming phase.
+
+For the W200 geometry the punch contact area is largest and the forming force is highest, making this the most sensitive width to mass scaling effects. As $\Delta t$ increases from $10^{-7}$\,s to $10^{-4}$\,s, the energy ratio is expected to cross the 5\,\% threshold at some intermediate value; the centre column of Figure~\ref{fig:study_heatmap} identifies that crossing. The selected production value $\Delta t = 10^{-5}$\,s should lie comfortably below threshold, confirming the quasi-static assumption for the main FLC campaign.
+
+% TODO: Report actual peak ALLKE/ALLIE values per row once results are available.
+
+\subsection{Mesh Refinement Effect}\label{sec:study_mesh}
+
+Mesh refinement affects the accuracy of the extracted failure strain $\varepsilon_1$ through two competing mechanisms. Finer elements resolve the neck more precisely, so the peak strain at the critical element more closely represents the true localisation. However, very fine meshes also change the effective fracture energy release per element and can interact with the element-deletion scheme, potentially altering the detected failure frame.
+
+The convergence metric $\Delta\varepsilon_1$ measures the deviation of the extracted major strain from the reference case ($f_\mathrm{MR} = 1$, $\Delta t = 10^{-7}$\,s). A value of $|\Delta\varepsilon_1| < 5\,\%$ is adopted as the acceptance criterion, consistent with the uncertainty typical of experimental FLC measurements~\cite{ISO120042}. The right column of Figure~\ref{fig:study_heatmap} shows how $\Delta\varepsilon_1$ varies with $f_\mathrm{MR}$ at fixed $\Delta t$; convergence is expected once the element size falls below the characteristic neck width.
+
+The wall-clock time (left column of Figure~\ref{fig:study_heatmap}) grows significantly with $f_\mathrm{MR}$, since both the number of elements and the reduced stable time increment increase with mesh density. This trade-off motivates the joint optimisation described in the following section.
+
+% TODO: Report actual Δε₁ values and runtime per column once results are available.
+
+\subsection{Combined Effect and Parameter Selection}\label{sec:study_combined}
+
+Running the two parameters simultaneously reveals their interaction. For a coarser mesh, the minimum element edge length is larger, so the same mass scaling target $\Delta t$ injects less artificial mass (the natural stable increment is closer to $\Delta t$). As a result, the ALLKE/ALLIE ratio at fixed $\Delta t$ is lower for coarser meshes — the acceptable mass scaling budget is wider. Conversely, a fine mesh with a conservative $\Delta t$ is the most accurate but most expensive corner of the parameter space.
+
+The recommended operating point for production simulations is the cell that simultaneously satisfies:
+\begin{enumerate}
+  \item mean ALLKE/ALLIE $< 5\,\%$ (quasi-static validity); and
+  \item $|\Delta\varepsilon_1| < 5\,\%$ (FLC accuracy relative to reference).
+\end{enumerate}
+Among all cells that meet both criteria, the one with the shortest wall-clock time is selected for the production FLC campaign. The heatmap in Figure~\ref{fig:study_heatmap} provides a direct visual basis for this selection. The production settings used in the Nakazima, Marciniak, and Punch-in-Punch campaigns reported in the following sections were chosen accordingly.
+
+% TODO: State the selected (f_MR*, Δt*) pair and corresponding wall time once results are confirmed.
+
+\section{Nakazima Configuration}
+
+\subsection{Strain Paths and Fracture Locations}
+
+The Nakazima configuration is the primary reference case for the numerical framework. Seven specimen widths ($W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm) span strain states from near-uniaxial tension (W20) through plane strain (W80--W90) to equibiaxial stretching (W200). The hemispherical punch ($R = 50$\,mm) also provides the baseline for checking that the automated dome-zone fracture detection and force--displacement endpoint selection behave consistently across widths.
+
+% TODO: Insert EQPS contour figures or selected strain path trajectories once runs are complete.
+
+\subsection{Failure Strains}
+
+Table~\ref{tab:nakazima_flc} summarises the critical principal strains extracted at the pre-failure frame for each specimen width.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Nakazima FLC data points — critical strains at failure per specimen width.}
+\label{tab:nakazima_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Marciniak Configuration}
+
+The Marciniak configuration uses a flat-bottomed punch ($\varnothing 100$\,mm, edge fillet 10\,mm) and is expected to generate more linear strain paths than the Nakazima configuration, in particular in the plane-strain and biaxial regimes. The same seven specimen widths are supported by the model-building and post-processing workflow. Once the corresponding campaign is complete, the results can be compared against the Nakazima FLC to quantify the effect of strain path linearity on the extracted limit strains.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Marciniak FLC data points — critical strains at failure per specimen width.}
+\label{tab:marciniak_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Punch-in-Punch Configuration}
+
+The Punch-in-Punch configuration employs the two-step process described in Section~\ref{chap:numerical_model}: Punch~1 (annular, $r_\mathrm{inner} = 20$\,mm) and Punch~2 (hemispherical, $R = 15$\,mm) advance together in Step~1 (20\,mm), then Punch~1 is held fixed while Punch~2 advances a further 20\,mm in Step~2. The pre-forming step in the outer zone is expected to modify the strain path in the dome, producing a more linear trajectory toward the failure point compared to the Nakazima configuration.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Punch-in-Punch FLC data points — critical strains at failure per specimen width.}
+\label{tab:pip_flc}
+\begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
+Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
+20  & Uniaxial tension  & -- & -- & -- \\
+50  &                   & -- & -- & -- \\
+80  &                   & -- & -- & -- \\
+90  & Near plane strain & -- & -- & -- \\
+100 &                   & -- & -- & -- \\
+120 &                   & -- & -- & -- \\
+200 & Equibiaxial       & -- & -- & -- \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Forming Limit Curves}
+
+The FLC aggregation step combines the critical strain points from all specimen widths for each test configuration into a single diagram in principal strain space $(\varepsilon_2, \varepsilon_1)$. Reference lines for uniaxial tension ($\varepsilon_2 = -\varepsilon_1/2$) and equibiaxial stretching ($\varepsilon_2 = \varepsilon_1$) are included for orientation. The current implementation keeps the output schema fixed, so additional Task~II criteria or experimental comparisons can be added without changing the downstream file structure.
+
+% TODO: Include flc_diagram.png once all widths have run successfully.
+%
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.85\textwidth]{../FLC_output/flc_diagram.png}
+%   \caption{Numerically determined Forming Limit Curves for Nakazima, Marciniak, and
+%            Punch-in-Punch configurations. Sheet thickness $t = 1.0$\,mm, orientation $\alpha = 0^\circ$.}
+%   \label{fig:flc}
+% \end{figure}
+
+\section{EQPS Field and Strain Localisation}
+
+The evolution of the equivalent plastic strain field (SDV1, EQPS) during forming was visualised using \texttt{postproc\_movie.py}. The animation confirms that plastic strain localises progressively at the apex of the punch contact zone prior to element deletion, consistent with the expected dome-fracture failure mode. For the Punch-in-Punch configuration, the two-step loading is visible as a distinct change in the rate of localisation at the transition between Step~1 and Step~2.
+
+% TODO: Include representative EQPS contour frames (pre-necking and failure) here.

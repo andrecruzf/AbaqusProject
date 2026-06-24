@@ -1,0 +1,38 @@
+\chapter{Conclusion}\label{chap:conclusion}
+
+This project developed the automated numerical framework required by Task~III of
+the project outline for robust forming-limit identification. The framework covers the complete workflow
+from model generation in Abaqus/CAE to solver submission, post-processing,
+diagnostic plotting, and FLC aggregation on the ETH Euler cluster. The same
+pipeline can be used for Nakazima, Marciniak, and Punch-in-Punch simulations by
+changing the configuration parameters rather than the model-building code.
+
+The main result is a reproducible and extensible FEA pipeline. The model
+generation step creates the required tooling, specimen, contact definitions,
+material assignment, output requests, and boundary conditions automatically. The
+solver jobs are submitted through SLURM, and the post-processing stage extracts
+force--displacement histories, energy histories, strain paths, forming-limit
+points, and diagnostic media from the Abaqus output database.
+
+Particular attention was given to robust failure detection. The current
+post-processing workflow defines the endpoint from the punch force drop and then
+uses element deletion in the ISO-compliant dome zone to classify the fracture
+location. This approach avoids relying exclusively on the first deleted element
+and gives a clearer relation between the mechanical response and the selected
+strain-path endpoint. The exported CSV files and plots are structured such that
+they can be consumed directly by the Streamlit dashboard and by subsequent FLC
+identification scripts.
+
+The work also establishes a basis for systematic parameter studies. Mesh
+refinement, mass scaling, sheet thickness, material orientation, punch radius,
+punch travel, and specimen width can be varied through the same submission
+interface. The mesh controls directly address the requirement that comparable
+element sizes be maintained across configurations, so that the numerical
+campaign can support the size-effect study of Task~I and provide consistent
+inputs to the identification framework of Task~II.
+
+In summary, the project provides the infrastructure required for automated,
+traceable, and scalable forming-limit simulations. The remaining work is mainly
+experimental and quantitative: completing the simulation campaigns, validating
+the extracted FLCs against measured data, and refining the post-processing
+criteria once more complete datasets are available.

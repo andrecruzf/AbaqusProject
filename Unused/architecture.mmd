@@ -1,0 +1,116 @@
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor':      '#edf3fc',
+  'primaryTextColor':  '#333333',
+  'primaryBorderColor':'#adc4e8',
+  'lineColor':         '#94a3b8',
+  'secondaryColor':    '#f8fafc',
+  'tertiaryColor':     '#f8fafc',
+  'clusterBkg':        '#f8fafc',
+  'clusterBorder':     '#cbd5e1',
+  'titleColor':        '#475569',
+  'edgeLabelBackground':'#ffffff',
+  'fontFamily':        'Inter, Helvetica, Arial, sans-serif',
+  'fontSize':          '32px'
+}}}%%
+
+flowchart LR
+
+    %% ── Styles ──────────────────────────────────────────────────────────────
+    classDef input   fill:#f5eef8,color:#444,stroke:#c9b8d8
+    classDef deploy  fill:#eaf7f5,color:#444,stroke:#a8d5ce
+    classDef build   fill:#fdf3e7,color:#444,stroke:#dfc49a
+    classDef modules fill:#f4faec,color:#444,stroke:#c2d9a0
+    classDef solver  fill:#edf3fc,color:#444,stroke:#adc4e8
+    classDef post    fill:#f0f9fd,color:#444,stroke:#a8d8eb
+    classDef flcnode fill:#f3f1fc,color:#444,stroke:#bdb5e0
+    classDef output  fill:#edfaf3,color:#444,stroke:#9fd4b8
+
+    %% ── User inputs ─────────────────────────────────────────────────────────
+    subgraph INPUTS["User Inputs — ./deploy_all.sh [type] [thickness] [angle]"]
+        tt["TEST_TYPE\ne.g. Nakazima, Marciniak"]:::input
+        th["BLANK_THICKNESS\ne.g. 1.0, 1.5 mm"]:::input
+        ang["MATERIAL_ORIENTATION_ANGLE\ne.g. 0, 45, 90°"]:::input
+    end
+
+    %% ── Local machine ────────────────────────────────────────────────────────
+    subgraph LOCAL["Local Machine"]
+        deploy["deploy_all.sh"]:::deploy
+    end
+
+    %% ── Euler login node ─────────────────────────────────────────────────────
+    subgraph LOGIN["Euler — Login Node"]
+        build["build_model.py"]:::build
+        mods["parts · assembly · material\nstep · contact · BCs · output · job"]:::modules
+    end
+
+    %% ── Euler compute nodes ──────────────────────────────────────────────────
+    subgraph W20["W20"]
+        s1["Abaqus/Explicit + VUMAT"]:::solver
+        p1["postproc.py"]:::post
+        v1["postproc_movie.py"]:::post
+        s1 --> p1 --> v1
+    end
+
+    subgraph W50["W50"]
+        s2["Abaqus/Explicit + VUMAT"]:::solver
+        p2["postproc.py"]:::post
+        v2["postproc_movie.py"]:::post
+        s2 --> p2 --> v2
+    end
+
+    subgraph W80["W80"]
+        s3["Abaqus/Explicit + VUMAT"]:::solver
+        p3["postproc.py"]:::post
+        v3["postproc_movie.py"]:::post
+        s3 --> p3 --> v3
+    end
+
+    subgraph W90["W90"]
+        s4["Abaqus/Explicit + VUMAT"]:::solver
+        p4["postproc.py"]:::post
+        v4["postproc_movie.py"]:::post
+        s4 --> p4 --> v4
+    end
+
+    subgraph W100["W100"]
+        s5["Abaqus/Explicit + VUMAT"]:::solver
+        p5["postproc.py"]:::post
+        v5["postproc_movie.py"]:::post
+        s5 --> p5 --> v5
+    end
+
+    subgraph W120["W120"]
+        s6["Abaqus/Explicit + VUMAT"]:::solver
+        p6["postproc.py"]:::post
+        v6["postproc_movie.py"]:::post
+        s6 --> p6 --> v6
+    end
+
+    subgraph W200["W200"]
+        s7["Abaqus/Explicit + VUMAT"]:::solver
+        p7["postproc.py"]:::post
+        v7["postproc_movie.py"]:::post
+        s7 --> p7 --> v7
+    end
+
+    %% ── FLC aggregation ──────────────────────────────────────────────────────
+    subgraph FLC["FLC Aggregation — --dependency=afterok:all"]
+        flcsh["run_flc.sh\n1 CPU · 15 min"]:::flcnode
+        flcpy["flc_plot.py\nreads CSVs × N widths\nfits & plots FLC"]:::flcnode
+        flcsh --> flcpy
+    end
+
+    %% ── Outputs ──────────────────────────────────────────────────────────────
+    subgraph OUTPUTS["Outputs (Euler home)"]
+        osim["TestType_WN_t{t}_ang{a}/\nstrain_path.csv · movie.webm"]:::output
+        oflc["FLC_{testtype}_t{t}_ang{a}/\nflc_diagram.png · flc_points.csv"]:::output
+    end
+
+    %% ── Flow ─────────────────────────────────────────────────────────────────
+    tt & th & ang      -->|"args"| deploy
+    deploy             -->|"scp + SSH: abaqus cae noGUI"| build
+    build              -->|"calls"| mods
+    mods               -->|"sbatch × N"| s1 & s2 & s3 & s4 & s5 & s6 & s7
+    v1 & v2 & v3 & v4 & v5 & v6 & v7 -->|"copied to home"| osim
+    v1 & v2 & v3 & v4 & v5 & v6 & v7 -->|"afterok:all"| flcsh
+    flcpy              --> oflc

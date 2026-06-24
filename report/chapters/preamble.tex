@@ -1,0 +1,125 @@
+%---------------------------------------------------------------------------
+% Abstract
+
+\chapter*{Abstract}
+
+Forming Limit Curves (FLCs) are widely used to characterize the formability of sheet metals and predict the onset of localized necking during forming operations. Their experimental determination and numerical prediction are sensitive to factors such as specimen geometry, sheet thickness, tooling configuration, material behaviour, and the employed evaluation methodology. These sensitivities become increasingly relevant as forming processes move towards thinner sheets, smaller characteristic dimensions, and higher levels of automation.
+\\
+
+This thesis is part of the research project \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}, which aims to improve the robustness and reproducibility of forming limit assessments. The project combines three complementary aspects: an experimental campaign investigating the influence of specimen geometry, sheet thickness and tooling configurations on measured FLCs, the development of robust and user-independent FLC identification criteria, and the creation of an automated numerical simulation framework. Together, these efforts provide a systematic approach for studying the factors that influence forming limit determination and prediction.
+\\
+
+Within this context, experimental Nakazima, Marciniak and Punch-in-Punch tests are conducted on a high-throughput testing platform and analysed using digital image correlation. Several established necking detection methodologies are implemented and evaluated within a modular identification framework. In parallel, an automated Abaqus/Explicit workflow is developed for model generation, execution and post-processing, enabling efficient numerical investigation of the experimental configurations. Particular attention is given to maintaining consistent mesh characteristics and to assessing the influence of numerical parameters through mesh-refinement and mass-scaling studies.
+\\
+
+The combination of experimental observations, automated evaluation methods and numerical simulations provides the foundation for a more robust and reproducible determination of forming limit curves.
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% Acknowledgements
+
+\chapter*{Acknowledgements}
+
+I would like to express my sincere gratitude to Dr. Christian Roth for giving me the opportunity to undertake this project.
+
+I am equally grateful to Prof. Dr. Vincent Grolleau for his supervision, insightful advice, and the many stimulating discussions that helped shape both the direction and scope of the project.
+
+I would also like to thank Dr. Jean-Michel Tancogne-Dejean for the interesting technical discussions and valuable recommendations provided during the course of this work.
+
+Furthermore, I would like to thank Dr. Dirk Mohr for the opportunity to carry out this project within the Institute of Virtual Manufacturing (IVP) and for providing the research environment in which this work was conducted.invaluable to the successful completion of this work.
+
+I am equally grateful to Prof. Dr. Vincent Grolleau for his supervision, insightful advice, and the many stimulating discussions that helped shape both the direction and scope of the project.
+
+I would also like to thank Dr. Thomas Tancogne-Dejean for the interesting technical discussions and valuable recommendations provided during the course of this work.
+
+Furthermore, I would like to thank Dr. Dirk Mohr for the opportunity to carry out this project within the Institute of Virtual Manufacturing (IVP) and for providing the research environment in which this work was conducted.
+
+Finally, I would like to thank the members of the Chair of Artificial Intelligence in Mechanics and Manufacturing and the Institute of Virtual Manufacturing for their support and for creating a stimulating research environment.
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% Table of contents
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% List of abbreviations
+
+\chapter*{List of Abbreviations}\label{chap:abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+
+\begin{tabbing}
+ \hspace*{2.4cm} \= \kill
+ALLIE \> Internal energy history output in Abaqus \\[0.5ex]
+ALLKE \> Kinetic energy history output in Abaqus \\[0.5ex]
+BC \> Boundary condition \\[0.5ex]
+CAE \> Complete Abaqus Environment \\[0.5ex]
+DIC \> Digital Image Correlation \\[0.5ex]
+EQPS \> Equivalent Plastic Strain \\[0.5ex]
+FE \> Finite Element \\[0.5ex]
+FEA \> Finite Element Analysis \\[0.5ex]
+FFLC \> Fracture Forming Limit Curve \\[0.5ex]
+FLC \> Forming Limit Curve \\[0.5ex]
+FLD \> Forming Limit Diagram \\[0.5ex]
+HC \> Hosford-Coulomb \\[0.5ex]
+HPC \> High-performance computing \\[0.5ex]
+ODB \> Output database \\[0.5ex]
+PiP \> Punch-in-Punch \\[0.5ex]
+SDV \> Solution-dependent variable \\[0.5ex]
+SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
+VUMAT \> Abaqus/Explicit user material subroutine
+\end{tabbing}
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% Symbols
+
+\chapter*{Symbols}\label{chap:symbols}
+\addcontentsline{toc}{chapter}{Symbols}
+
+\begin{tabbing}
+ \hspace*{2.0cm} \= \hspace*{8cm} \= \kill
+ $\varepsilon_1$ \> Major principal strain \> [$-$] \\[0.5ex]
+ $\varepsilon_2$ \> Minor principal strain \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p$ \> Equivalent plastic strain \> [$-$] \\[0.5ex]
+ $\bar{\varepsilon}^p_f$ \> Critical fracture strain \> [$-$] \\[0.5ex]
+ $\dot{\bar{\varepsilon}}^p$ \> Equivalent plastic strain rate \> [s$^{-1}$] \\[0.5ex]
+ $\eta$ \> Stress triaxiality \> [$-$] \\[0.5ex]
+ $\bar{\theta}$ \> Lode angle parameter \> [$-$] \\[0.5ex]
+ $D$ \> Damage variable \> [$-$] \\[0.5ex]
+ $t$ \> Blank thickness \> [mm] \\[0.5ex]
+ $W$ \> Specimen width \> [mm] \\[0.5ex]
+ $R$ \> Punch radius \> [mm] \\[0.5ex]
+ $R_\mathrm{dome}$ \> Dome-zone observation radius \> [mm] \\[0.5ex]
+ $\alpha$ \> Material orientation angle \> [$^\circ$] \\[0.5ex]
+ $\Delta t$ \> Stable time increment or mass-scaling target \> [s] \\[0.5ex]
+ $\mu$ \> Coulomb friction coefficient \> [$-$]
+\end{tabbing}
+
+\cleardoublepage
+
+%---------------------------------------------------------------------------
+% List of figures and tables
+
+\chapter*{List of Figures and Tables}
+\addcontentsline{toc}{chapter}{List of Figures and Tables}
+
+\section*{Figures}
+\makeatletter
+\@starttoc{lof}
+\makeatother
+
+\vspace{2em}
+
+\section*{Tables}
+\makeatletter
+\@starttoc{lot}
+\makeatother
+
+\cleardoublepage
