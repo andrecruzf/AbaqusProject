@@ -72,9 +72,14 @@ def process_directory(out_dir):
                 label=u'Fracture  (ε₁=%.3f, ε₂=%.3f)' % (
                     elout['eps1_le'][-1], elout['eps2_le'][-1]))
 
+        if 'volk_hora' in limits:
+            e1n, e2n = limits['volk_hora']
+            ax.plot(e2n, e1n, 'D', color='#2ca02c', markersize=8,
+                    label=u'Volk-Hora  (ε₁=%.3f, ε₂=%.3f)' % (e1n, e2n))
+
         if 'sdv6' in limits:
             e1n, e2n = limits['sdv6']
-            ax.plot(e2n, e1n, 's', color='#ff7f0e', markersize=9,
+            ax.plot(e2n, e1n, 's', color='#ff7f0e', markersize=8,
                     label=u'Necking (SDV6)  (ε₁=%.3f, ε₂=%.3f)' % (e1n, e2n))
 
         # Lock axes around strain data (± 20 % padding) before adding decorations

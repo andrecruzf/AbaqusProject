@@ -147,10 +147,8 @@ def _setup_symmetry_sets(cfg, assembly, spec_name):
     With .cae import the sets propagate directly to inst.sets.
 
     NOTE — naming convention in the geometry files (W20/W50/W80/W100/W120/W200):
-      'XSYMM' nset contains nodes at y=0  (apply YsymmBC)
-      'YSYMM' nset contains nodes at x=0  (apply XsymmBC)
-    The names are swapped relative to Abaqus global axes because the source
-    files used a *SYSTEM/*NMAP rotation that is not reproduced here.
+      'XSYMM' nset contains nodes at x=0  (apply XsymmBC)
+      'YSYMM' nset contains nodes at y=0  (apply YsymmBC)
     boundary.py handles this correctly.
     """
     inst = assembly.instances['Specimen-1']

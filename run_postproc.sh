@@ -64,12 +64,48 @@ for W in ${WIDTHS}; do
     OUT_DIR="${PROJ_DIR}/${JOB_NAME}"
     SCRATCH_DIR="/cluster/scratch/acruzfaria/${JOB_NAME}"
     if [ -d "$OUT_DIR" ]; then
-        for f in elout.csv global.csv strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
-            [ -f "${SCRATCH_DIR}/${f}" ] \
-                && cp "${SCRATCH_DIR}/${f}" "$OUT_DIR/" \
-                && echo "  ${f} -> ${OUT_DIR}/" \
-                || echo "  WARNING: ${f} not found in scratch"
+        copy_result_file() {
+            local f="$1"
+            local src="${SCRATCH_DIR}/${f}"
+            local dst="${OUT_DIR}/${f}"
+            local tmp="${dst}.tmp.$$"
+
+            if [ ! -e "$src" ]; then
+                echo "  WARNING: ${f} missing in scratch"
+                return 0
+            fi
+            if [ ! -s "$src" ]; then
+                echo "  WARNING: ${f} is empty in scratch"
+                return 0
+            fi
+
+            rm -f "$tmp"
+            if cp "$src" "$tmp" && mv "$tmp" "$dst"; then
+                echo "  ${f} -> ${OUT_DIR}/"
+            else
+                local rc=$?
+                rm -f "$tmp"
+                echo "  WARNING: failed to copy ${f} from scratch to home (rc=$rc; check disk quota/free space)"
+            fi
+        }
+
+        CORE_OUTPUTS=(
+            elout.csv
+            global.csv
+            strain_path.csv
+            strain_cluster.csv
+            strain_neighborhood.csv
+            strain_cluster_faces.csv
+            specimen_outline.csv
+            forming_limits.csv
+            energy_data.csv
+            punch_fd.csv
+            cov_data.csv
+        )
+        for f in "${CORE_OUTPUTS[@]}"; do
+            copy_result_file "$f"
         done
+        copy_result_file strain_dome.csv
     fi
 done
 

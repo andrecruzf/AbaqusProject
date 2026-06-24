@@ -8,9 +8,9 @@
 #   bash submit_postproc.sh --thickness 1.5 --test_type marciniak
 #
 # Submits two SLURM jobs:
-#   1. run_postproc.sh  — abaqus python: extracts CSVs from ODBs
-#   2. run_plot.sh      — regular python: generates PNGs from CSVs
-#                         depends on job 1 via --dependency=afterok
+#   1. run_postproc.sh     — abaqus python: extracts CSVs from ODBs
+#   2. run_plots.sh results — regular python: generates PNGs from CSVs
+#                            depends on job 1 via --dependency=afterok
 # =============================================================
 
 WIDTHS=""
@@ -40,7 +40,7 @@ JOB1=$(sbatch --parsable --export="${EXPORT}" run_postproc.sh)
 echo "Submitted postproc job:  ${JOB1}"
 
 # Submit job 2: plotting (regular python, reads CSVs, writes PNGs)
-JOB2=$(sbatch --parsable --export="${EXPORT}" --dependency=afterok:${JOB1} run_plot.sh)
+JOB2=$(sbatch --parsable --export="${EXPORT}" --dependency=afterok:${JOB1} run_plots.sh results)
 echo "Submitted plot job:      ${JOB2}  (afterok:${JOB1})"
 
 echo ""

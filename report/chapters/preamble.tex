@@ -12,10 +12,16 @@ smaller specimen dimensions, high-throughput testing, automated specimen
 handling, and digital image correlation.
 
 This thesis contributes to the project \textit{Towards Robust Forming Limit
-Curve Identification: Experiments and Modeling}. The focus is Task~III of the
-project outline: a numerical simulation framework that automates the creation,
-execution, and post-processing of the specimen and punch configurations studied
-experimentally in Task~I. The framework generates Nakazima, Marciniak, and
+Curve Identification: Experiments and Modeling}. The report follows the full
+three-task structure of the project. Task~I defines the experimental campaign
+on the high-throughput Nakazima/Marciniak test bench, including specimen-size,
+sheet-thickness, punch-radius, and Punch-in-Punch variations. Task~II provides
+the modular FLC identification framework used to evaluate experimental and
+numerical strain data with multiple criteria. Task~III develops the numerical
+simulation framework that automates the creation, execution, and
+post-processing of the corresponding specimen and punch configurations.
+
+The implemented numerical framework generates Nakazima, Marciniak, and
 Punch-in-Punch models in Abaqus/Explicit, submits simulations to the ETH Euler
 cluster, and processes the resulting output databases without manual
 intervention. A VUMAT implementation of the Hosford-Coulomb fracture criterion
@@ -31,8 +37,8 @@ study provide the basis for selecting production settings.
 The post-processing pipeline extracts punch force--displacement histories,
 energy histories, forming-limit points, strain paths, and diagnostic
 visualisations. The resulting data products are structured for comparison
-between test configurations and for later integration with the modular FLC
-identification framework of Task~II, including Volk-Hora, Merklein,
+between experimental and numerical test configurations and for use with the
+modular FLC identification framework, including Volk-Hora, Merklein,
 Pham-Sigvant, and Stoughton-type criteria.
 
 \cleardoublepage

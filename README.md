@@ -31,7 +31,8 @@ detection, FLC aggregation), diagnostic plotting, and EQPS animation export.
 | Tool | Version | Notes |
 |------|---------|-------|
 | Python 3 | ≥ 3.8 | only used to read `config.py` values in deploy scripts |
-| OpenSSH | any | `ssh`, `scp` |
+| OpenSSH | any | `ssh`, `rsync` |
+| rsync | any | used by all deploy scripts instead of `scp` — skips unchanged files |
 | ETH VPN | — | required when off campus |
 
 No Python packages need to be installed locally — the deploy scripts only
@@ -56,7 +57,7 @@ HPC access via the form).
 
 ### 2. SSH key authentication (strongly recommended)
 
-Password-based login is slow and will break non-interactive `scp`/`ssh` in
+Password-based login is slow and will break non-interactive `rsync`/`ssh` in
 the deploy scripts. Set up key-based auth once:
 
 ```bash
@@ -113,6 +114,11 @@ abaqus information=release
 No further cluster-side setup is needed — the deploy scripts push all source
 files automatically on every run.
 
+**Disk quota:** The Euler home directory has a ~43 GB soft quota (47 GB hard
+limit). The pipeline automatically deletes `.inp` files after each solver job
+is submitted (they are regenerable and each file is 150–190 MB). Monitor
+usage with `quota -s` when logged in.
+
 ---
 
 ## Local repository setup
@@ -128,8 +134,8 @@ Or copy the project folder to your machine if you received it as an archive.
 
 ### 2. Edit deploy variables
 
-Open `deploy.sh` (single run) and `deploy_all.sh` (full FLC sweep) and update
-the three variables at the top:
+Open any deploy script (`deploy.sh`, `deploy_all.sh`, `deploy_study.sh`) and
+update the three variables at the top:
 
 ```bash
 EULER_USER="your_eth_username"          # ← change this
@@ -137,14 +143,16 @@ EULER_HOST="euler.ethz.ch"              # leave as-is
 EULER_DIR="/cluster/home/your_eth_username/AbaqusProject"  # ← change this
 ```
 
-The same three variables appear in both files — edit both.
+The same three variables appear in all deploy scripts — edit all of them.
 
 ---
 
 ## Configuring a run
 
 All simulation parameters live in **`config.py`**. Edit only this file;
-everything else reads from it.
+everything else reads from it. Every parameter can also be overridden via an
+environment variable of the same name, which is how the deploy scripts pass
+per-run values.
 
 ### Key parameters
 
@@ -153,12 +161,21 @@ TEST_TYPE   = 'nakazima'    # 'nakazima' | 'marciniak' | 'pip'
 SPECIMEN_WIDTH = 50         # mm — selects geometry W50 (one run at a time)
 BLANK_THICKNESS = 1.5       # mm
 MATERIAL_ORIENTATION_ANGLE = 0.0   # degrees from rolling direction
-MESH_REFINEMENT_FACTOR = 1  # 1 = base mesh; 2 = 2× finer in dome zone; etc.
+
+MESH_REFINEMENT_FACTOR = 2.0  # 1.0 = baseline; 2.0 = 2× finer (recommended)
+MESH_BACKEND = 'bm'           # 'bm' = Nakazima_BM.py builder; 'current' = CAE import
+MESH_SEED_MODE = 'zones'      # 'zones' | 'imported' | 'outer_reseed' | ...
+
+MASS_SCALING_DT = 1e-5        # s — target stable dt; lower = more accurate but slower
+PUNCH_SPEED = 5.0             # mm/s
 ```
 
-`MESH_REFINEMENT_FACTOR` scales element size inside the dome zone. Factor 2
-gives 4× more elements in the dome (quadratic refinement). Refined jobs get
-an `_mr{N}` suffix in their name, e.g. `Nakazima_W50_t2p0_ang0_mr2`.
+`MESH_REFINEMENT_FACTOR` scales element size in the dome zone (quadratic
+refinement: factor 2 gives ~4× more elements). Refined jobs get an `_mr{N}`
+suffix, e.g. `Naka100_W50_t2p0_ang0_ms1e5_mr2`.
+
+`MESH_BACKEND = 'bm'` uses `Nakazima_BM.py` to build the specimen mesh
+parametrically instead of importing a pre-meshed `.cae` geometry file.
 
 For a **PiP** run you also need:
 
@@ -195,16 +212,37 @@ Builds one model, submits the solver job, and automatically submits a
 dependent plot job that runs after the solver finishes.
 
 ```bash
+# Use all defaults from config.py
 ./deploy.sh
+
+# Override individual parameters (all positional, all optional)
+./deploy.sh nakazima 1.5 0 90 none 2 1e-5 5.0
+#           type     t  ang W  pip mr ms    ps
 ```
+
+Positional arguments (all optional — fall back to `config.py` defaults):
+
+| Position | Parameter | Default |
+|----------|-----------|---------|
+| 1 | test type | `config.TEST_TYPE` |
+| 2 | thickness (mm) | `config.BLANK_THICKNESS` |
+| 3 | orientation (deg) | `config.MATERIAL_ORIENTATION_ANGLE` |
+| 4 | specimen width (mm) | `config.SPECIMEN_WIDTH` |
+| 5 | PIP punch2 ID (`none` if unused) | `config.PIP_PUNCH2_ID` |
+| 6 | mesh refinement factor | `config.MESH_REFINEMENT_FACTOR` |
+| 7 | mass scaling dt (s) | `config.MASS_SCALING_DT` |
+| 8 | punch speed (mm/s) | `config.PUNCH_SPEED` |
+| 9 | punch radius (mm) | `config.PUNCH_RADIUS` |
+| 10 | study subdir (for study mode) | `""` |
 
 What it does:
 1. Reads `config.py` for all parameters
-2. Pushes all source files to Euler via `scp`
+2. Pushes all source files to Euler via `rsync --checksum` (only changed files transferred)
 3. Runs `abaqus cae noGUI=build_model.py` on the login node → produces `.inp`
-4. Runs `abaqus cae noGUI=screenshot_mesh.py` → produces `<JOB>_mesh.png` and `<JOB>_mesh_top.png` for immediate mesh quality feedback
+4. Renders mesh screenshots via `screenshot_mesh.py` → `<JOB>_mesh.png` / `<JOB>_mesh_top.png`
 5. Submits solver job via `sbatch run_cluster.sh` → returns `JOB_ID`
-6. Submits plot job via `sbatch run_flc.sh --dependency=afterok:JOB_ID`
+6. Submits plot job via `sbatch run_plots.sh flc --dependency=afterok:JOB_ID`
+7. Deletes the `.inp` file (150–190 MB, regenerable) after submission
 
 ### Full FLC sweep — `deploy_all.sh`
 
@@ -216,26 +254,35 @@ immediately — all building and job submission happens remotely.
 # Use defaults from config.py
 ./deploy_all.sh
 
-# Override test type, thickness, orientation
+# Override test type, thickness, orientation (most common)
 ./deploy_all.sh nakazima 1.5 0
 
-# Override + specific widths only
-./deploy_all.sh nakazima 1.5 0 50 80 200
+# Full explicit override including mesh/scaling/speed
+./deploy_all.sh nakazima 1.5 0 none 2 1e-5 5.0 50
+
+# Specific widths only (after all 8 parameter positions)
+./deploy_all.sh nakazima 1.5 0 none 2 1e-5 5.0 50 20 80 200
 ```
 
-Arguments (all optional, positional):
+Positional arguments (all optional):
 
 | Position | Parameter | Default |
 |----------|-----------|---------|
 | 1 | test type | `config.TEST_TYPE` |
 | 2 | thickness (mm) | `config.BLANK_THICKNESS` |
 | 3 | orientation (deg) | `config.MATERIAL_ORIENTATION_ANGLE` |
-| 4+ | widths | 20 50 80 90 100 120 200 |
+| 4 | PIP punch2 ID (`none` if unused) | `config.PIP_PUNCH2_ID` |
+| 5 | mesh refinement factor | `config.MESH_REFINEMENT_FACTOR` |
+| 6 | mass scaling dt (s) | `config.MASS_SCALING_DT` |
+| 7 | punch speed (mm/s) | `config.PUNCH_SPEED` |
+| 8 | punch radius (mm) | `config.PUNCH_RADIUS` |
+| 9+ | widths | 20 50 80 90 100 120 200 |
 
 `submit_all.sh` runs on Euler and:
 1. Loads the `abaqus/2023` module
-2. For each width: builds the model with `abaqus cae noGUI=build_model.py`, renders mesh screenshots, submits the solver job via `sbatch`
-3. After all solver jobs are queued: submits the FLC aggregation job with `afterok` dependency on all solver IDs
+2. For each width: builds the model, renders mesh screenshots, submits the solver job via `sbatch`
+3. Deletes the `.inp` file after each job is submitted
+4. After all solver jobs are queued: submits the FLC aggregation job with `afterok` dependency
 
 All output is captured to `$EULER_DIR/submit_all.log`.
 
@@ -251,7 +298,7 @@ from a completed ODB. Can be run any time after the solver finishes.
 ./deploy_movie.sh <JOB_NAME>
 
 # Example
-./deploy_movie.sh Nakazima_W50_t2p0_ang0_mr2
+./deploy_movie.sh Naka100_W50_t2p0_ang0_ms1e5_mr2
 ```
 
 What it does:
@@ -272,8 +319,6 @@ Two animations are produced:
 - **`_movie.webm`** — isometric full view with translucent tooling and EQPS contours on the specimen
 - **`_cut.webm`** — front view of the Y=0 symmetry half-model; punch and blank holder shown translucent so the interior strain field is visible
 
-Both use a fixed EQPS colour scale (max = fracture strain of deleted elements) and a stable camera, so the view does not drift as the punch descends. In the Streamlit Results tab the two videos are displayed side-by-side and kept frame-synchronised automatically.
-
 ---
 
 ## Parameter study — `deploy_study.sh`
@@ -289,18 +334,32 @@ representative specimen (default: W200).
 ./deploy_study.sh 1.5 0
 ```
 
-The grid is defined at the top of `deploy_study.sh`:
+The study grid is defined at the top of `deploy_study.sh`:
 
 ```bash
-MR_VALUES=(1 2 4 8)
+MR_VALUES=(1 2 4)
 MS_VALUES=(1e-7 1e-6 1e-5 1e-4)
 ```
 
-Each (MR, MS) combination is built and submitted independently via
-`submit_one.sh` over a blocking SSH loop. After all 16 solver jobs are queued,
-a `plot_study.py` aggregation job is submitted with `afterok` dependency on all
-of them; it writes a three-panel heatmap `study_results.pdf` (wall time,
-ALLKE/ALLIE, Δε₁) to the study directory on Euler.
+Each (MR, MS) combination is built and submitted independently via **direct
+blocking SSH calls** to `submit_one.sh` on Euler — one SSH call per job, each
+blocking until the build completes and the SLURM job ID is returned. After all
+jobs are queued, a `plot_study.py` aggregation job is submitted with `afterok`
+dependency; it writes a heatmap PDF (`study_results.pdf`) to the study
+directory.
+
+Additional env-var overrides:
+
+```bash
+# Change punch speed (affects runtime and KE/IE ratio)
+PUNCH_SPEED=2.0 ./deploy_study.sh 1.5 0
+
+# Use a different mesh backend
+MESH_BACKEND=bm ./deploy_study.sh 1.5 0
+
+# Change number of through-thickness seeds (default 10)
+N_THICKNESS_SEEDS=6 ./deploy_study.sh 1.5 0
+```
 
 ---
 
@@ -321,9 +380,8 @@ streamlit run app.py
 | **Results** | Browse synced results: **Single Job** (synced full/cut video pair + 4 interactive Plotly tabs); **Full FLC** (interactive FLC chart + per-width job inspector); **Compare FLC** (multi-set overlay with export) |
 | **AI Assistant** | Claude-powered assistant for model and results questions |
 
-All charts in the Results tab are rendered as interactive Plotly figures — no PDF viewer or external rendering library required.
-
-Progress is fetched silently in the background every 60 s; click **🔄** to force-refresh immediately.
+All charts in the Results tab are rendered as interactive Plotly figures. Progress is
+fetched silently every 60 s; click **🔄** to force-refresh immediately.
 
 ### Command-line
 
@@ -337,15 +395,23 @@ tmux attach -t deploy
 
 # Tail the submission log without keeping SSH open
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/submit_all.log'
+
+# Check progress from a running .sta file (Abaqus status)
+ssh YOUR_ETH_USERNAME@euler.ethz.ch \
+  'tail -1 /cluster/scratch/$USER/<JOB_NAME>/<JOB_NAME>.sta'
 ```
 
-Typical wall times on 24 CPUs:
+Typical wall times on 24 CPUs (`MS=1e-5, MR=2, PS=5 mm/s`):
 
 | Test | Width | Approximate time |
 |------|-------|-----------------|
-| Nakazima | W20–W80 | 1–4 h |
-| Nakazima | W200 | 6–12 h |
+| Nakazima | W20–W80 | 4–8 h |
+| Nakazima | W100–W120 | 6–10 h |
+| Nakazima | W200 | 8–14 h |
 | PiP | any | 4–16 h |
+
+With `MS=1e-6` (10× more accurate, 10× more increments) multiply by ~10.
+With `MR=4` (4× finer mesh) multiply by ~4 additionally.
 
 ---
 
@@ -356,21 +422,20 @@ solver job (`run_cluster.sh` Step 5). Each run produces a subdirectory:
 
 ```
 AbaqusProject/
-  Nakazima_W50_t1p5_ang0/
+  Naka100_W50_t1p5_ang0_ms1e5_mr2/
     strain_path.csv
     forming_limits.csv
     energy_data.csv
     cov_data.csv
     punch_fd.csv
-    Nakazima_W50_t1p5_ang0_mesh.png     ← ISO mesh view (generated at build time)
-    Nakazima_W50_t1p5_ang0_mesh_top.png ← face-on mesh view (generated at build time)
-    Nakazima_W50_t1p5_ang0_movie.webm
+    Naka100_W50_t1p5_ang0_ms1e5_mr2_mesh.png     ← ISO mesh view (generated at build time)
+    Naka100_W50_t1p5_ang0_ms1e5_mr2_mesh_top.png ← face-on mesh view
+    Naka100_W50_t1p5_ang0_ms1e5_mr2_movie.webm
     postproc_plots.pdf          ← generated by plot job
 ```
 
 To pull results to your local machine use **`collect_results.sh`**, which
-downloads all CSVs and (optionally) movies for a full width sweep, then
-generates the FLC PDF locally:
+downloads all CSVs and (optionally) movies for a full width sweep:
 
 ```bash
 # All defaults from config.py
@@ -379,26 +444,32 @@ generates the FLC PDF locally:
 # Override parameters
 ./collect_results.sh nakazima 1.5 0
 
-# Skip movie download
+# Skip movie download (faster)
 ./collect_results.sh nakazima 1.5 0 --no-movies
 
 # Specific widths only
 ./collect_results.sh nakazima 1.5 0 50 80 200
 ```
 
-Or pull manually:
+Or pull manually with rsync (faster than scp for multiple files):
 
 ```bash
-# Single run
-scp -r YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/Nakazima_W50_t1p5_ang0 .
+# Single run directory
+rsync -az YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/Naka100_W50_t1p5_ang0_ms1e5_mr2/ ./Naka100_W50_t1p5_ang0_ms1e5_mr2/
 
-# FLC PDF (full sweep)
-scp YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/FLC_nakazima_t1p5_ang0/FLC_nakazima.pdf .
+# FLC output directory (all widths)
+rsync -az YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/FLC_nakazima_t1p5_ang0/ ./FLC_output/FLC_nakazima_t1p5_ang0/
 ```
 
 The ODB files stay in `/cluster/scratch/$USER/<job_name>/` and are
 auto-deleted by Euler after 2 weeks. Retrieve them manually if needed before
 that window closes.
+
+**Note on disk quota:** The Euler home has a ~43 GB soft quota. The pipeline
+auto-deletes `.inp` files after submission, but large `strain_dome.csv` files
+(100 MB – 2 GB each) can accumulate. For sensitivity study directories these
+can be deleted after the study is complete — the key results are in
+`forming_limits.csv` and `study_results.pdf`.
 
 ---
 
@@ -407,9 +478,8 @@ that window closes.
 If you want to re-plot without re-solving (e.g. after updating `plot_results.py`):
 
 ```bash
-# Interactive single specimen (login node, immediate)
-./postproc_single.sh 50 nakazima 1.5 0
-#                    ^W ^type    ^t  ^angle
+# Single ODB via SLURM queue
+sbatch run_postproc_odb.sh /cluster/scratch/<user>/<JOB_NAME>/<JOB_NAME>.odb
 
 # Batch re-post-process via SLURM queue
 ./submit_postproc.sh --widths "50 80 200" --test_type nakazima --thickness 1.5 --orientation 0
@@ -426,10 +496,12 @@ without re-running the solver.
 AbaqusProject/
 ├── config.py                  ← all parameters — edit this
 ├── build_model.py             ← Abaqus CAE script, builds .inp
+├── build_mesh_only.py         ← builds mesh only (no solver step), for mesh checks
+├── Nakazima_BM.py             ← parametric specimen mesh builder (MESH_BACKEND=bm)
 ├── VUMAT_explicit.f           ← user material subroutine
 │
 ├── modules/                   ← Python modules imported by build_model.py
-│   ├── parts.py               ← specimen + tooling geometry
+│   ├── parts.py               ← specimen + tooling geometry and meshing
 │   ├── assembly.py            ← part instances + constraints
 │   ├── material.py            ← VUMAT material definition
 │   ├── contact.py             ← contact pairs
@@ -439,21 +511,29 @@ AbaqusProject/
 │
 ├── postproc.py                ← Abaqus Python: extracts CSVs from ODB
 ├── postproc_movie.py          ← Abaqus Python: renders EQPS animation
-├── screenshot_mesh.py         ← Abaqus Python: renders mesh PNGs after build (auto-called by submit scripts)
+├── screenshot_mesh.py         ← Abaqus Python: renders mesh PNGs after build
 ├── plot_results.py            ← Python+matplotlib: per-specimen PDF
 ├── plot_flc.py                ← Python+matplotlib: FLC aggregation PDF
+├── plot_study.py              ← Python+matplotlib: MS×MR study heatmap PDF
 │
 ├── app.py                     ← Streamlit pipeline manager (submit / monitor / results / AI)
 │
 ├── deploy.sh                  ← single-specimen deploy (push + build + submit)
 ├── deploy_all.sh              ← full-width FLC sweep deploy (launches submit_all.sh via tmux)
-├── deploy_study.sh            ← mass scaling × mesh refinement study (runs locally)
+├── deploy_study.sh            ← mass scaling × mesh refinement study (blocking SSH loop)
+├── deploy_movie.sh            ← EQPS animation render deploy
+│
 ├── submit_all.sh              ← runs ON Euler: builds all widths + submits solver + FLC jobs
 ├── submit_one.sh              ← runs ON Euler: build + submit for a single specimen
-├── submit_study.sh            ← runs ON Euler: builds all (MR, MS) combinations (legacy)
-├── run_cluster.sh             ← SLURM: solver + postproc + movie (run on cluster)
-├── run_flc.sh                 ← SLURM: FLC aggregation job (afterok all solver jobs)
-├── run_plot_study.sh          ← SLURM: study aggregation job (afterok all study solver jobs)
+├── submit_study.sh            ← runs ON Euler: MS×MR study (legacy — superseded by deploy_study.sh)
+│
+├── run_cluster.sh             ← SLURM: solver + postproc + movie
+├── run_plots.sh               ← SLURM: plotting — flc | results | study (replaces run_flc/run_plot/run_plot_study)
+├── run_postproc.sh            ← SLURM: postproc-only re-run
+├── run_movie.sh               ← SLURM: movie render job
+│
+├── collect_results.sh         ← local: rsync CSVs + movies from Euler
+├── submit_postproc.sh         ← local: submit postproc-only SLURM job
 │
 ├── Naka_Marciniak_Geometries/ ← specimen .cae files for Nakazima/Marciniak
 ├── PiP_Geometries/            ← specimen .cae files for PiP
@@ -475,13 +555,14 @@ AbaqusProject/
 | `forming_limits.csv` | Limit strains per method: `method` (`fracture`/`volk_hora`/`sdv6`/`min_stoughton`/`pham_sigvant`/`din_iso`), `eps1_major`, `eps2_minor`, `EQPS`, `D`, `time_s` |
 | `energy_data.csv` | Energy balance per frame: `step_name`, `total_time_s`, `ALLKE`, `ALLIE`, `is_step_boundary` |
 | `punch_fd.csv` | Punch force–displacement history: `total_time_s`, `U3_mm`, `RF3_N` |
-| `cov_data.csv` | Pham-Sigvant CoV time history: `time_s`, `cov`, `eps1_dot_mean` — used for necking onset detection |
+| `cov_data.csv` | Pham-Sigvant CoV time history: `time_s`, `cov`, `eps1_dot_mean` |
 | `postproc_plots.pdf` | Per-specimen diagnostic plots (8 pages) |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths |
-| `<job>_mesh.png` | ISO view of the specimen mesh — generated immediately after build, before the solver runs |
-| `<job>_mesh_top.png` | Face-on view (+Z camera) of the specimen mesh — best for checking element density and zone transitions |
+| `study_results.pdf` | MS×MR sensitivity heatmap (wall time, KE/IE ratio, Δε₁) |
+| `<job>_mesh.png` | ISO view of the specimen mesh — generated at build time |
+| `<job>_mesh_top.png` | Face-on (+Z) view of the specimen mesh |
 | `<job>_movie.webm` | EQPS field animation — isometric full view with translucent tooling |
-| `<job>_cut.webm` | EQPS animation — front view of Y=0 half-model; punch + blank holder shown translucent |
+| `<job>_cut.webm` | EQPS animation — front view of Y=0 half-model; tooling shown translucent |
 
 ### Diagnostic plot pages (`postproc_plots.pdf`)
 

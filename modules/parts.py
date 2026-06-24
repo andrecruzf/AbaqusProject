@@ -97,6 +97,12 @@ def _add_elout_set(cfg, part):
         print('  WARNING _add_elout_set: %s' % e)
 
 
+def build_bm_specimen(cfg, assemble=False):
+    """Build the specimen using Nakazima_BM.py and return the part."""
+    from Nakazima_BM import build_specimen as _build_bm_specimen
+    return _build_bm_specimen(cfg, assemble=assemble)
+
+
 # ─────────────────────────────────────────────────────────────
 # Rigid tools
 # ─────────────────────────────────────────────────────────────
@@ -1727,8 +1733,8 @@ def _verify_symmetry_sets(part):
     set loses its face reference after unlock/regenerate), rebuild it from node
     coordinates:
 
-      'XSYMM' set  →  nodes at  y ≈ 0  (naming from Lennard's rotated frame)
-      'YSYMM' set  →  nodes at  x ≈ 0
+      'XSYMM' set  →  nodes at  x ≈ 0
+      'YSYMM' set  →  nodes at  y ≈ 0
 
     The EDGE set is also verified / rebuilt as nodes at r ≥ (max_r - tol).
     """
@@ -1995,6 +2001,7 @@ def create_parts(cfg):
     """Create all parts according to GEOMETRY_SOURCE and TEST_TYPE."""
     print('--- Part creation ---')
     test_type = getattr(cfg, 'TEST_TYPE', 'nakazima').lower()
+    mesh_backend = getattr(cfg, 'MESH_BACKEND', 'bm').lower()
     if test_type == 'nakazima':
         create_punch(cfg)
         create_die(cfg)
@@ -2015,7 +2022,11 @@ def create_parts(cfg):
     else:
         raise ValueError("Unknown TEST_TYPE: '%s'." % test_type)
 
-    if cfg.GEOMETRY_SOURCE == 'cae':
+    if mesh_backend == 'bm' or cfg.GEOMETRY_SOURCE == 'bm':
+        if test_type == 'pip':
+            raise ValueError('Nakazima_BM.py only supports Nakazima-style specimen meshing.')
+        build_bm_specimen(cfg, assemble=False)
+    elif cfg.GEOMETRY_SOURCE == 'cae':
         import_specimen_cae(cfg)
     elif cfg.GEOMETRY_SOURCE == 'inp':
         import_specimen(cfg)

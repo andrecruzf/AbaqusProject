@@ -8,6 +8,7 @@
 #   ./collect_results.sh nakazima 1.5 45            # + orientation angle
 #   ./collect_results.sh nakazima 1.5 45 50 80 100  # + specific widths
 #   ./collect_results.sh nakazima 1.5 0 --no-movies # skip movie download
+#   ./collect_results.sh nakazima 1.5 0 --large-csvs # also download strain_dome.csv
 # =============================================================
 
 EULER_USER="acruzfaria"
@@ -26,11 +27,14 @@ ORIENTATION=${3:-$DEFAULT_ORIENTATION}
 shift $(( $# < 3 ? $# : 3 ))
 
 DOWNLOAD_MOVIES=true
+DOWNLOAD_LARGE_CSVS=false
 CUSTOM_WIDTHS=false
 WIDTHS=()
 for arg in "$@"; do
     if [ "$arg" = "--no-movies" ]; then
         DOWNLOAD_MOVIES=false
+    elif [ "$arg" = "--large-csvs" ] || [ "$arg" = "--all-csvs" ]; then
+        DOWNLOAD_LARGE_CSVS=true
     else
         WIDTHS+=("$arg")
     fi
@@ -65,8 +69,26 @@ for W in "${WIDTHS[@]}"; do
 
     mkdir -p "$LOCAL_DIR"
 
-    # CSVs needed for plotting
-    for f in strain_path.csv forming_limits.csv energy_data.csv punch_fd.csv cov_data.csv; do
+    # CSVs needed by plotting/app views. strain_dome.csv can be hundreds of MB,
+    # so it is opt-in via --large-csvs.
+    CSV_FILES=(
+        elout.csv
+        global.csv
+        strain_path.csv
+        strain_cluster.csv
+        strain_neighborhood.csv
+        strain_cluster_faces.csv
+        specimen_outline.csv
+        forming_limits.csv
+        energy_data.csv
+        punch_fd.csv
+        cov_data.csv
+    )
+    if [ "$DOWNLOAD_LARGE_CSVS" = true ]; then
+        CSV_FILES+=(strain_dome.csv)
+    fi
+
+    for f in "${CSV_FILES[@]}"; do
         if scp "${EULER_USER}@${EULER_HOST}:${REMOTE_DIR}/${f}" "$LOCAL_DIR/" 2>/dev/null; then
             echo "    ${f} ✓"
         else

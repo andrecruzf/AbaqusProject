@@ -18,12 +18,12 @@
 # When STUDY_SUBDIR is set (study mode):
 #   - job dir goes to EULER_DIR/STUDY_SUBDIR/JOB_NAME/
 #   - SLURM logs go to EULER_DIR/STUDY_SUBDIR/logs/
-#   - run_flc.sh aggregation is NOT submitted (caller handles it)
+#   - run_plots.sh flc aggregation is NOT submitted (caller handles it)
 #   - last stdout line is "JOB_ID=<slurm_id>" for caller to capture
 #
 # When STUDY_SUBDIR is empty (normal mode):
 #   - job dir stays flat under EULER_DIR/JOB_NAME/
-#   - run_flc.sh aggregation job submitted as usual
+#   - run_plots.sh flc aggregation job submitted as usual
 # =============================================================
 
 set -e
@@ -278,7 +278,7 @@ if [ -z "$STUDY_SUBDIR" ]; then
         --dependency=afterok:${JOB_ID} \
         --job-name=plot_${JOB_NAME} \
         --export=ALL,OUTPUT_DIRS=${JOB_NAME},FLC_OUTDIR=${FLC_OUTDIR},TEST_TYPE=${TEST_TYPE},BLANK_THICKNESS=${THICKNESS},MATERIAL_ORIENTATION_ANGLE=${ORIENTATION} \
-        --parsable run_flc.sh)
+        --parsable run_plots.sh flc)
     echo "  Plot job    : ${PLOT_ID}  (afterok:${JOB_ID})"
 fi
 

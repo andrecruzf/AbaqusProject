@@ -1,13 +1,14 @@
 \chapter{Conclusion}\label{chap:conclusion}
 
-This project developed the automated numerical framework required by Task~III of
-the project outline for robust forming-limit identification. The framework covers the complete workflow
-from model generation in Abaqus/CAE to solver submission, post-processing,
-diagnostic plotting, and FLC aggregation on the ETH Euler cluster. The same
-pipeline can be used for Nakazima, Marciniak, and Punch-in-Punch simulations by
-changing the configuration parameters rather than the model-building code.
+This report addressed the three connected tasks of the project \textit{Towards
+Robust Forming Limit Curve Identification: Experiments and Modeling}. Task~I
+defines the experimental campaign for studying size, thickness, punch-radius,
+and configuration effects on FLCs. Task~II provides the modular identification
+framework needed to evaluate forming limits with several criteria. Task~III
+supplies the automated numerical framework used to generate controlled
+simulation data for the same specimen and punch configurations.
 
-The main result is a reproducible and extensible FEA pipeline. The model
+The main implemented result is a reproducible and extensible FEA pipeline. The model
 generation step creates the required tooling, specimen, contact definitions,
 material assignment, output requests, and boundary conditions automatically. The
 solver jobs are submitted through SLURM, and the post-processing stage extracts
@@ -31,8 +32,8 @@ element sizes be maintained across configurations, so that the numerical
 campaign can support the size-effect study of Task~I and provide consistent
 inputs to the identification framework of Task~II.
 
-In summary, the project provides the infrastructure required for automated,
-traceable, and scalable forming-limit simulations. The remaining work is mainly
-experimental and quantitative: completing the simulation campaigns, validating
-the extracted FLCs against measured data, and refining the post-processing
+In summary, the report connects the experimental, data-evaluation, and
+simulation parts of the project into one workflow. The remaining work is mainly
+quantitative: completing the experimental and numerical campaigns, validating
+the extracted FLCs against measured data, and refining the identification
 criteria once more complete datasets are available.

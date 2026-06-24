@@ -15,20 +15,23 @@ This work is part of the project \textit{Towards Robust Forming Limit Curve Iden
 \begin{description}
   \item[Task I] A large-scale experimental study on several engineering materials using a high-throughput Nakazima/Marciniak test bench. The campaign investigates size effects on FLCs across specimen geometries, sheet thicknesses, punch radii, and a novel Punch-in-Punch setup, while also assessing the robustness of the automated specimen loading system.
   \item[Task II] Development of a modular, robust, and user-friendly FLC identification framework in Matlab/Python. The framework integrates and improves established criteria such as Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, and Pham-Sigvant~\cite{Pham2023}, addresses unstable ISO~12004 evaluations for materials affected by dynamic strain ageing, and includes a Stoughton-type criterion~\cite{Min2017}.
-  \item[Task III] \textbf{(this report)} Development of a numerical simulation framework that fully automates model creation, execution, and post-processing for all specimen and punch configurations relevant to Task~I. A central requirement is maintaining identical element size across configurations and enabling an automated mesh-size study.
+  \item[Task III] Development of a numerical simulation framework that fully automates model creation, execution, and post-processing for all specimen and punch configurations relevant to Task~I. A central requirement is maintaining identical element size across configurations and enabling an automated mesh-size study.
 \end{description}
 
 \section{Objectives}
 
-The objective of this semester thesis is to build the numerical framework required by Task~III. The specific goals are:
+The objective of this report is to document the complete project structure and
+to develop the numerical part in sufficient detail for direct integration with
+the experimental and identification work packages. The specific goals are:
 
 \begin{enumerate}
+  \item Define the experimental campaign parameters and robustness requirements for Nakazima, Marciniak, and Punch-in-Punch testing.
+  \item Describe the FLC identification framework and the role of ISO, Volk-Hora, Merklein, Pham-Sigvant, and Stoughton-type criteria.
   \item Parameterise Nakazima, Marciniak, and Punch-in-Punch simulations in Abaqus/Explicit for the relevant specimen widths, sheet thicknesses, punch radii, forming travels, and material orientations.
-  \item Automate the complete workflow from model building to solver submission, post-processing, and result synchronisation on the ETH Euler HPC cluster.
-  \item Maintain comparable element sizes across specimen and punch configurations, and implement an automated mesh-size modification workflow for systematic mesh studies.
-  \item Extract force--displacement curves, energy histories, strain paths, forming-limit points, and visual diagnostics in a format that can be used by the FLC identification framework of Task~II.
+  \item Automate the numerical workflow from model building to solver submission, post-processing, and result synchronisation on the ETH Euler HPC cluster.
+  \item Maintain comparable element sizes across specimen and punch configurations, and export force--displacement curves, energy histories, strain paths, forming-limit points, and visual diagnostics in a format shared with the identification framework.
 \end{enumerate}
 
 \section{Report Structure}
 
-Chapter~\ref{chap:theory} introduces the theoretical background, including the FLC concept, the test methods, the Hosford-Coulomb failure criterion, and selected FLC identification criteria. Chapter~\ref{chap:numerical_model} describes the FE model, mesh-size control, simulation pipeline, and post-processing methodology. Chapter~\ref{chap:results} presents framework verification, sensitivity studies, and representative simulation outputs. Chapter~\ref{chap:conclusion} summarises the findings, while Chapter~\ref{chap:future_work} outlines recommended future work.
+Chapter~\ref{chap:theory} introduces the theoretical background, including the FLC concept, the test methods, the Hosford-Coulomb failure criterion, and selected FLC identification criteria. Chapter~\ref{chap:experimental_campaign} describes the experimental campaign and robustness requirements of Task~I. Chapter~\ref{chap:identification_framework} summarises the Task~II identification framework and its data interface. Chapter~\ref{chap:numerical_model} describes the FE model, mesh-size control, simulation pipeline, and post-processing methodology of Task~III. Chapter~\ref{chap:results} presents framework verification, sensitivity studies, and representative simulation outputs. Chapter~\ref{chap:conclusion} summarises the findings, while Chapter~\ref{chap:future_work} outlines recommended future work.

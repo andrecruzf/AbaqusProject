@@ -90,7 +90,7 @@ rsync -az --checksum \
     "$SCRIPT_DIR/build_mesh_only.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
-    "$SCRIPT_DIR/run_flc.sh" \
+    "$SCRIPT_DIR/run_plots.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \

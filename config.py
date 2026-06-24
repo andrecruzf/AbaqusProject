@@ -478,26 +478,22 @@ POSTPROC_THRESHOLDS = {
 
     # ── Volk-Hora necking criterion ──────────────────────────────────────────
     'vh_fracture_radius_mm':       _pp_float('POSTPROC_VH_FRACTURE_RADIUS_MM', 3.0),
-    # Zone anchor: '' (legacy) | critical_eqps | point | center.
-    'vh_anchor':                   _pp_str('POSTPROC_VH_ANCHOR', ''),
     'vh_fit_window_frac':          _pp_float('POSTPROC_VH_FIT_WINDOW_FRAC', 0.4),
     'vh_min_stable_points':        _pp_int('POSTPROC_VH_MIN_STABLE_POINTS', 7),
     'vh_min_unstable_points':      _pp_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 3),
-    'vh_eval_back_frames':         _pp_int('POSTPROC_VH_EVAL_BACK_FRAMES', 2),
+    # Engin frame selection: evaluate the thinning rate at b-1 (one frame before
+    # crack) -> back_frames=1, the latest crack-free central-difference frame.
+    'vh_eval_back_frames':         _pp_int('POSTPROC_VH_EVAL_BACK_FRAMES', 1),
     'vh_alpha':                    _pp_float('POSTPROC_VH_ALPHA', 0.55),
     'vh_seed_count':               _pp_int('POSTPROC_VH_SEED_COUNT', 5),
-    'vh_seed_fraction':            _pp_float('POSTPROC_VH_SEED_FRACTION', 0.0),
-    'vh_seed_area_mm2':            _pp_float('POSTPROC_VH_SEED_AREA_MM2', 0.0),
-
-    # ── Zone-A/B strain-rate-ratio necking criterion ─────────────────────────
-    'ratio_ab_threshold':          _pp_float('POSTPROC_RATIO_AB_THRESHOLD', 7.0),
-    # Reference (Zone A) probe radius and fracture-exclusion radius (mm).
-    'ref_radius_mm':               _pp_float('POSTPROC_REF_RADIUS_MM', 20.0),
-    'ref_exclude_radius_mm':       _pp_float('POSTPROC_REF_EXCLUDE_RADIUS_MM', 15.0),
+    # If the alpha threshold leaves many FE cells, prefer cells that are still
+    # below this damage level.  This avoids letting nearly failed/deleting cells
+    # dominate a DIC-like necking-zone average.  Set >= 1.0 to effectively
+    # disable for the current VUMAT, where D is clipped at DcMax = 1.
+    'vh_damage_max':               _pp_float('POSTPROC_VH_DAMAGE_MAX', 0.85),
+    'vh_damage_min_cells':         _pp_int('POSTPROC_VH_DAMAGE_MIN_CELLS', 5),
 
     # ── Region / cluster selection ───────────────────────────────────────────
-    'cluster_keep_count':          _pp_int('POSTPROC_CLUSTER_KEEP_COUNT', 5),
-    'cluster_search_radius_mm':    _pp_float('POSTPROC_CLUSTER_SEARCH_RADIUS_MM', 5.0),
     # Max points sampled when estimating median in-plane element spacing.
     'spacing_sample_max':          _pp_int('POSTPROC_SPACING_SAMPLE_MAX', 1500),
 
