@@ -26,6 +26,8 @@ THICKNESS=${1:-$(python3 -c "import sys; sys.path.insert(0,'${SCRIPT_DIR}'); imp
 ORIENTATION=${2:-$(python3 -c "import sys; sys.path.insert(0,'${SCRIPT_DIR}'); import config; print(int(config.MATERIAL_ORIENTATION_ANGLE))")}
 WIDTH=200
 PUNCH_SPEED="${PUNCH_SPEED:-5.0}"
+MESH_BACKEND="${MESH_BACKEND:-bm}"
+N_THICKNESS_SEEDS="${N_THICKNESS_SEEDS:-10}"
 
 # Study grid
 MR_VALUES=(1 2 4)
@@ -34,7 +36,8 @@ MS_VALUES=(1e-7 1e-6 1e-5 1e-4)
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
 _ps=$(python3 -c "v=float('${PUNCH_SPEED}'); print('_ps'+('%.4g'%v).replace('.','p'))")
-STUDY_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}${_ps}"
+_ts=$(python3 -c "v=int(float('${N_THICKNESS_SEEDS}')); print('_nt%d' % v if v != 10 else '')")
+STUDY_SUBDIR="study_ms_mr_W${WIDTH}_t${_t}_ang${_ang}${_ps}${_ts}"
 STUDY_DIR="${EULER_DIR}/${STUDY_SUBDIR}"
 
 echo "=============================================="
@@ -55,13 +58,15 @@ echo "  Pushing scripts to Euler ..."
 rsync -az --checksum \
     "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
+    "$SCRIPT_DIR/build_mesh_only.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \
     "$SCRIPT_DIR/plot_study.py" \
-    "$SCRIPT_DIR/run_plot_study.sh" \
+    "$SCRIPT_DIR/run_plots.sh" \
+    "$SCRIPT_DIR/Nakazima_BM.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "$SCRIPT_DIR/submit_one.sh" \
     "${EULER_USER}@${EULER_HOST}:${EULER_DIR}/"
@@ -80,7 +85,7 @@ for MS in "${MS_VALUES[@]}"; do
         LOG="${STUDY_DIR}/logs/submit_ms${MS}_mr${MR}.log"
 
         JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
-            "PUNCH_SPEED=${PUNCH_SPEED} bash ${EULER_DIR}/submit_one.sh \
+            "PUNCH_SPEED=${PUNCH_SPEED} MESH_BACKEND=${MESH_BACKEND} N_THICKNESS_SEEDS=${N_THICKNESS_SEEDS} bash ${EULER_DIR}/submit_one.sh \
                 ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${WIDTH} \
                 none ${MR} ${MS} ${STUDY_SUBDIR} \
              2>&1 | tee ${LOG} | grep '^JOB_ID=' | cut -d= -f2")
@@ -115,7 +120,7 @@ PLOT_JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" "cd ${EULER_DIR} && sbatch \
     --output='${STUDY_DIR}/logs/plot_study_%j.out' \
     --error='${STUDY_DIR}/logs/plot_study_%j.err' \
     --export=ALL,STUDY_DIR='${STUDY_DIR}' \
-    --parsable run_plot_study.sh")
+    --parsable run_plots.sh study")
 
 echo "  Plot job  : ${PLOT_JOB_ID}  (held until all solver jobs complete)"
 echo "  Results   : ${STUDY_DIR}/study_results.pdf"

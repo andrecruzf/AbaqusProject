@@ -43,9 +43,9 @@ _WIDTH_COLORS = [
 ]
 
 _METHOD_STYLE = {
-    'fracture':  ('X', 4, 'Fracture limit'),
-    'volk_hora': ('D',  8, 'Volk-Hora necking'),
-    'sdv6':      ('s',  8, 'SDV6 necking'),
+    'fracture':      ('X', 4, 'Fracture limit'),
+    'volk_hora':     ('D', 8, 'Volk-Hora necking'),
+    'sdv6':          ('s', 8, 'SDV6 necking'),
 }
 
 

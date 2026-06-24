@@ -176,16 +176,11 @@ def _resolve_eqps_max(odb):
     return result
 
 
-# ── Display setup — one punch (Nakazima / Marciniak) ──────────────
-def _setup_single_punch():
+def _setup_main_view(rigid_body_names):
     vp = session.viewports['Viewport: 1']
     session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
 
-    leaf = dgo.LeafFromConstraintNames(name=(
-        "RigidBody_DIE-1        1",
-        "RigidBody_MATRIX-1        1",
-        "RigidBody_PUNCH-1        1",
-    ), type=RIGID_BODY)
+    leaf = dgo.LeafFromConstraintNames(name=rigid_body_names, type=RIGID_BODY)
     session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
 
     leaf = dgo.LeafFromSurfaceSets(surfaceSets=(
@@ -227,49 +222,23 @@ def _setup_single_punch():
     vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
 
 
+# ── Display setup — one punch (Nakazima / Marciniak) ──────────────
+def _setup_single_punch():
+    _setup_main_view((
+        "RigidBody_DIE-1        1",
+        "RigidBody_MATRIX-1        1",
+        "RigidBody_PUNCH-1        1",
+    ))
+
+
 # ── Display setup — two punches (PiP) ─────────────────────────────
 def _setup_two_punches():
-    vp = session.viewports['Viewport: 1']
-    session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
-
-    leaf = dgo.LeafFromConstraintNames(name=(
+    _setup_main_view((
         "RigidBody_DIE-1        1",
         "RigidBody_MATRIX-1        1",
         "RigidBody_PUNCH1-1        1",
         "RigidBody_PUNCH2-1        1",
-    ), type=RIGID_BODY)
-    session.DisplayGroup(leaf=leaf, name='Rigid Bodies')
-
-    leaf = dgo.LeafFromSurfaceSets(surfaceSets=(
-        "SPECIMEN-1.ZMAX", "SPECIMEN-1.ZMIN",
     ))
-    session.DisplayGroup(leaf=leaf, name='Specimen')
-
-    dg_rb = session.displayGroups['Rigid Bodies']
-    dg_sp = session.displayGroups['Specimen']
-
-    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_rb,))
-    vp.odbDisplay.display.setValues(plotState=(DEFORMED,))
-    vp.odbDisplay.commonOptions.setValues(
-        translucency=ON, translucencyFactor=0.25)
-    vp.odbDisplay.displayGroupInstances['Rigid Bodies'].setValues(lockOptions=ON)
-
-    vp.odbDisplay.setValues(visibleDisplayGroups=(dg_sp, dg_rb))
-    vp.odbDisplay.display.setValues(plotState=(CONTOURS_ON_DEF,))
-    vp.odbDisplay.commonOptions.setValues(
-        renderStyle=FILLED,
-        visibleEdges=NONE,
-        translucency=OFF,
-        deformationScaling=UNIFORM,
-        uniformScaleFactor=1.0,
-    )
-    vp.odbDisplay.setPrimaryVariable(
-        variableLabel='SDV1', outputPosition=INTEGRATION_POINT)
-    vp.odbDisplay.basicOptions.setValues(
-        mirrorAboutXzPlane=True,
-        mirrorAboutYzPlane=True,
-    )
-    vp.odbDisplay.displayGroupInstances['Specimen'].setValues(lockOptions=ON)
 
 
 def _setup_cut_view(vp, cut_rb_names):

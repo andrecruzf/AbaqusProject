@@ -27,7 +27,14 @@ PIP_PUNCH2_ID=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); imp
 DEFAULT_MR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MESH_REFINEMENT_FACTOR)")
 DEFAULT_MS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.MASS_SCALING_DT)")
 DEFAULT_PS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_SPEED)")
+DEFAULT_PD=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_DISPLACEMENT)")
 DEFAULT_PR=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.PUNCH_RADIUS)")
+DEFAULT_MB=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'MESH_BACKEND', 'bm'))")
+DEFAULT_TS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'N_THICKNESS_SEEDS', 10))")
+DEFAULT_NUM_CPUS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'NUM_CPUS', 24))")
+DEFAULT_ABAQUS_MEM=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'ABAQUS_MEMORY_PERCENT', 90))")
+DEFAULT_SLURM_MEM=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'SLURM_MEM_PER_CPU_GB', 4.0))")
+DEFAULT_SLURM_TIME=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'SLURM_TIME_LIMIT', '48:00:00'))")
 DEFAULT_STUDY_SUBDIR=""
 
 TEST_TYPE=${1:-$DEFAULT_TEST_TYPE}
@@ -40,6 +47,37 @@ MASS_SCALING_DT=${7:-$DEFAULT_MS}
 PUNCH_SPEED=${8:-$DEFAULT_PS}
 PUNCH_RADIUS=${9:-$DEFAULT_PR}
 STUDY_SUBDIR=${10:-$DEFAULT_STUDY_SUBDIR}
+PUNCH_DISPLACEMENT=${PUNCH_DISPLACEMENT:-$DEFAULT_PD}
+PUNCH_VELOCITY_PROFILE=${PUNCH_VELOCITY_PROFILE:-smoothstep}
+MESH_BACKEND=${MESH_BACKEND:-$DEFAULT_MB}
+N_THICKNESS_SEEDS=${N_THICKNESS_SEEDS:-$DEFAULT_TS}
+NUM_CPUS=${NUM_CPUS:-$DEFAULT_NUM_CPUS}
+ABAQUS_MEMORY_PERCENT=${ABAQUS_MEMORY_PERCENT:-$DEFAULT_ABAQUS_MEM}
+SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK:-$NUM_CPUS}
+SLURM_MEM_PER_CPU_GB=${SLURM_MEM_PER_CPU_GB:-$DEFAULT_SLURM_MEM}
+SLURM_TIME_LIMIT=${SLURM_TIME_LIMIT:-$DEFAULT_SLURM_TIME}
+ENABLE_SYMMETRIES=${ENABLE_SYMMETRIES:-1}
+BM_MESH_USE_MANUAL=${BM_MESH_USE_MANUAL:-0}
+BM_MESH_TAG=${BM_MESH_TAG:-}
+BM_MIRROR=${BM_MIRROR:-0}
+BM_P_INNER_X=${BM_P_INNER_X:-}
+BM_P_INNER_R=${BM_P_INNER_R:-}
+BM_P_CIRCLE_R=${BM_P_CIRCLE_R:-}
+BM_P_XZPLANE_1=${BM_P_XZPLANE_1:-}
+BM_W200_SECTION1_Y=${BM_W200_SECTION1_Y:-}
+BM_W200_SECTION2_R=${BM_W200_SECTION2_R:-}
+BM_W200_SECTION3_R=${BM_W200_SECTION3_R:-}
+BM_MESH_SECTION1_X=${BM_MESH_SECTION1_X:-}
+BM_MESH_SECTION1_Y=${BM_MESH_SECTION1_Y:-}
+BM_MESH_SECTION2_X=${BM_MESH_SECTION2_X:-}
+BM_MESH_SECTION2_Y=${BM_MESH_SECTION2_Y:-}
+BM_MESH_SECTION3_Y=${BM_MESH_SECTION3_Y:-}
+BM_MESH_SECTION3_1_Y=${BM_MESH_SECTION3_1_Y:-}
+BM_MESH_SECTION4_Y=${BM_MESH_SECTION4_Y:-}
+BM_MESH_W200_SECTION1=${BM_MESH_W200_SECTION1:-}
+BM_MESH_W200_SECTION2=${BM_MESH_W200_SECTION2:-}
+BM_MESH_W200_SECTION3=${BM_MESH_W200_SECTION3:-}
+BM_MESH_W200_SECTION4=${BM_MESH_W200_SECTION4:-}
 
 [ "$PIP_PUNCH2_ID" = "none" ] && PIP_PUNCH2_ID=""
 [ "$PUNCH_RADIUS" = "none" ] && PUNCH_RADIUS="$DEFAULT_PR"
@@ -49,13 +87,15 @@ echo "  Pushing scripts to Euler ..."
 rsync -az --checksum \
     "$SCRIPT_DIR/config.py" \
     "$SCRIPT_DIR/build_model.py" \
+    "$SCRIPT_DIR/build_mesh_only.py" \
     "$SCRIPT_DIR/screenshot_mesh.py" \
     "$SCRIPT_DIR/run_cluster.sh" \
-    "$SCRIPT_DIR/run_flc.sh" \
+    "$SCRIPT_DIR/run_plots.sh" \
     "$SCRIPT_DIR/postproc.py" \
     "$SCRIPT_DIR/postproc_movie.py" \
     "$SCRIPT_DIR/plot_results.py" \
     "$SCRIPT_DIR/plot_flc.py" \
+    "$SCRIPT_DIR/Nakazima_BM.py" \
     "$SCRIPT_DIR/VUMAT_explicit.f" \
     "$SCRIPT_DIR/submit_all.sh" \
     "$SCRIPT_DIR/submit_one.sh" \
@@ -83,12 +123,13 @@ echo ""
 # ── Launch build+submit on Euler via tmux ─────────────────────
 _pip_id_arg="${PIP_PUNCH2_ID:-none}"
 _study_subdir_arg="${STUDY_SUBDIR:-}"
+_bm_env="NUM_CPUS=${NUM_CPUS} ABAQUS_MEMORY_PERCENT=${ABAQUS_MEMORY_PERCENT} SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK} SLURM_MEM_PER_CPU_GB=${SLURM_MEM_PER_CPU_GB} SLURM_TIME_LIMIT=${SLURM_TIME_LIMIT} ENABLE_SYMMETRIES=${ENABLE_SYMMETRIES} PUNCH_DISPLACEMENT=${PUNCH_DISPLACEMENT} BM_MESH_USE_MANUAL=${BM_MESH_USE_MANUAL} BM_MESH_TAG=${BM_MESH_TAG} BM_MIRROR=${BM_MIRROR} BM_P_INNER_X=${BM_P_INNER_X} BM_P_INNER_R=${BM_P_INNER_R} BM_P_CIRCLE_R=${BM_P_CIRCLE_R} BM_P_XZPLANE_1=${BM_P_XZPLANE_1} BM_W200_SECTION1_Y=${BM_W200_SECTION1_Y} BM_W200_SECTION2_R=${BM_W200_SECTION2_R} BM_W200_SECTION3_R=${BM_W200_SECTION3_R} BM_MESH_SECTION1_X=${BM_MESH_SECTION1_X} BM_MESH_SECTION1_Y=${BM_MESH_SECTION1_Y} BM_MESH_SECTION2_X=${BM_MESH_SECTION2_X} BM_MESH_SECTION2_Y=${BM_MESH_SECTION2_Y} BM_MESH_SECTION3_Y=${BM_MESH_SECTION3_Y} BM_MESH_SECTION3_1_Y=${BM_MESH_SECTION3_1_Y} BM_MESH_SECTION4_Y=${BM_MESH_SECTION4_Y} BM_MESH_W200_SECTION1=${BM_MESH_W200_SECTION1} BM_MESH_W200_SECTION2=${BM_MESH_W200_SECTION2} BM_MESH_W200_SECTION3=${BM_MESH_W200_SECTION3} BM_MESH_W200_SECTION4=${BM_MESH_W200_SECTION4}"
 
 echo "  Launching submit_one.sh on Euler in tmux session 'deploy' ..."
 ssh "${EULER_USER}@${EULER_HOST}" "
     tmux kill-session -t deploy 2>/dev/null || true
     tmux new-session -d -s deploy \
-        'PUNCH_RADIUS=${PUNCH_RADIUS} PUNCH_SPEED=${PUNCH_SPEED} bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${MASS_SCALING_DT} ${_study_subdir_arg} \
+        'PUNCH_RADIUS=${PUNCH_RADIUS} PUNCH_SPEED=${PUNCH_SPEED} PUNCH_DISPLACEMENT=${PUNCH_DISPLACEMENT} PUNCH_VELOCITY_PROFILE=${PUNCH_VELOCITY_PROFILE} MESH_BACKEND=${MESH_BACKEND} N_THICKNESS_SEEDS=${N_THICKNESS_SEEDS} ${_bm_env} bash ${EULER_DIR}/submit_one.sh ${TEST_TYPE} ${THICKNESS} ${ORIENTATION} ${SPECIMEN_WIDTH} ${_pip_id_arg} ${MESH_REFINEMENT_FACTOR} ${MASS_SCALING_DT} ${_study_subdir_arg} \
          > ${EULER_DIR}/submit_one.log 2>&1'
 "
 

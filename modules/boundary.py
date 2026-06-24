@@ -46,7 +46,10 @@ def apply_bcs(cfg):
     else:
         _apply_punch_bc(cfg, m, a)
 
-    _apply_symmetry_bcs(cfg, m, a)
+    if getattr(cfg, 'ENABLE_SYMMETRIES', True):
+        _apply_symmetry_bcs(cfg, m, a)
+    else:
+        print('  Symmetry BCs disabled by ENABLE_SYMMETRIES=0')
 
     if cfg.USE_EDGE_ENCASTRE:
         _apply_edge_bc(cfg, m, a)
@@ -205,42 +208,33 @@ def _apply_symmetry_bcs(cfg, m, a):
     Apply XSYMM and YSYMM BCs from the node sets defined in the geometry .inp.
     Search order: instance sets → assembly sets → warning.
 
-    IMPORTANT — nset naming convention in the geometry files:
-      The .inp/.cae geometry files were created in Lennard's reference model,
-      which applies a *SYSTEM/*NMAP coordinate transformation that swaps X and Y
-      relative to the Python model's global axes.  After direct import (no
-      transformation), the labels are therefore reversed:
-
-        'XSYMM' nset  →  nodes at  y = 0  →  apply YsymmBC (U2=UR1=UR3=0)
-        'YSYMM' nset  →  nodes at  x = 0  →  apply XsymmBC (U1=UR2=UR3=0)
-
-      Applying the wrong BC type is silent in the CAE viewer (BCs appear) but
-      causes the blank to deform without proper symmetry enforcement in the
-      solver, which is exactly the failure mode reported.
+    The geometry sets are expected to follow the standard quarter-model naming:
+      'XSYMM' nset -> nodes on the x = 0 plane -> apply XsymmBC
+      'YSYMM' nset -> nodes on the y = 0 plane -> apply YsymmBC
     """
     inst = a.instances['Specimen-1']
 
-    # Symmetry plane at X=0 (U1=UR2=UR3=0) — nodes are in the 'YSYMM' nset
-    region = _get_region(a, inst, 'YSYMM')
-    if region is None or len(region.nodes) == 0:
-        region = _rebuild_instance_region(a, inst, 'YSYMM', 'x')
-    if region is None:
-        raise RuntimeError('"YSYMM" set not found on Specimen-1 — BC_Sym_X (x=0 plane) cannot be applied.')
-    if len(region.nodes) == 0:
-        raise RuntimeError('"YSYMM" set has 0 nodes — check that the set survived mesh regeneration.')
-    m.XsymmBC(name='BC_Sym_X', createStepName='Initial', region=region)
-    print('  BC_Sym_X: XsymmBC on "YSYMM" set (%d nodes)' % len(region.nodes))
-
-    # Symmetry plane at Y=0 (U2=UR1=UR3=0) — nodes are in the 'XSYMM' nset
+    # Symmetry plane at X=0 (U1=UR2=UR3=0) — nodes are in the 'XSYMM' nset
     region = _get_region(a, inst, 'XSYMM')
     if region is None or len(region.nodes) == 0:
-        region = _rebuild_instance_region(a, inst, 'XSYMM', 'y')
+        region = _rebuild_instance_region(a, inst, 'XSYMM', 'x')
     if region is None:
-        raise RuntimeError('"XSYMM" set not found on Specimen-1 — BC_Sym_Y (y=0 plane) cannot be applied.')
+        raise RuntimeError('"XSYMM" set not found on Specimen-1 — BC_Sym_X (x=0 plane) cannot be applied.')
     if len(region.nodes) == 0:
         raise RuntimeError('"XSYMM" set has 0 nodes — check that the set survived mesh regeneration.')
+    m.XsymmBC(name='BC_Sym_X', createStepName='Initial', region=region)
+    print('  BC_Sym_X: XsymmBC on "XSYMM" set (%d nodes)' % len(region.nodes))
+
+    # Symmetry plane at Y=0 (U2=UR1=UR3=0) — nodes are in the 'YSYMM' nset
+    region = _get_region(a, inst, 'YSYMM')
+    if region is None or len(region.nodes) == 0:
+        region = _rebuild_instance_region(a, inst, 'YSYMM', 'y')
+    if region is None:
+        raise RuntimeError('"YSYMM" set not found on Specimen-1 — BC_Sym_Y (y=0 plane) cannot be applied.')
+    if len(region.nodes) == 0:
+        raise RuntimeError('"YSYMM" set has 0 nodes — check that the set survived mesh regeneration.')
     m.YsymmBC(name='BC_Sym_Y', createStepName='Initial', region=region)
-    print('  BC_Sym_Y: YsymmBC on "XSYMM" set (%d nodes)' % len(region.nodes))
+    print('  BC_Sym_Y: YsymmBC on "YSYMM" set (%d nodes)' % len(region.nodes))
 
 
 def _apply_edge_bc(cfg, m, a):

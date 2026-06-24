@@ -900,7 +900,7 @@ def Mesh_seed():
 
     #Generate Mesh
     p = mdb.models['Model-1'].parts['Specimen']
-    p.seedPart(size=0.5, deviationFactor=0.1, minSizeFactor=0.1)
+    p.seedPart(size=0.5 * (M_s_section1_x / 0.2), deviationFactor=0.1, minSizeFactor=0.1)
     p = mdb.models['Model-1'].parts['Specimen']
     p.generateMesh()
 
@@ -998,20 +998,168 @@ def Job_creation():
         multiprocessingMode=DEFAULT, numCpus=1, numGPUs=0)
 
 
+def _configure_runtime(geometry=None, thickness=None, mesh_scale=None,
+                       thickness_seeds=None, mirror=None):
+    """
+    Recompute all geometry and meshing globals used by the legacy BM script.
 
-Specimen_Geometry()
-Partitioning()
-Mesh_control()
-Mesh_seed()
-Assembly()
-# Punch()
-# Die()
-Job_creation()
+    The original file hard-coded the specimen width and mesh sizes.  This helper
+    lets the current pipeline inject width, thickness and a coarse/fine scale
+    while keeping the original partitioning logic intact.
+    """
+    global Geometry, Thickness, Mirror, Width
+    global P_inner_x, P_inner_r, P_circle_r, P_XZplane_1
+    global P_section1_y, P_section2_r, P_section3_r
+    global P_curve_x, P_circle_y1, P_XZplane_3, y2, r1, r2, x2
+    global M_s_section1_x, M_s_section1_y, M_s_section2_x, M_s_section2_y
+    global M_s_section3_y, M_s_section3_1_y, M_s_section4_y
+    global M_s_section1, M_s_section2, M_s_section3, M_s_section4
+    global M_n_thickness, M_n_section1_x, M_n_section2_x, M_n_section1_y
+    global M_n_section2_y, M_n_section3_y, M_n_section4_y, M_n_section3_1_y
+    global M_n_section1, M_n_section2, M_n_section3, M_n_section4
+
+    if geometry is not None:
+        Geometry = int(geometry)
+    if thickness is not None:
+        Thickness = float(thickness)
+    if mirror is not None:
+        Mirror = bool(mirror)
+
+    mesh_scale = 1.0 if mesh_scale is None else float(mesh_scale)
+    M_n_thickness = int(thickness_seeds) if thickness_seeds is not None else 16
+
+    def _cfg_float(name, default):
+        try:
+            import config as _cfg
+            raw = getattr(_cfg, name, '')
+        except Exception:
+            raw = ''
+        if raw is None or str(raw).strip() == '':
+            return float(default)
+        return float(raw)
+
+    try:
+        import config as _cfg
+        manual_mesh = bool(getattr(_cfg, 'BM_MESH_USE_MANUAL', False))
+    except Exception:
+        manual_mesh = False
+
+    if Geometry == 20:
+        P_inner_x = _cfg_float('BM_P_INNER_X', 5.0)
+        P_inner_r = _cfg_float('BM_P_INNER_R', 150.0)
+        P_circle_r = _cfg_float('BM_P_CIRCLE_R', 55.0)
+        P_XZplane_1 = _cfg_float('BM_P_XZPLANE_1', 5.0)
+    elif Geometry in (50, 80, 90, 100, 120):
+        P_inner_x = _cfg_float('BM_P_INNER_X', 10.0)
+        P_inner_r = _cfg_float('BM_P_INNER_R', 120.0)
+        P_circle_r = _cfg_float('BM_P_CIRCLE_R', 65.0)
+        P_XZplane_1 = _cfg_float('BM_P_XZPLANE_1', 5.0)
+    elif Geometry == 200:
+        P_inner_x = _cfg_float('BM_P_INNER_X', 10.0)
+        P_inner_r = _cfg_float('BM_P_INNER_R', 120.0)
+        P_circle_r = _cfg_float('BM_P_CIRCLE_R', 65.0)
+        P_XZplane_1 = _cfg_float('BM_P_XZPLANE_1', 5.0)
+        P_section1_y = _cfg_float('BM_W200_SECTION1_Y', 10.0)
+        P_section2_r = _cfg_float('BM_W200_SECTION2_R', 20.0)
+        P_section3_r = _cfg_float('BM_W200_SECTION3_R', 50.0)
+    else:
+        raise ValueError("Unsupported BM geometry width: %s" % Geometry)
+
+    Width = Geometry / 2.0
+    P_curve_x = P_inner_x + P_inner_r - (P_inner_r**2 - 0.1**2)**0.5
+    P_circle_y1 = (P_circle_r**2 - 1)**0.5
+    P_XZplane_3 = 39.77178
+
+    y2 = 12.5
+    r1 = P_circle_r
+    r2 = P_inner_r
+    x2 = P_inner_x + P_inner_r
+
+    if manual_mesh:
+        M_s_section1_x = _cfg_float('BM_MESH_SECTION1_X', 0.2)
+        M_s_section1_y = _cfg_float('BM_MESH_SECTION1_Y', 0.2)
+        M_s_section2_x = _cfg_float('BM_MESH_SECTION2_X', 0.4)
+        M_s_section2_y = _cfg_float('BM_MESH_SECTION2_Y', 0.4)
+        M_s_section3_y = _cfg_float('BM_MESH_SECTION3_Y', 0.8)
+        M_s_section3_1_y = _cfg_float('BM_MESH_SECTION3_1_Y', 0.8)
+        M_s_section4_y = _cfg_float('BM_MESH_SECTION4_Y', 1.2)
+
+        M_s_section1 = _cfg_float('BM_MESH_W200_SECTION1', 0.2)
+        M_s_section2 = _cfg_float('BM_MESH_W200_SECTION2', 0.4)
+        M_s_section3 = _cfg_float('BM_MESH_W200_SECTION3', 0.8)
+        M_s_section4 = _cfg_float('BM_MESH_W200_SECTION4', 0.4)
+    else:
+        # Fine mesh sizes.  The pipeline's mesh refinement factor acts as a scale
+        # multiplier here: >1 = coarser, <1 = finer.
+        M_s_section1_x = 0.2 * mesh_scale
+        M_s_section1_y = 0.2 * mesh_scale
+        M_s_section2_x = 0.4 * mesh_scale
+        M_s_section2_y = 0.4 * mesh_scale
+        M_s_section3_y = 0.8 * mesh_scale
+        M_s_section3_1_y = 0.8 * mesh_scale
+        M_s_section4_y = 1.2 * mesh_scale
+
+        M_s_section1 = 0.2 * mesh_scale
+        M_s_section2 = 0.4 * mesh_scale
+        M_s_section3 = 0.8 * mesh_scale
+        M_s_section4 = 0.4 * mesh_scale
+
+    M_n_section1_x = int(math.ceil(P_inner_x / M_s_section1_x))
+    M_n_section2_x = int(math.ceil((Width - P_inner_x) / M_s_section2_x))
+    M_n_section1_y = int(math.ceil(P_XZplane_1 / M_s_section1_y))
+    M_n_section2_y = int(math.ceil((12.5 - P_XZplane_1) / M_s_section2_y))
+    M_n_section3_y = int(math.ceil((P_circle_r - 12.5) / M_s_section3_y))
+    M_n_section4_y = int(math.ceil((70.0 - P_circle_r) / M_s_section4_y))
+
+    M_n_section1 = int(math.ceil(P_section1_y / M_s_section1))
+    M_n_section2 = int(math.ceil((P_section2_r - P_section1_y) / M_s_section2))
+    M_n_section3 = int(math.ceil((P_section3_r - P_section2_r) / M_s_section3))
+    M_n_section4 = int(math.ceil((70 - P_section3_r) / M_s_section4))
+
+    if Geometry == 20:
+        M_n_section3_y = int(math.ceil((48.35 - 12.5) / M_s_section3_y))
+        M_n_section3_1_y = int(math.ceil((P_circle_r - 48.35) / M_s_section3_1_y))
+    elif Geometry == 50:
+        M_n_section3_y = int(math.ceil((58.21 - 12.5) / M_s_section3_y))
+        M_n_section3_1_y = int(math.ceil((P_circle_r - 58.21) / M_s_section3_1_y))
+
+    print('  BM runtime configured: Geometry=%s Thickness=%.3f mesh_scale=%.3f thickness_seeds=%d manual=%s'
+          % (Geometry, Thickness, mesh_scale, M_n_thickness, 'on' if manual_mesh else 'off'))
+    print('  BM mesh sizes: s1=(%.4g,%.4g), s2=(%.4g,%.4g), s3=%.4g, s3_1=%.4g, s4=%.4g, '
+          'w200=(%.4g,%.4g,%.4g,%.4g)'
+          % (M_s_section1_x, M_s_section1_y, M_s_section2_x, M_s_section2_y,
+             M_s_section3_y, M_s_section3_1_y, M_s_section4_y,
+             M_s_section1, M_s_section2, M_s_section3, M_s_section4))
 
 
-session.viewports['Viewport: 1'].enableRefresh()
-# p = mdb.models['Model-1'].parts['Die']
-# session.viewports['Viewport: 1'].setValues(displayedObject=p)
-a = mdb.models['Model-1'].rootAssembly
-session.viewports['Viewport: 1'].setValues(displayedObject=a)
-session.viewports['Viewport: 1'].view.setValues(session.views['Iso'])
+def build_specimen(cfg, assemble=False):
+    """Build only the BM specimen part and mesh it.
+
+    When assemble=True, also create the standalone specimen instance used by
+    the legacy BM script.  The integrated pipeline leaves this False and lets
+    modules/assembly.py handle instancing.
+    """
+    _configure_runtime(
+        geometry=getattr(cfg, 'SPECIMEN_WIDTH', Geometry),
+        thickness=getattr(cfg, 'BLANK_THICKNESS', Thickness),
+        mesh_scale=getattr(cfg, 'MESH_REFINEMENT_FACTOR', 1.0),
+        thickness_seeds=getattr(cfg, 'N_THICKNESS_SEEDS', 16),
+        mirror=getattr(cfg, 'BM_MIRROR', False),
+    )
+
+    Specimen_Geometry()
+    Partitioning()
+    Mesh_control()
+    Mesh_seed()
+    if assemble:
+        Assembly()
+    return mdb.models['Model-1'].parts['Specimen']
+
+
+if __name__ == '__main__':
+    build_specimen(None, assemble=True)
+    Job_creation()
+    session.viewports['Viewport: 1'].enableRefresh()
+    a = mdb.models['Model-1'].rootAssembly
+    session.viewports['Viewport: 1'].setValues(displayedObject=a)
+    session.viewports['Viewport: 1'].view.setValues(session.views['Iso'])

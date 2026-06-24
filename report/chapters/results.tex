@@ -2,14 +2,14 @@
 
 \section{Framework Outputs and Configuration Coverage}
 
-The main result of this semester thesis is the automated numerical workflow
-specified in Task~III of the project outline. For each selected configuration,
-the pipeline creates the Abaqus model, submits the solver job on Euler, runs
-ODB-based post-processing, and synchronises structured result artefacts. The
-same interface is used for Nakazima, Marciniak, and Punch-in-Punch simulations,
-so that specimen width, sheet thickness, punch radius, punch travel, material
-orientation, mass scaling, and mesh refinement can be varied without changing
-the post-processing schema.
+The results chapter focuses on the implemented numerical workflow and its
+interfaces to the experimental campaign and identification framework. For each
+selected configuration, the pipeline creates the Abaqus model, submits the
+solver job on Euler, runs ODB-based post-processing, and synchronises structured
+result artefacts. The same interface is used for Nakazima, Marciniak, and
+Punch-in-Punch simulations, so that specimen width, sheet thickness, punch
+radius, punch travel, material orientation, mass scaling, and mesh refinement
+can be varied without changing the post-processing schema.
 
 Each completed simulation produces the same set of data products:
 \texttt{punch\_fd.csv}, \texttt{energy\_data.csv}, \texttt{strain\_path.csv},

@@ -39,7 +39,11 @@ MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE',
 # =============================================================
 # COMPUTATIONAL RESOURCES
 # =============================================================
-NUM_CPUS = 24   # threads for Abaqus/Explicit (mp_mode=threads)
+NUM_CPUS = int(_os.environ.get('NUM_CPUS', 24))   # threads for Abaqus/Explicit (mp_mode=threads)
+ABAQUS_MEMORY_PERCENT = int(_os.environ.get('ABAQUS_MEMORY_PERCENT', 90))
+SLURM_CPUS_PER_TASK = int(_os.environ.get('SLURM_CPUS_PER_TASK', NUM_CPUS))
+SLURM_MEM_PER_CPU_GB = float(_os.environ.get('SLURM_MEM_PER_CPU_GB', 4.0))
+SLURM_TIME_LIMIT = _os.environ.get('SLURM_TIME_LIMIT', '48:00:00')
 
 
 # =============================================================
@@ -108,7 +112,11 @@ if TEST_TYPE == 'pip':
 # ── Geometry source (macro mode) ─────────────────────────────
 # 'cae' → import the specimen mesh from W{SPECIMEN_WIDTH}.cae
 # 'inp' → import the specimen mesh from W{SPECIMEN_WIDTH}.inp
+# 'bm'  → build the specimen mesh through Nakazima_BM.py
 GEOMETRY_SOURCE = _os.environ.get('GEOMETRY_SOURCE', 'cae').lower()
+
+# Specimen mesh backend.  The Streamlit workflow uses the BM builder only.
+MESH_BACKEND = 'bm'
 
 SPECIMEN_TYPE = 'circular'   # 'circular' or 'notched' (macro mode only)
 A_WIDTH       = 80.0
@@ -205,7 +213,47 @@ MESH_RADIAL_BIAS_RATIO = float(_os.environ.get('MESH_RADIAL_BIAS_RATIO', '') or 
 MESH_CORE_PROBE_OFFSET = float(_os.environ.get('MESH_CORE_PROBE_OFFSET', '') or 0.5)
 
 # Elements through blank thickness — independent of MESH_REFINEMENT_FACTOR.
-N_THICKNESS_SEEDS = 10
+N_THICKNESS_SEEDS = int(_os.environ.get('N_THICKNESS_SEEDS', 10))
+
+# ── BM mesh backend manual controls ───────────────────────────────────────────
+# When disabled, Nakazima_BM.py uses the legacy fine mesh sizes multiplied by
+# MESH_REFINEMENT_FACTOR. When enabled, the BM_MESH_* values below are absolute
+# target element sizes in mm and MESH_REFINEMENT_FACTOR no longer scales them.
+BM_MESH_USE_MANUAL = (
+    _os.environ.get('BM_MESH_USE_MANUAL', '0').lower()
+    in ('1', 'true', 'yes', 'on')
+)
+BM_MESH_TAG = _os.environ.get('BM_MESH_TAG', '')
+BM_MIRROR = (
+    _os.environ.get('BM_MIRROR', '0').lower()
+    in ('1', 'true', 'yes', 'on')
+)
+ENABLE_SYMMETRIES = (
+    _os.environ.get('ENABLE_SYMMETRIES', '1').lower()
+    in ('1', 'true', 'yes', 'on')
+)
+
+# Partition/geometry parameters used by the BM mesher.
+BM_P_INNER_X = _os.environ.get('BM_P_INNER_X', '')
+BM_P_INNER_R = _os.environ.get('BM_P_INNER_R', '')
+BM_P_CIRCLE_R = _os.environ.get('BM_P_CIRCLE_R', '')
+BM_P_XZPLANE_1 = _os.environ.get('BM_P_XZPLANE_1', '')
+BM_W200_SECTION1_Y = _os.environ.get('BM_W200_SECTION1_Y', '')
+BM_W200_SECTION2_R = _os.environ.get('BM_W200_SECTION2_R', '')
+BM_W200_SECTION3_R = _os.environ.get('BM_W200_SECTION3_R', '')
+
+# In-plane BM target element sizes in mm.
+BM_MESH_SECTION1_X = _os.environ.get('BM_MESH_SECTION1_X', '')
+BM_MESH_SECTION1_Y = _os.environ.get('BM_MESH_SECTION1_Y', '')
+BM_MESH_SECTION2_X = _os.environ.get('BM_MESH_SECTION2_X', '')
+BM_MESH_SECTION2_Y = _os.environ.get('BM_MESH_SECTION2_Y', '')
+BM_MESH_SECTION3_Y = _os.environ.get('BM_MESH_SECTION3_Y', '')
+BM_MESH_SECTION3_1_Y = _os.environ.get('BM_MESH_SECTION3_1_Y', '')
+BM_MESH_SECTION4_Y = _os.environ.get('BM_MESH_SECTION4_Y', '')
+BM_MESH_W200_SECTION1 = _os.environ.get('BM_MESH_W200_SECTION1', '')
+BM_MESH_W200_SECTION2 = _os.environ.get('BM_MESH_W200_SECTION2', '')
+BM_MESH_W200_SECTION3 = _os.environ.get('BM_MESH_W200_SECTION3', '')
+BM_MESH_W200_SECTION4 = _os.environ.get('BM_MESH_W200_SECTION4', '')
 
 # Dome observation zone used by postproc.py to find the critical element.
 # ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter.
@@ -215,10 +263,20 @@ R_DOME = 0.15 * PUNCH_RADIUS * 2.0
 # =============================================================
 # FORMING PARAMETERS
 # =============================================================
-PUNCH_DISPLACEMENT = 50                          # mm
+PUNCH_DISPLACEMENT = float(_os.environ.get('PUNCH_DISPLACEMENT', '') or 35.0)  # mm
 PUNCH_SPEED        = float(_os.environ.get('PUNCH_SPEED', '') or 5.0)  # mm/s
 STEP_TIME          = PUNCH_DISPLACEMENT / PUNCH_SPEED
 # Check ALLKE/ALLIE < 5 % in post-processing to validate quasi-static assumption.
+
+# Punch velocity profile through the forming step:
+#   'smoothstep' → SmoothStep displacement: velocity 0→peak(mid)→0 (legacy default).
+#                  Velocity is never constant; it decelerates through the fracture
+#                  phase, masking the Volk-Hora thinning-rate bifurcation.
+#   'constant'   → constant punch velocity (= PUNCH_SPEED) with a short smooth
+#                  ramp at the step ends (PUNCH_RAMP_FRACTION) so the strain rate
+#                  stays steady through fracture and V&H necking is resolvable.
+PUNCH_VELOCITY_PROFILE = _os.environ.get('PUNCH_VELOCITY_PROFILE', 'smoothstep').strip().lower()
+PUNCH_RAMP_FRACTION    = float(_os.environ.get('PUNCH_RAMP_FRACTION', '') or 0.05)  # smooth fraction at step ends (constant profile)
 
 USE_EDGE_ENCASTRE = True   # encastre the outer blank edge
 
@@ -234,7 +292,7 @@ MASS_SCALING_DT = float(_os.environ.get('MASS_SCALING_DT', '') or 1.0e-5)   # s
 # =============================================================
 # OUTPUT FREQUENCY
 # =============================================================
-# Field output rate in Hz.  At PUNCH_SPEED=1 mm/s, STEP_TIME=50 s, so
+# Field output rate in Hz.  At PUNCH_SPEED=1 mm/s and default travel, STEP_TIME=35 s, so
 # 40 Hz writes 2000 field frames (dt=0.025 s).
 FIELD_OUTPUT_HZ = float(_os.environ.get('FIELD_OUTPUT_HZ', '') or 40.0)
 N_FIELD_INTERVALS = int(_os.environ.get('N_FIELD_INTERVALS', '') or
@@ -335,6 +393,122 @@ SDV_LABELS = [
 
 
 # =============================================================
+# POST-PROCESSING  (postproc.py thresholds & criteria)
+# =============================================================
+# Single source of truth for every magic number used by postproc.py
+# (fracture-frame detection, V&H / SDV6 / Zone-A·B necking criteria,
+# region selection, quasi-static QA).  Edit defaults here — you should
+# never have to open postproc.py to tune a threshold.
+#
+# Each value still honours its environment-variable override (used by the
+# deploy/sweep scripts), falling back to the default given here.  Keep the
+# env-var NAMES identical to those postproc.py already reads, so wiring
+# postproc.py to consume POSTPROC_THRESHOLDS is a drop-in follow-up and the
+# existing sweep scripts keep working unchanged.
+#
+# Py2.7-safe (postproc.py runs under `abaqus python`): plain helpers + dict.
+
+def _pp_float(name, default):
+    raw = _os.environ.get(name, '')
+    if raw is None or raw == '':
+        return float(default)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _pp_int(name, default):
+    raw = _os.environ.get(name, '')
+    if raw is None or raw == '':
+        return int(default)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def _pp_str(name, default):
+    raw = _os.environ.get(name, '')
+    return raw if raw not in (None, '') else default
+
+
+def _pp_bool(name, default):
+    raw = _os.environ.get(name, '')
+    if raw is None or raw == '':
+        return bool(default)
+    return raw.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+POSTPROC_THRESHOLDS = {
+
+    # ── Dome observation zone ────────────────────────────────────────────────
+    # Radius (mm) around the punch axis used to find the critical/fracture
+    # element.  Defaults to the ISO 12004-2 15%-of-punch-diameter zone (R_DOME).
+    'r_dome_mm':                   _pp_float('POSTPROC_R_DOME', R_DOME),
+    # 'auto' = thickness axis is the smallest geometric extent; else 'x'/'y'/'z'.
+    'thickness_axis':              _pp_str('POSTPROC_THICKNESS_AXIS', 'auto'),
+
+    # ── Fracture-frame detection ─────────────────────────────────────────────
+    # Detector mode for selecting the crack frame f_c:
+    #   'force'  → force-peak (F-d drop) only
+    #   'status' → legacy STATUS-cluster only (reproduces previous behavior)
+    #   'auto'   → force first, fall back to STATUS   [recommended]
+    'fracture_detector':           _pp_str('POSTPROC_FRACTURE_DETECTOR', 'auto'),
+    # Min connected deleted in-plane cells to accept a STATUS fracture cluster
+    # (STATUS detector / fallback only).  Mesh-COUPLED.
+    'min_cluster_cells':           _pp_int('MIN_FRACTURE_CLUSTER_CELLS', 20),
+    # Extra field frames kept after the detected crack frame, for visual
+    # crack-frame alignment.  0 = endpoint is the last intact frame (f_c-1).
+    'fracture_frame_offset':       _pp_int('POSTPROC_FRACTURE_FRAME_OFFSET', 0),
+
+    # ── Force-based detector ─────────────────────────────────────────────────
+    # Leading fraction of the force history ignored before searching for the
+    # peak (skips the initial contact transient).
+    'force_peak_guard_fraction':   _pp_float('POSTPROC_FORCE_PEAK_GUARD_FRACTION', 0.02),
+    # Normalized post-peak force drop that defines the crack frame from history.
+    'force_drop_fraction':         _pp_float('POSTPROC_FORCE_DROP_FRACTION', 0.15),
+
+    # ── Through-thickness deletion gate (STATUS detector / fallback) ──────────
+    'require_through_thickness':   _pp_bool('POSTPROC_REQUIRE_THROUGH_THICKNESS_DELETION', True),
+    # Fraction of a thickness column that must delete for that cell to count as
+    # cracked.  1.0 = full severance; lower = nearer crack initiation (FLC event).
+    'through_thickness_fraction':  _pp_float('POSTPROC_THROUGH_THICKNESS_FRACTION', 1.0),
+    'min_through_thickness_layers': _pp_int('POSTPROC_MIN_THROUGH_THICKNESS_DELETED_LAYERS', 0),
+
+    # ── Volk-Hora necking criterion ──────────────────────────────────────────
+    'vh_fracture_radius_mm':       _pp_float('POSTPROC_VH_FRACTURE_RADIUS_MM', 3.0),
+    'vh_fit_window_frac':          _pp_float('POSTPROC_VH_FIT_WINDOW_FRAC', 0.4),
+    'vh_min_stable_points':        _pp_int('POSTPROC_VH_MIN_STABLE_POINTS', 7),
+    'vh_min_unstable_points':      _pp_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 3),
+    # Engin frame selection: evaluate the thinning rate at b-1 (one frame before
+    # crack) -> back_frames=1, the latest crack-free central-difference frame.
+    'vh_eval_back_frames':         _pp_int('POSTPROC_VH_EVAL_BACK_FRAMES', 1),
+    'vh_alpha':                    _pp_float('POSTPROC_VH_ALPHA', 0.55),
+    'vh_seed_count':               _pp_int('POSTPROC_VH_SEED_COUNT', 5),
+    # If the alpha threshold leaves many FE cells, prefer cells that are still
+    # below this damage level.  This avoids letting nearly failed/deleting cells
+    # dominate a DIC-like necking-zone average.  Set >= 1.0 to effectively
+    # disable for the current VUMAT, where D is clipped at DcMax = 1.
+    'vh_damage_max':               _pp_float('POSTPROC_VH_DAMAGE_MAX', 0.85),
+    'vh_damage_min_cells':         _pp_int('POSTPROC_VH_DAMAGE_MIN_CELLS', 5),
+
+    # ── Region / cluster selection ───────────────────────────────────────────
+    # Max points sampled when estimating median in-plane element spacing.
+    'spacing_sample_max':          _pp_int('POSTPROC_SPACING_SAMPLE_MAX', 1500),
+
+    # ── Quasi-static QA ──────────────────────────────────────────────────────
+    # Warn if max(ALLKE/ALLIE) over the forming window exceeds this (explicit
+    # dynamics mass-scaling validity check).
+    'qs_ratio_limit':              _pp_float('POSTPROC_QS_RATIO_LIMIT', 0.10),
+
+    # ── Output toggles ───────────────────────────────────────────────────────
+    # Write the full per-element dome strain history (large for dense meshes).
+    'write_dome_history':          _pp_bool('POSTPROC_WRITE_DOME_HISTORY', False),
+}
+
+
+# =============================================================
 # FILE NAMING
 # (derived from all variables above — do not edit manually)
 # =============================================================
@@ -359,10 +533,22 @@ if _os.environ.get('MASS_SCALING_DT', ''):
 _mr_suffix = ('_mr' + ('%.4g' % MESH_REFINEMENT_FACTOR).replace('.', 'p')
               if abs(MESH_REFINEMENT_FACTOR - 1.0) > 1e-6 else '')
 
+_ts_suffix = ('_nt' + str(N_THICKNESS_SEEDS) if N_THICKNESS_SEEDS != 10 else '')
+
 _ps_suffix = ('_ps' + ('%.4g' % PUNCH_SPEED).replace('.', 'p')
               if TEST_TYPE != 'pip' and abs(PUNCH_SPEED - 5.0) > 1e-6 else '')
+_pd_suffix = ('_pd' + ('%.4g' % PUNCH_DISPLACEMENT).replace('.', 'p')
+              if TEST_TYPE != 'pip' and abs(PUNCH_DISPLACEMENT - 35.0) > 1e-6 else '')
 
-JOB_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ps_suffix)
-CAE_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ps_suffix)
-INP_NAME   = '{}_W{}_t{}_ang{}{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix)
+_bm_tag = ''.join(ch for ch in str(BM_MESH_TAG or '') if ch.isalnum())[:24]
+_bm_suffix = ('_bm' + (_bm_tag or 'man')) if BM_MESH_USE_MANUAL else ''
+
+# Velocity-profile suffix — only present for the non-default constant-speed punch,
+# so constant-velocity runs get a distinct ODB/output dir and never collide with
+# the smooth-step results.
+_vp_suffix = ('_vconst' if PUNCH_VELOCITY_PROFILE == 'constant' else '')
+
+JOB_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
+CAE_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
+INP_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
 OUTPUT_DIR = _os.path.join(_os.environ.get('OUTPUT_BASE_DIR', _os.getcwd()), JOB_NAME)

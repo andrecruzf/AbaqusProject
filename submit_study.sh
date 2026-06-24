@@ -136,7 +136,7 @@ PLOT_JOB_ID=$(cd "${EULER_DIR}" && sbatch \
     --output="${STUDY_DIR}/logs/plot_study_%j.out" \
     --error="${STUDY_DIR}/logs/plot_study_%j.err" \
     --export=ALL,STUDY_DIR="${STUDY_DIR}" \
-    --parsable run_plot_study.sh)
+    --parsable run_plots.sh study)
 echo "  Plot job  : ${PLOT_JOB_ID} (held until all solver jobs complete)"
 echo "  Results   : ${STUDY_DIR}/study_results.pdf"
 echo "  $(date '+%Y-%m-%d %H:%M:%S') — done"

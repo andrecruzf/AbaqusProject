@@ -36,7 +36,7 @@ if _THIS_DIR not in sys.path:
 
 
 import config as cfg
-from modules.parts    import create_parts, import_specimen_mesh_only
+from modules.parts    import create_parts, build_bm_specimen
 from modules.assembly import create_assembly
 from modules.material import define_material
 from modules.step     import create_step
@@ -54,6 +54,7 @@ def run():
     print('  Modèle    : %s' % cfg.MODEL_NAME)
     print('  Specimen  : W%d (source=%s)' % (cfg.SPECIMEN_WIDTH,
                                               cfg.GEOMETRY_SOURCE))
+    print('  Mesh back : %s' % getattr(cfg, 'MESH_BACKEND', 'bm'))
     print('  Épaisseur : %.2f mm' % cfg.BLANK_THICKNESS)
     if cfg.TEST_TYPE == 'pip':
         print('  Test type : pip  (Punch1=%.1f mm + Punch2=%.1f mm)'
@@ -69,10 +70,10 @@ def run():
         print('  Created output directory: %s/' % cfg.OUTPUT_DIR)
 
     if MESH_ONLY:
-        print('\n[MESH_ONLY] Importing specimen mesh only.')
+        print('\n[MESH_ONLY] Building specimen mesh only.')
         if cfg.MODEL_NAME not in mdb.models:
             mdb.Model(name=cfg.MODEL_NAME)
-        import_specimen_mesh_only(cfg)
+        build_bm_specimen(cfg, assemble=False)
         mesh_cae = os.path.join(cfg.OUTPUT_DIR, cfg.CAE_NAME)
         mdb.saveAs(pathName=mesh_cae)
         print('  Saved mesh-only CAE: %s' % mesh_cae)

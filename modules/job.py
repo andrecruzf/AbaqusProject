@@ -24,7 +24,7 @@ def save_and_export(cfg):
         numDomains=cfg.NUM_CPUS,
         numGPUs=0,
         memoryUnits=PERCENTAGE,
-        memory=90,
+        memory=cfg.ABAQUS_MEMORY_PERCENT,
         explicitPrecision=SINGLE,
         nodalOutputPrecision=SINGLE)
 
