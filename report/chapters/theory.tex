@@ -65,28 +65,22 @@ The method is straightforward and widely used, but relies on a single time frame
 
 \subsection{Volk \& Hora Time-Dependent Method}
 
-In contrast to the intersection line method, the approach proposed by Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies necking onset from the evolution of the thickness strain rate. First, the thickness strain rate is computed from the in-plane DIC strains using incompressibility:
+In contrast to the ISO~12004 intersection line method, the approach proposed by Volk and Hora~\cite{VolkHora2011} identifies the onset of localized necking from the temporal evolution of the thickness strain rate. Assuming plastic incompressibility, the thickness strain rate is obtained from the in-plane principal strain rates according to
+
 \begin{equation}
     \dot{\varepsilon}_3 = -\left(\dot{\varepsilon}_1 + \dot{\varepsilon}_2\right).
 \end{equation}
-For discrete time steps, the central difference formula is preferred for its higher accuracy. If the frame rate changes during the experiment, the effective time step is defined as $\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values are linearly interpolated to ensure a uniform differencing stencil. The thinning rate is then $\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
 
-A necking zone is identified using a threshold criterion on the thinning rate. The representative maximum thinning rate $\bar{\dot{\varepsilon}}_{\max}$ is defined as the mean thinning rate over the last five frames:
-\begin{equation}
-    \bar{\dot{\varepsilon}}_{\max} = \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
-\end{equation}
-where $g$ is the number of elements and $b$ the number of frames. The necking zone $N$ is defined as:
-\begin{equation}
-    N = \left\{ \text{elements with } \dot{\varepsilon}_{b-1,i} \geq \alpha \cdot \bar{\dot{\varepsilon}}_{\max} \right\},
-\end{equation}
-where $\alpha$ is a factor chosen to ensure a sufficient number of elements in the necking zone (typically $\alpha = 0.55$ for a grid size of 1\,mm).
+A necking zone is subsequently identified using a threshold criterion based on the local thinning rate. The mean thinning rate within this zone is then evaluated as a function of time. During stable deformation, the evolution of the thinning rate is approximately linear. Once localized necking develops, a marked increase in thinning rate is observed. The transition between these two regimes is determined by fitting two linear functions and minimizing the combined fitting error.
 
-The mean thinning rate in the necking zone is then plotted against time. Two linear fits are applied: one to the stable (pre-necking) region and one to the unstable (post-necking) region. The transition between the two regimes, determined by minimising the combined fitting error, defines the last stable frame. The limit strains $\varepsilon_{1,\text{lim}}$ and $\varepsilon_{2,\text{lim}}$ are computed as the mean principal strains in the necking zone at this last stable frame:
-\begin{equation}
-    \varepsilon_{1,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{1,\text{stab},i}, \qquad
-    \varepsilon_{2,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{2,\text{stab},i},
-\end{equation}
-where $n$ is the number of points in the necking zone.
+The intersection of the stable and unstable regimes defines the last stable frame, from which the forming limit strains are extracted as the average major and minor strains within the necking zone. A schematic example of the procedure is shown in Figure~\ref{fig:VH_example}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{report//img/VH_D100_B_W200.png}
+    \caption{Application of the Volk--Hora time-dependent method to a Nakazima test performed on a 5000-series aluminum alloy specimen (W200 geometry). The evolution of the thinning rate is divided into stable and unstable regimes using a two-line fitting procedure. The transition point defines the last stable frame from which the forming limit strains are extracted.}
+    \label{fig:VH_example}
+\end{figure}
 
 \subsection{Merklein Method}
 
