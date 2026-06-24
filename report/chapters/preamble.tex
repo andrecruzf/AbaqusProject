@@ -3,37 +3,16 @@
 
 \chapter*{Abstract}
 
-Forming Limit Curves (FLCs) are widely used to assess the onset of necking and
-fracture in sheet metal forming. Their experimental and numerical
-identification is sensitive to the test setup, specimen geometry, sheet
-thickness, material behaviour, and the data evaluation methodology. These
-sensitivities become especially relevant when FLCs are investigated with
-smaller specimen dimensions, high-throughput testing, automated specimen
-handling, and digital image correlation.
+Forming Limit Curves (FLCs) are widely used to characterize the formability of sheet metals and predict the onset of localized necking during forming operations. Their experimental determination and numerical prediction are sensitive to factors such as specimen geometry, sheet thickness, tooling configuration, material behaviour, and the employed evaluation methodology. These sensitivities become increasingly relevant as forming processes move towards thinner sheets, smaller characteristic dimensions, and higher levels of automation.
+\\
 
-This thesis contributes to the project \textit{Towards Robust Forming Limit
-Curve Identification: Experiments and Modeling}. The focus is Task~III of the
-project outline: a numerical simulation framework that automates the creation,
-execution, and post-processing of the specimen and punch configurations studied
-experimentally in Task~I. The framework generates Nakazima, Marciniak, and
-Punch-in-Punch models in Abaqus/Explicit, submits simulations to the ETH Euler
-cluster, and processes the resulting output databases without manual
-intervention. A VUMAT implementation of the Hosford-Coulomb fracture criterion
-is used to represent failure.
+This thesis is part of the research project \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}, which aims to improve the robustness and reproducibility of forming limit assessments. The project combines three complementary aspects: an experimental campaign investigating the influence of specimen geometry, sheet thickness and tooling configurations on measured FLCs, the development of robust and user-independent FLC identification criteria, and the creation of an automated numerical simulation framework. Together, these efforts provide a systematic approach for studying the factors that influence forming limit determination and prediction.
+\\
 
-Special attention is given to comparability between configurations. Specimen
-width, sheet thickness, punch radius, forming travel, mass scaling, and mesh
-controls are exposed as parameters, while the mesh generation workflow is
-designed to maintain identical element sizes in the relevant observation zone.
-A mesh-size modification script and a combined mesh-refinement and mass-scaling
-study provide the basis for selecting production settings.
+Within this context, experimental Nakazima, Marciniak and Punch-in-Punch tests are conducted on a high-throughput testing platform and analysed using digital image correlation. Several established necking detection methodologies are implemented and evaluated within a modular identification framework. In parallel, an automated Abaqus/Explicit workflow is developed for model generation, execution and post-processing, enabling efficient numerical investigation of the experimental configurations. Particular attention is given to maintaining consistent mesh characteristics and to assessing the influence of numerical parameters through mesh-refinement and mass-scaling studies.
+\\
 
-The post-processing pipeline extracts punch force--displacement histories,
-energy histories, forming-limit points, strain paths, and diagnostic
-visualisations. The resulting data products are structured for comparison
-between test configurations and for later integration with the modular FLC
-identification framework of Task~II, including Volk-Hora, Merklein,
-Pham-Sigvant, and Stoughton-type criteria.
+The combination of experimental observations, automated evaluation methods and numerical simulations provides the foundation for a more robust and reproducible determination of forming limit curves.
 
 \cleardoublepage
 
@@ -42,14 +21,21 @@ Pham-Sigvant, and Stoughton-type criteria.
 
 \chapter*{Acknowledgements}
 
-I would like to thank Prof. Dr. Vincent Grolleau and Dr. Christian Roth for
-their guidance and technical feedback throughout this project. I am also
-grateful to the Chair of Artificial Intelligence in Mechanics and Manufacturing
-for providing the research context, computational resources, and previous
-experimental and numerical work on which this project builds.
+I would like to express my sincere gratitude to Dr. Christian Roth for giving me the opportunity to undertake this project.
 
-The simulations presented in this report were carried out on the ETH Euler
-high-performance computing cluster.
+I am equally grateful to Prof. Dr. Vincent Grolleau for his supervision, insightful advice, and the many stimulating discussions that helped shape both the direction and scope of the project.
+
+I would also like to thank Dr. Jean-Michel Tancogne-Dejean for the interesting technical discussions and valuable recommendations provided during the course of this work.
+
+Furthermore, I would like to thank Dr. Dirk Mohr for the opportunity to carry out this project within the Institute of Virtual Manufacturing (IVP) and for providing the research environment in which this work was conducted.invaluable to the successful completion of this work.
+
+I am equally grateful to Prof. Dr. Vincent Grolleau for his supervision, insightful advice, and the many stimulating discussions that helped shape both the direction and scope of the project.
+
+I would also like to thank Dr. Thomas Tancogne-Dejean for the interesting technical discussions and valuable recommendations provided during the course of this work.
+
+Furthermore, I would like to thank Dr. Dirk Mohr for the opportunity to carry out this project within the Institute of Virtual Manufacturing (IVP) and for providing the research environment in which this work was conducted.
+
+Finally, I would like to thank the members of the Chair of Artificial Intelligence in Mechanics and Manufacturing and the Institute of Virtual Manufacturing for their support and for creating a stimulating research environment.
 
 \cleardoublepage
 

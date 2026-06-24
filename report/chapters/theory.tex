@@ -1,70 +1,52 @@
 \chapter{Theoretical Background}\label{chap:theory}
+\section{Sheet Metal Formability}
+Sheet metal formability describes the ability of a sheet material to undergo plastic deformation during a forming operation without the occurrence of defects such as localized necking, fracture, wrinkling, or excessive thinning. It is a key consideration in the design of sheet metal components and forming processes, particularly in industries such as automotive, aerospace, and consumer goods manufacturing, where lightweight structures and complex geometries are increasingly required.
+
+The formability of a sheet metal depends on a combination of material, geometrical, and process-related factors. Material properties such as yield strength, strain hardening behaviour, strain-rate sensitivity, anisotropy, and ductility directly influence the material's ability to accommodate plastic deformation. In addition, sheet thickness, tooling geometry, lubrication conditions, and the applied loading path can significantly affect the deformation behaviour and the onset of failure.
+
+During a forming operation, deformation is rarely uniaxial and is generally characterized by a combination of major and minor in-plane strains. Different strain paths can lead to significantly different forming limits, even for the same material. Consequently, the characterization of sheet metal formability requires an approach capable of accounting for a wide range of deformation states.
+
+Several methods have been developed to assess formability, including tensile tests, bulge tests, and standardized forming experiments. Among these, the Forming Limit Diagram (FLD) has become the most widely used engineering tool for describing the onset of localized necking under different strain paths. The FLD provides a graphical representation of the strain combinations that a material can withstand before instability occurs and forms the basis for the evaluation of sheet metal formability in both experimental and numerical investigations.
 
 \section{Forming Limit Diagram}
 
-The Forming Limit Diagram (FLD) plots the major principal strain $\varepsilon_1$ against the minor principal strain $\varepsilon_2$ at the onset of localised necking. The Forming Limit Curve (FLC) is the boundary in this diagram separating safe deformation from failure. Points below the FLC are considered safe; points above indicate necking or fracture.
+The Forming Limit Diagram (FLD) is the most widely used tool for characterizing the formability of sheet metals. It plots the major principal strain, $\varepsilon_1$, against the minor principal strain, $\varepsilon_2$, at the onset of localized necking. The resulting Forming Limit Curve (FLC) defines the boundary between stable and unstable deformation. Strain states below the FLC correspond to safe deformation, whereas strain states above the curve indicate the onset of localized necking and, ultimately, fracture.
 
-The shape of the FLC depends on the material, sheet thickness, strain rate, and temperature. Three characteristic regions are distinguished:
+Figure~\ref{fig:FLD_example} illustrates a typical FLD and the corresponding deformation regions. The shape and position of the FLC depend on several factors, including material properties, sheet thickness, strain rate, temperature, and loading path. Three characteristic regions can be distinguished:
+
 \begin{itemize}
-  \item $\varepsilon_2 < 0$: uniaxial to plane-strain tension (left side of FLC)
-  \item $\varepsilon_2 = 0$: plane-strain condition (minimum of FLC, most critical point)
-  \item $\varepsilon_2 > 0$: biaxial stretching (right side of FLC)
+    \item $\varepsilon_2 < 0$: uniaxial to plane-strain tension,
+    \item $\varepsilon_2 = 0$: plane-strain condition, typically corresponding to the minimum of the FLC and therefore the most critical strain state,
+    \item $\varepsilon_2 > 0$: biaxial stretching up to equi-biaxial tension.
 \end{itemize}
 
-\section{Experimental Test Methods}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{report/img/FLD_example.png}
+    \caption{FLC for a Serie 5 aluminum determined using the intersection line method.}
+    \label{fig:FLD_example}
+\end{figure}
 
-Two standardised experimental methods are used to determine FLCs, both described in ISO~12004-2~\cite{ISO120042}. They share the same die and blank holder geometry but differ in punch shape and, consequently, in the linearity of the induced strain paths.
+\section{Nakazima and Marciniak Tests}
+The Nakazima and Marciniak tests are the two most commonly used experimental methods for determining Forming Limit Curves (FLCs). Both tests aim to generate different strain paths by varying the specimen geometry, thereby covering the range from uniaxial tension to equi-biaxial strains required for constructing a complete Forming Limit Diagram (FLD).
 
-\subsection{Nakazima Test}
+In the Nakazima test, a hemispherical punch is driven into a clamped sheet specimen until localized necking or fracture occurs. Different strain paths are obtained by varying the specimen width, with narrow specimens approaching uniaxial tension and wider specimens approaching equi-biaxial stretching. Due to the direct contact between the punch and the specimen, the deformation is influenced by bending and contact pressure effects, which can lead to slightly non-linear strain paths at the specimen apex~\cite{ISO120042}.
 
-In the Nakazima test, a hemispherical punch of diameter 100\,mm is pushed through a clamped blank until fracture. By varying the width of the specimen — from a narrow strip (approaching uniaxial tension) to a full-width disc (approaching equibiaxial stretching) — different strain paths are induced along the FLC. The method is widely used due to its simplicity, but the strain path at the specimen apex is known to be slightly non-linear due to bending and contact pressure effects~\cite{ISO120042}.
+The Marciniak test employs a flat-bottomed cylindrical punch together with a carrier blank positioned between the punch and the specimen. This arrangement prevents direct contact between the punch and the investigated sheet and promotes failure in a region of more homogeneous deformation. As a result, the Marciniak configuration generally produces more linear strain paths than the Nakazima test and is often considered more suitable for fundamental investigations of forming limits~\cite{ISO120042, Min2017}.
 
-In this work, specimen widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm are considered. Due to symmetry, only a quarter model is simulated.
+While ISO~12004-2 specifies a reference punch diameter of 100\,mm for both testing methods, the present work additionally investigates the influence of punch geometry by considering hemispherical punch diameters of 40\,mm, 60\,mm, 80\,mm, and 100\,mm in the Nakazima configuration. This enables a systematic assessment of the influence of punch size on the measured forming limits and contributes to the broader investigation of size effects in sheet metal forming.
 
-\subsection{Marciniak Test}
 
-In the Marciniak test, a flat-bottomed cylindrical punch (diameter 100\,mm, edge fillet 10\,mm per ISO~12004-2) is used instead of a hemisphere. A carrier blank with a central hole is placed between the punch and the specimen to avoid direct punch--specimen contact and to ensure that failure occurs in a region of more homogeneous strain. The Marciniak configuration produces more linear strain paths than Nakazima, improving the accuracy of FLC determination~\cite{ISO120042, Min2017}.
-
-Key tool dimensions per ISO~12004-2~\cite{ISO120042}:
-\begin{itemize}
-  \item Punch diameter: $(100 \pm 25)$\,mm; edge fillet: 10\% of diameter ($= 10$\,mm)
-  \item Die inner diameter: 120\% of punch diameter ($= 120$\,mm)
-  \item Die fillet: 10--20\% of punch diameter ($= 10$--20\,mm)
-\end{itemize}
-
-\subsection{Punch-in-Punch Test}
+\section{Punch-in-Punch Test}
 
 The Punch-in-Punch (PiP) test is an alternative forming test designed to generate more linear strain paths than the standard Nakazima configuration, particularly in the biaxial stretching regime. It employs two coaxial punches acting sequentially on the specimen:
 
-\begin{itemize}
-  \item \textbf{Punch~1} (outer, annular): inner bore radius 20\,mm, outer radius 43.75\,mm. Pre-forms the outer zone of the blank and maintains clamping in the second step.
-  \item \textbf{Punch~2} (inner, hemispherical): radius 15\,mm. Forms the central dome region.
-\end{itemize}
+The process consists of two steps. In Step~1, both punches advance together, pre-forming the specimen. In Step~2, the outter punch is held fixed while the inner one advances further, deepening the dome until fracture. This two-stage loading produces a more controlled strain path.
 
-The process consists of two steps. In Step~1, both punches advance together by 20\,mm, pre-forming the specimen. In Step~2, Punch~1 is held fixed while Punch~2 advances a further 20\,mm (40\,mm total), deepening the dome until fracture. This two-stage loading produces a controlled strain path in the dome zone that is more directly comparable to the target strain state than the single-punch Nakazima approach.
+\section{Forming Limit Identification Methods}
 
-The PiP test geometry and process parameters are derived from the validated reference model of Lennart~(PinP\_CR210H), which was used as the basis for calibration of the FE implementation.
 
-\section{Hosford-Coulomb Failure Criterion}
-
-The VUMAT implemented in this project uses the Hosford-Coulomb (HC) failure criterion. This criterion couples a pressure-dependent fracture locus with the Hosford equivalent stress, making it well suited for sheet metal forming under combined tension and shear stress states.
-
-The HC criterion predicts fracture when the equivalent plastic strain $\bar{\varepsilon}^p$ reaches a critical value $\bar{\varepsilon}^p_f(\eta, \bar{\theta})$ that depends on the stress triaxiality $\eta$ and the Lode angle parameter $\bar{\theta}$. The fracture locus is calibrated from a set of 46 material constants identified from mechanical characterisation tests.
-
-The VUMAT tracks 17 solution-dependent variables (SDVs) per integration point, including:
-\begin{itemize}
-  \item SDV1: Equivalent plastic strain (EQPS) — primary field variable for failure detection and FLC extraction.
-  \item SDV6: Damage variable $D$.
-  \item SDV7: Failure switch — triggers element deletion when the HC criterion is met.
-  \item SDV8 ($\beta$): Softening function, initialised to 1.0.
-  \item SDV17 ($\bar{\varepsilon}^p_f$): Critical fracture strain computed from the HC surface.
-\end{itemize}
-
-Element deletion occurs when SDV7 is set, detected in post-processing via the STATUS field variable (STATUS\,$< 0.5$ indicates a deleted element).
-
-\section{FLC Identification Criteria}
-
-Determining the onset of localised necking from strain field data is non-trivial. Several criteria have been proposed in the literature, each based on different physical assumptions. These are relevant to Task~II of the project; they are summarised here for context. Automated and expert-assisted evaluations have shown that robustness is not only a matter of the criterion itself, but also of noise handling, crack-frame selection, and the repeatability of the measured strain field~\cite{Affronti2018}.
+Determining the onset of localised necking from strain field data is non-trivial. Several criteria have been proposed in the literature, each based on different physical assumptions. .
 
 \subsection{ISO 12004-2 Position-Dependent Method}
 
