@@ -1,43 +1,57 @@
-\chapter{Experimental Campaign}\label{chap:experimental_campaign}
+\chapter{Experimental Campaign}
+\label{chap:experimental_campaign}
 
-\section{Role in the Project}
+\section{Overview}
 
-Task~I of the project provides the experimental basis for robust forming-limit
-identification. Its objective is to generate FLC data on a high-throughput
-forming test bench while deliberately varying the parameters that can influence
-the measured limit curve: specimen geometry, sheet thickness, punch radius,
-material, and test configuration. The numerical framework and identification
-criteria described in later chapters are designed around this experimental
-scope.
+The experimental campaign constitutes the foundation of the present work and aims to generate a comprehensive dataset for the investigation of forming limit curves (FLCs). Particular emphasis is placed on assessing the influence of specimen geometry, sheet thickness, punch geometry, material orientation, and loading path on the experimentally determined forming limits. The resulting dataset serves both for the evaluation of forming limit identification methodologies and for the validation of the numerical simulation framework developed within this project.
 
-\section{Test Configurations}
+\section{Experimental Setup}
 
-The campaign is centred on Nakazima and Marciniak tests, which are the standard
-experimental routes for FLC determination. By changing specimen width, the
-strain state is varied from uniaxial tension through plane strain to biaxial
-stretching. The project also includes a Punch-in-Punch configuration, where a
-two-stage punch motion is used to control the strain path in the dome zone.
+All experiments were conducted using the high-throughput forming test bench available at the Institute of Virtual Manufacturing (IVP). The system combines automated specimen handling with Digital Image Correlation (DIC) measurements, enabling the efficient acquisition of strain-field data for a large number of test configurations.
 
-The parameters of interest are:
-\begin{itemize}
-  \item specimen width and geometry;
-  \item sheet thickness;
-  \item punch radius and punch travel;
-  \item material and material orientation;
-  \item test configuration: Nakazima, Marciniak, or Punch-in-Punch.
-\end{itemize}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/test_bench.jpg}
+    \caption{High-throughput forming test bench used for the experimental campaign.}
+    \label{fig:test_bench}
+\end{figure}
 
-\section{Automation and Robustness}
+\section{Specimen Geometries and Test Configurations}
 
-The high-throughput test bench and automated specimen loading system are
-important parts of the project because they determine whether FLC measurements
-can be repeated with low operator dependence. Robustness is therefore evaluated
-not only through the final FLC values, but also through the consistency of the
-test setup, crack location, strain-field quality, and data availability for
-post-processing.
+The experimental campaign is based on Nakazima, Marciniak, and Punch-in-Punch tests. By varying the specimen width, strain paths ranging from uniaxial tension to equi-biaxial stretching can be generated, enabling the construction of complete Forming Limit Diagrams.
 
-Digital image correlation provides the strain-field histories used by the Task~II
-identification framework. To make experimental and numerical results comparable,
-both data streams are organised around the same physical quantities: major and
-minor strain histories, force--displacement response, crack or endpoint frame,
-and forming-limit points in FLD space.
+Figure~\ref{fig:specimen_geometries} shows the investigated specimen geometries. Narrow specimens promote uniaxial deformation, whereas wider specimens progressively shift the strain state towards biaxial stretching.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/specimen_geometries.pdf}
+    \caption{Investigated specimen geometries ranging from W20 to W200.}
+    \label{fig:specimen_geometries}
+\end{figure}
+
+In addition to specimen geometry, the influence of sheet thickness, punch diameter, material orientation, and testing configuration was investigated. Besides conventional Nakazima and Marciniak tests, a Punch-in-Punch configuration was considered to introduce alternative loading paths and expand the range of achievable strain states.
+
+\section{Experimental Matrix}
+
+Table~\ref{tab:experimental_matrix} summarizes the main parameters investigated during the experimental campaign.
+
+\begin{table}[htbp]
+\centering
+\caption{Overview of investigated experimental parameters.}
+\label{tab:experimental_matrix}
+\begin{tabular}{ll}
+\hline
+Parameter & Values investigated \\
+\hline
+Specimen geometry & W20--W200 \\
+Sheet thickness & 1, 1.5, 2 ,3 [mm] \\
+Punch diameter & 40, 60, 80, 100 [mm] \\
+Material orientation & 0 (Rolling direction (RD)), 90 (Transverse direction (TD)) [deg] \\
+Test configuration & Nakazima, Marciniak\\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Data Acquisition}
+
+Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:flc_identification}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram.
