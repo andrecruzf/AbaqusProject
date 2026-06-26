@@ -13,10 +13,10 @@ Campaign-specific numerical values are reported with the results in
 Chapter~\ref{chap:results}, and the complete list of configuration controls is
 collected in Appendix~\ref{app:configuration_parameters}.
 
-The framework is built around four properties that the project requires:
+The framework is built around three properties that the project requires:
 \begin{itemize}
-  \item \textbf{End-to-end automation.} The complete chain --- model build,
-  solver submission, ODB post-processing, and FLC aggregation --- runs without
+  \item \textbf{End-to-end automation.} The complete chain from model build,
+  solver submission, ODB post-processing, up to FLC aggregation, runs without
   manual Abaqus/CAE editing, so that complete campaigns and parameter studies
   can be launched from configuration alone.
   \item \textbf{Cross-configuration comparability.} A single pipeline and a
@@ -27,10 +27,6 @@ The framework is built around four properties that the project requires:
   configuration-driven meshing rather than by manually edited models, which
   enables systematic mesh-refinement and mass-scaling studies at a consistent
   element size across specimen widths and configurations.
-  \item \textbf{Physical fidelity.} A solid through-thickness discretisation
-  with a Hosford--Coulomb VUMAT resolves fracture and element deletion, and
-  three complementary limit criteria connect the numerical results to the
-  identification framework of Chapter~\ref{chap:identification_framework}.
 \end{itemize}
 
 The remainder of this chapter describes the physical model, the numerical
@@ -52,7 +48,7 @@ CAE file.
 
 For the standard Nakazima and Marciniak tests the model consists of four parts:
 the deformable specimen, the punch, the die, and the blank holder. The Nakazima
-punch is a hemispherical analytical rigid surface; the Marciniak punch is a flat
+punch is a hemispherical analytical rigid surface while the Marciniak punch is a flat
 analytical rigid surface with an edge fillet consistent with the ISO~12004-2
 tooling recommendation. The Punch-in-Punch model contains five parts: an annular
 outer punch (Punch~1) that pre-forms the specimen, and a selectable inner punch
