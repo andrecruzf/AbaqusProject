@@ -78,6 +78,57 @@ $1\times10^{-4}$ & \checkmark & \checkmark & \checkmark \\
 \end{center}
 \end{table}
 
+\section{Numerical Framework Implementation Details}
+\label{app:numerical_implementation}
+
+Chapter~\ref{chap:numerical_model} describes the framework at the level of
+modelling choices and data flow. The implementation-level identifiers, the
+enforced output requests, and the post-processing file catalogue referenced
+there are collected here.
+
+\subsection{Element and Model Identifiers}
+
+\begin{tabbing}
+ \hspace*{4.0cm} \= \kill
+ \texttt{C3D8R}                \> 8-node linear brick element with reduced integration (deformable blank) \\[0.5ex]
+ \texttt{XSYMM}, \texttt{YSYMM} \> Symmetry boundary conditions on the two quarter-model cut planes \\[0.5ex]
+ \texttt{STATUS}              \> Element-deletion state used for fracture-location and fallback endpoint detection \\[0.5ex]
+ \texttt{SDV6}                \> Damage solution-dependent variable used for the damage-based limit \\[0.5ex]
+ \texttt{VUMAT\_explicit.f}   \> Hosford--Coulomb user material (46 material constants, 17 SDVs)
+\end{tabbing}
+
+Hourglass control is assigned through the solid-section controls, and element
+deletion is enabled through the VUMAT state variable. Several solution-dependent
+variables are initialised explicitly in the generated input deck to avoid
+zero-valued initial damage at the first increment.
+
+\subsection{Enforced Output Requests}
+
+The input deck is modified after model generation to enforce a common output set
+for all configurations:
+\begin{itemize}
+  \item \textbf{Field output:} stress, logarithmic strain, equivalent plastic
+  strain, all solution-dependent variables, element status, triaxiality,
+  Lode-related quantities, nodal displacement, and reaction force.
+  \item \textbf{History output:} punch displacement and force, die and
+  blank-holder reaction forces, whole-model energies (\texttt{ALLKE},
+  \texttt{ALLIE}), and the history of a representative apex element.
+\end{itemize}
+
+\subsection{Post-Processing File Catalogue}
+
+A single post-processing script reads the ODB and writes the following files,
+which are identical in schema across all test configurations:
+\begin{tabbing}
+ \hspace*{4.0cm} \= \kill
+ \texttt{punch\_fd.csv}       \> Punch force--displacement history \\[0.5ex]
+ \texttt{energy\_data.csv}    \> Whole-model energy histories and the ALLKE/ALLIE ratio \\[0.5ex]
+ \texttt{global.csv}          \> Per-frame global summary quantities \\[0.5ex]
+ \texttt{strain\_path.csv}    \> Major/minor strain path of the critical dome element \\[0.5ex]
+ \texttt{elout.csv}           \> Local history output of the apex element set \\[0.5ex]
+ \texttt{forming\_limits.csv} \> Extracted fracture, Volk--Hora, and damage-based limit points
+\end{tabbing}
+
 \section{Running a Simulation Campaign}
 
 To launch a full campaign for all widths with a given test configuration:
