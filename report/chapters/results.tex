@@ -157,8 +157,8 @@ FLC identification framework.
 
 Since the numerical framework is highly parameterised, the results are reported
 together with the configuration that generated them. The full inventory of
-adjustable settings is given in Appendix~\ref{app:configuration_parameters};
-the present chapter only repeats the concrete values that are needed to
+adjustable settings is given in Appendix~\ref{app:configuration_parameters}.
+The present chapter only repeats the concrete values that are needed to
 interpret a specific comparison. This separation keeps
 Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
 while preserving traceability for the simulations being compared.
@@ -210,7 +210,7 @@ and strain convergence.
 
 The kinetic-to-internal energy ratio ALLKE/ALLIE quantifies the deviation from quasi-static conditions. Because artificial kinetic energy scales quadratically with the stable time increment ($\mathrm{ALLKE} \propto \Delta t^2$), a ten-fold increase in $\Delta t$ raises the ratio by approximately two orders of magnitude. The contact transient at punch engagement produces a short-lived spike that is excluded from the metric: only the mean ratio over the second half of the simulation ($t > t_\mathrm{max}/2$) is reported, capturing the steady-state forming phase.
 
-For the W200 geometry the punch contact area is largest and the forming force is highest, making this the most sensitive width to mass scaling effects. As $\Delta t$ increases from $10^{-7}$\,s to $10^{-4}$\,s, the energy ratio is expected to cross the 5\,\% threshold at some intermediate value; the centre column of Figure~\ref{fig:study_heatmap} identifies that crossing. The selected production value $\Delta t = 10^{-5}$\,s should lie comfortably below threshold, confirming the quasi-static assumption for the main FLC campaign.
+For the W200 geometry the punch contact area is largest and the forming force is highest, making this the most sensitive width to mass scaling effects. As $\Delta t$ increases from $10^{-7}$\,s to $10^{-4}$\,s, the energy ratio is expected to cross the 5\,\% threshold at some intermediate value. The centre column of Figure~\ref{fig:study_heatmap} identifies that crossing. The selected production value $\Delta t = 10^{-5}$\,s should lie comfortably below threshold, confirming the quasi-static assumption for the main FLC campaign.
 
 % TODO: Report actual peak ALLKE/ALLIE values per row once results are available.
 
@@ -218,7 +218,7 @@ For the W200 geometry the punch contact area is largest and the forming force is
 
 Mesh refinement affects the accuracy of the extracted failure strain $\varepsilon_1$ through two competing mechanisms. Finer elements resolve the neck more precisely, so the peak strain at the critical element more closely represents the true localisation. However, very fine meshes also change the effective fracture energy release per element and can interact with the element-deletion scheme, potentially altering the detected failure frame.
 
-The convergence metric $\Delta\varepsilon_1$ measures the deviation of the extracted major strain from the reference case ($f_\mathrm{MR} = 1$, $\Delta t = 10^{-7}$\,s). A value of $|\Delta\varepsilon_1| < 5\,\%$ is adopted as the acceptance criterion, consistent with the uncertainty typical of experimental FLC measurements~\cite{ISO120042}. The right column of Figure~\ref{fig:study_heatmap} shows how $\Delta\varepsilon_1$ varies with $f_\mathrm{MR}$ at fixed $\Delta t$; convergence is expected once the element size falls below the characteristic neck width.
+The convergence metric $\Delta\varepsilon_1$ measures the deviation of the extracted major strain from the reference case ($f_\mathrm{MR} = 1$, $\Delta t = 10^{-7}$\,s). A value of $|\Delta\varepsilon_1| < 5\,\%$ is adopted as the acceptance criterion, consistent with the uncertainty typical of experimental FLC measurements~\cite{ISO120042}. The right column of Figure~\ref{fig:study_heatmap} shows how $\Delta\varepsilon_1$ varies with $f_\mathrm{MR}$ at fixed $\Delta t$. Convergence is expected once the element size falls below the characteristic neck width.
 
 The wall-clock time (left column of Figure~\ref{fig:study_heatmap}) grows significantly with $f_\mathrm{MR}$, since both the number of elements and the reduced stable time increment increase with mesh density. This trade-off motivates the joint optimisation described in the following section.
 
@@ -226,11 +226,11 @@ The wall-clock time (left column of Figure~\ref{fig:study_heatmap}) grows signif
 
 \subsection{Combined Effect and Parameter Selection}\label{sec:study_combined}
 
-Running the two parameters simultaneously reveals their interaction. For a coarser mesh, the minimum element edge length is larger, so the same mass scaling target $\Delta t$ injects less artificial mass (the natural stable increment is closer to $\Delta t$). As a result, the ALLKE/ALLIE ratio at fixed $\Delta t$ is lower for coarser meshes — the acceptable mass scaling budget is wider. Conversely, a fine mesh with a conservative $\Delta t$ is the most accurate but most expensive corner of the parameter space.
+Running the two parameters simultaneously reveals their interaction. For a coarser mesh, the minimum element edge length is larger, so the same mass scaling target $\Delta t$ injects less artificial mass (the natural stable increment is closer to $\Delta t$). As a result, the ALLKE/ALLIE ratio at fixed $\Delta t$ is lower for coarser meshes, which widens the acceptable mass scaling budget. Conversely, a fine mesh with a conservative $\Delta t$ is the most accurate but most expensive corner of the parameter space.
 
 The recommended operating point for production simulations is the cell that simultaneously satisfies:
 \begin{enumerate}
-  \item mean ALLKE/ALLIE $< 5\,\%$ (quasi-static validity); and
+  \item mean ALLKE/ALLIE $< 5\,\%$ (quasi-static validity)
   \item $|\Delta\varepsilon_1| < 5\,\%$ (FLC accuracy relative to reference).
 \end{enumerate}
 Among all cells that meet both criteria, the one with the shortest wall-clock time is selected for the production FLC campaign. The heatmap in Figure~\ref{fig:study_heatmap} provides a direct visual basis for this selection. The production settings used in the Nakazima, Marciniak, and Punch-in-Punch campaigns reported in the following sections were chosen accordingly.
@@ -251,7 +251,7 @@ Table~\ref{tab:nakazima_flc} summarises the critical principal strains extracted
 
 \begin{table}[ht]
 \begin{center}
-\caption{Nakazima FLC data points — critical strains at failure per specimen width.}
+\caption{Nakazima FLC data points, with the critical strains at failure for each specimen width.}
 \label{tab:nakazima_flc}
 \begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
 Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
@@ -272,7 +272,7 @@ The Marciniak configuration uses a flat-bottomed punch ($\varnothing 100$\,mm, e
 
 \begin{table}[ht]
 \begin{center}
-\caption{Marciniak FLC data points — critical strains at failure per specimen width.}
+\caption{Marciniak FLC data points, with the critical strains at failure for each specimen width.}
 \label{tab:marciniak_flc}
 \begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
 Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule
@@ -293,7 +293,7 @@ The Punch-in-Punch configuration employs the two-step process described in Secti
 
 \begin{table}[ht]
 \begin{center}
-\caption{Punch-in-Punch FLC data points — critical strains at failure per specimen width.}
+\caption{Punch-in-Punch FLC data points, with the critical strains at failure for each specimen width.}
 \label{tab:pip_flc}
 \begin{tabular}{@{}lcccc@{}}\toprule[1.5pt]
 Width $W$ [mm] & Strain state & $\varepsilon_2$ [$-$] & $\varepsilon_1$ [$-$] & Dome fracture \\ \midrule

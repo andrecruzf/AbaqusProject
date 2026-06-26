@@ -5,7 +5,7 @@
 A simulation framework was developed in Abaqus/Explicit to build, run, and
 post-process the Nakazima, Marciniak, and Punch-in-Punch configurations of
 Task~I without manual intervention. The full model is generated from a single
-configuration file: the framework creates the tooling, meshes or imports the
+configuration file. The framework creates the tooling, meshes or imports the
 blank, assigns the Hosford--Coulomb material, applies contact and boundary
 conditions, writes the input deck, submits the explicit job on Euler, and
 extracts the forming-limit data from the resulting output database (ODB).
@@ -15,8 +15,8 @@ collected in Appendix~\ref{app:configuration_parameters}.
 
 The framework is built around four properties that the project requires:
 \begin{itemize}
-  \item \textbf{End-to-end automation.} The complete chain --- model build,
-  solver submission, ODB post-processing, and FLC aggregation --- runs without
+  \item \textbf{End-to-end automation.} The complete chain of model build,
+  solver submission, ODB post-processing, and FLC aggregation runs without
   manual Abaqus/CAE editing, so that complete campaigns and parameter studies
   can be launched from configuration alone.
   \item \textbf{Cross-configuration comparability.} A single pipeline and a
@@ -34,10 +34,10 @@ The framework is built around four properties that the project requires:
 \end{itemize}
 
 The remainder of this chapter describes the physical model, the numerical
-controls, and the automated post-processing. Implementation-level details ---
+controls, and the automated post-processing. The implementation-level details
+are collected in Appendix~\ref{app:numerical_implementation}. These include the
 output-request lists, the post-processing file catalogue, and the element and
-keyword identifiers referenced below --- are collected in
-Appendix~\ref{app:numerical_implementation}.
+keyword identifiers referenced below.
 
 \section{Physical Model}
 
@@ -52,29 +52,29 @@ CAE file.
 
 For the standard Nakazima and Marciniak tests the model consists of four parts:
 the deformable specimen, the punch, the die, and the blank holder. The Nakazima
-punch is a hemispherical analytical rigid surface; the Marciniak punch is a flat
+punch is a hemispherical analytical rigid surface. The Marciniak punch is a flat
 analytical rigid surface with an edge fillet consistent with the ISO~12004-2
-tooling recommendation. The Punch-in-Punch model contains five parts: an annular
-outer punch (Punch~1) that pre-forms the specimen, and a selectable inner punch
-(Punch~2) that continues the forming operation in the second step, so that
+tooling recommendation. The Punch-in-Punch model contains five parts. Punch~1 is
+an annular outer punch that pre-forms the specimen, and Punch~2 is a selectable
+inner punch that continues the forming operation in the second step, so that
 different variants can be tested without changing the rest of the model.
 
 A shared family of specimen geometries is used for the standard Nakazima and
 Marciniak configurations, which keeps the model topology and post-processing
-sets consistent across campaigns. Specimens can be obtained from three sources:
-the preferred route is the BM mesh builder, which generates the blank from
+sets consistent across campaigns. Specimens can be obtained from three sources.
+The preferred route is the BM mesh builder, which generates the blank from
 parameterised geometry and mesh settings, while existing \texttt{.cae} and
 \texttt{.inp} files can also be imported. The import path preserves the named
-node and element sets required by the model --- the symmetry sets, outer-edge
-set, top and bottom contact surfaces, and the element set used for local history
-output (Appendix~\ref{app:numerical_implementation}).
+node and element sets required by the model. These are the symmetry sets, the
+outer-edge set, the top and bottom contact surfaces, and the element set used
+for local history output (Appendix~\ref{app:numerical_implementation}).
 
 \subsection{Discretisation and Mesh Control}
 
 The deformable blank is discretised with linear reduced-integration solid brick
 elements (Appendix~\ref{app:numerical_implementation}). A solid formulation is
 used so that through-thickness strain and element deletion can be evaluated
-consistently with the Hosford--Coulomb VUMAT; the number of elements through the
+consistently with the Hosford--Coulomb VUMAT. The number of elements through the
 sheet thickness is configurable, and element deletion is driven by the material
 state variable.
 
@@ -82,7 +82,7 @@ A central requirement of the project is that mesh density can be controlled
 systematically across specimen widths and test configurations. The framework
 therefore treats meshing as a configuration-controlled step rather than a fixed
 property of each imported geometry. Several seed modes are available for imported
-geometries; the radial-zone strategy keeps a fine central region near the punch
+geometries. The radial-zone strategy keeps a fine central region near the punch
 apex and applies progressively coarser seeds toward the flange. The target sizes
 and refinement factors are reported with the sensitivity studies rather than
 being fixed in the model description.
@@ -100,7 +100,7 @@ an anisotropic Hill-type yield and flow formulation with mixed Swift--Voce
 hardening. Fracture initiation is described by the Hosford--Coulomb criterion,
 after which the VUMAT damage variables control the element-deletion state. The
 size of the material card and the solution-dependent variable set are given in
-Appendix~\ref{app:numerical_implementation}; several state variables are
+Appendix~\ref{app:numerical_implementation}. Several state variables are
 initialised explicitly in the generated input deck to avoid zero-valued initial
 damage or failure-strain variables at the first increment and to keep the
 Abaqus~2023 explicit run robust.
@@ -115,15 +115,15 @@ before the punch-diameter and thickness trends are discussed.
 \section{Loading, Boundary Conditions, and Contact}
 
 For Nakazima and Marciniak simulations a single explicit forming step is used.
-The punch displacement, speed, and amplitude are user controlled: the
+The punch displacement, speed, and amplitude are user controlled. The
 displacement can follow a smooth-step amplitude or an approximately
 constant-velocity profile with short end ramps. The constant-velocity option is
 useful when time-dependent necking criteria are studied, because it avoids
 artificial deceleration of the punch close to fracture.
 
-The Punch-in-Punch model uses two explicit steps. In the first, Punch~1 and
-Punch~2 advance together to generate the pre-forming state; in the second,
-Punch~1 is held fixed at its end-of-step position while Punch~2 continues the
+The Punch-in-Punch model uses two explicit steps. In the first step, Punch~1 and
+Punch~2 advance together to generate the pre-forming state. In the second step,
+Punch~1 is held fixed at its end-of-step position, while Punch~2 continues the
 forming process and drives the specimen to failure. The step amplitudes and
 travel values are campaign settings and are documented with the corresponding
 results.
@@ -134,7 +134,7 @@ The two specimen symmetry planes carry symmetry boundary conditions, and the
 outer blank edge is fixed by default, which represents the clamping action while
 avoiding the computational cost of a full closing simulation. All tool--blank
 interactions use explicit surface-to-surface contact with hard normal behaviour
-and Coulomb friction; the punch--blank and clamping coefficients are controlled
+and Coulomb friction. The punch--blank and clamping coefficients are controlled
 independently, and separately for Punch~1, Punch~2, and the clamping tools in the
 Punch-in-Punch model.
 
@@ -150,7 +150,7 @@ based on this ratio together with the stability of the extracted forming-limit
 point.
 
 The same framework performs the mass-scaling and mesh-refinement sensitivity
-studies. These are not separate models: they are generated by changing the
+studies. These are not separate models. They are generated by changing the
 relevant configuration values while keeping the geometry, material model,
 boundary conditions, output requests, and post-processing schema unchanged. This
 makes the influence of the numerical settings traceable and allows the selected
@@ -165,10 +165,10 @@ and history output requests shared by all configurations
 (Appendix~\ref{app:numerical_implementation}), so that every run produces
 directly comparable data. Once the solver has finished, a single
 post-processing script reads the ODB and writes a structured set of CSV files
-(catalogued in Appendix~\ref{app:numerical_implementation}); the same script is
-used for all test configurations.
+that are catalogued in Appendix~\ref{app:numerical_implementation}. The same
+script is used for all test configurations.
 
-The fracture endpoint is detected primarily from the punch force history: the
+The fracture endpoint is detected primarily from the punch force history. The
 force maximum defines the last stable load point, while a configured post-peak
 force drop is used to identify the crack frame. Element deletion provides the
 fracture location and remains available as a fallback endpoint detector. If the
@@ -182,7 +182,7 @@ written, mirroring the criteria of the identification framework:
   frame before fracture, at a critical element selected in the dome zone from the
   deletion or maximum-equivalent-plastic-strain information.
   \item \textbf{Volk--Hora necking limit.} A DIC-like region is built around the
-  fracture neighbourhood; the mean thinning-rate history is fitted with a stable
+  fracture neighbourhood. The mean thinning-rate history is fitted with a stable
   and an unstable branch, whose intersection defines the necking frame.
   \item \textbf{Damage-based limit.} The maximum dome-zone damage history is
   evaluated, and the inflection of this curve provides an additional
@@ -190,12 +190,13 @@ written, mirroring the criteria of the identification framework:
 \end{enumerate}
 This multi-criterion output is what links the numerical model to the Task~II
 identification framework, allowing the same limit definitions to be compared on
-experimental and numerical data. Diagnostic plots and movies are generated after
-post-processing --- a per-run PDF with the strain path, force--displacement
-curve, and quasi-static energy check, and a movie of the equivalent-plastic-strain
-evolution and final fracture location --- and aggregation scripts combine the
-per-width limits into FLC plots, so that the Nakazima, Marciniak, and
-Punch-in-Punch configurations can be compared on the same strain-space axes.
+experimental and numerical data. Diagnostic plots and movies are also generated
+after post-processing. Each run produces a PDF with the strain path, the
+force--displacement curve, and the quasi-static energy check, together with a
+movie of the equivalent-plastic-strain evolution and the final fracture location.
+Aggregation scripts then combine the per-width limits into FLC plots, so that the
+Nakazima, Marciniak, and Punch-in-Punch configurations can be compared on the
+same strain-space axes.
 
 \section{Execution on Euler and Parameter Studies}
 
@@ -207,6 +208,6 @@ copied back to the project directory while the large ODB remains in scratch
 storage, which keeps the home directory small while retaining all data required
 for analysis and plotting. Because parameter studies are generated by
 configuration changes alone, the same execution path produces the factorial
-mass-scaling and mesh-refinement grids discussed in Chapter~\ref{chap:results};
-the pipeline architecture and cluster configuration are summarised in
+mass-scaling and mesh-refinement grids discussed in Chapter~\ref{chap:results}.
+The pipeline architecture and cluster configuration are summarised in
 Appendix~\ref{app:pipeline}.

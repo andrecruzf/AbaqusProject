@@ -7,7 +7,7 @@ Figure~\ref{fig:architecture} shows the full pipeline architecture, from local c
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\textwidth]{img/architecture.png}
-  \caption{Automated simulation pipeline architecture. Local machine (blue) deploys to the ETH Euler HPC cluster. The login node builds all FE models; compute nodes run the solver and post-processing jobs in parallel under SLURM. The FLC aggregation job runs after all solver jobs complete via a SLURM \texttt{afterok} dependency.}
+  \caption{Automated simulation pipeline architecture. Local machine (blue) deploys to the ETH Euler HPC cluster. The login node builds all FE models. Compute nodes run the solver and post-processing jobs in parallel under SLURM. The FLC aggregation job runs after all solver jobs complete via a SLURM \texttt{afterok} dependency.}
   \label{fig:architecture}
 \end{figure}
 
@@ -17,7 +17,7 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
 
 \begin{tabbing}
  \hspace*{4.5cm} \= \kill
- \texttt{config.py}             \> Central configuration — all model parameters \\[0.5ex]
+ \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
  \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job} \\[0.5ex]
  \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran 77) \\[0.5ex]
