@@ -30,6 +30,14 @@
 \lhead[\thepage]{\nouppercase{\leftmark}}   % Special headings
 \cfoot{}                                    % Special headings
 
+% Vertical spacing______________________________________________________________
+% Disable flushbottom (on by default in twoside report) so LaTeX no longer
+% stretches inter-paragraph and around-heading glue to fill each page to the
+% bottom; this keeps paragraph spacing uniform across pages. Since parindent is
+% 0, add a small fixed parskip so paragraphs remain visually separated.
+\raggedbottom
+\setlength{\parskip}{0.5\baselineskip plus 2pt}
+
 
 % Title page (please fill in)___________________________________________________
 \title{Towards Robust Forming Limit Curve Identification:\\Experiments and Modeling}
