@@ -69,6 +69,18 @@ output structure is important for the broader project because the numerical
 data can be compared directly with Task~I experiments and passed to the Task~II
 FLC identification framework.
 
+\section{Reported Simulation Configurations}
+
+Since the numerical framework is highly parameterised, the results are reported
+together with the configuration that generated them. For each campaign, the
+relevant settings are the test type, specimen width series, sheet thickness,
+material orientation, punch diameter or punch variant, punch travel, punch
+speed, friction coefficients, mass-scaling target, mesh refinement factor, and
+number of through-thickness seeds. This separation keeps
+Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
+while the present chapter documents the concrete parameter choices used for the
+simulations being compared.
+
 \section{Quasi-Static Validation}
 
 For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal energy (\texttt{ALLIE}) is monitored throughout the step to confirm that inertial effects remain negligible. A ratio below 5\% is used as the acceptance target for the quasi-static assumption in the Abaqus/Explicit framework~\cite{AbaqusManual}. The energy ratio history for each simulation is stored in the corresponding output directory and the peak or windowed ratio is printed to the job log.

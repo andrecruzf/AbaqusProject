@@ -1,130 +1,270 @@
 \chapter{Numerical Model}\label{chap:numerical_model}
 
-\section{Model Overview}
+\section{Numerical Simulation Framework}
 
-The numerical framework replicates the forming tests required by Task~I in Abaqus/Explicit. The selected test is chosen via the \texttt{TEST\_TYPE} flag (\texttt{nakazima}, \texttt{marciniak}, or \texttt{pip}) in the central configuration file. Due to two planes of symmetry, only a quarter of the specimen is modelled, significantly reducing computational cost.
+A finite element simulation framework was developed in Abaqus/Explicit to
+reproduce the forming tests considered in the experimental campaign and to
+generate comparable forming-limit data for the identification framework. The
+main objective of the numerical work was therefore not to reproduce one fixed
+simulation configuration, but to create a versatile and repeatable modelling
+environment. The same code base can be used to vary specimen width, sheet
+thickness, punch diameter, punch travel, forming speed, material orientation,
+friction, mesh density, mass scaling, output frequency, and post-processing
+thresholds without changing the model-building logic.
 
-Table~\ref{tab:tool_geometry} summarises the tool geometry for each test configuration.
+The model generation is controlled from a central configuration file. The
+selected test type is one of \texttt{nakazima}, \texttt{marciniak}, or
+\texttt{pip}. The same pipeline then creates the tool geometry, imports or
+generates the specimen mesh, assigns the material, applies contact and boundary
+conditions, writes the Abaqus input deck, submits the explicit job, and extracts
+the relevant output quantities from the resulting ODB file. This modular setup
+is similar in spirit to the numerical framework used in previous Nakazima and
+Marciniak studies, but was extended here to support automated parameter studies
+and the Punch-in-Punch configuration.
+
+This parameterisation is essential for the project because it allows individual
+effects to be studied without rebuilding the model manually. For example, the
+same specimen family can be simulated with different sheet thicknesses, the
+same punch can be combined with different friction or mass-scaling settings,
+and the same post-processing routine can be applied to all resulting ODB files.
+The numerical model chapter therefore describes the capabilities and modelling
+assumptions of the framework. The specific parameter values used for each
+reported campaign are stated together with the corresponding results in
+Chapter~\ref{chap:results}.
+
+To reduce computational cost, only one quarter of the specimen is simulated.
+The blank lies in the global $X$--$Y$ plane and the forming direction is the
+global $Z$ direction. Symmetry boundary conditions are applied on the two cut
+planes. The rigid tools are represented analytically where possible, while the
+Punch-in-Punch secondary punch can also be imported from a prepared CAE file.
+The specimen geometries are available for widths
+$W \in \{20,50,80,90,100,120,200\}$\,mm and are shared across the standard
+Nakazima and Marciniak configurations.
+
+Table~\ref{tab:framework_parameters} summarises the main parameter groups
+exposed by the framework.
 
 \begin{table}[ht]
 \begin{center}
-\caption{Tool geometry by test configuration.}
-\label{tab:tool_geometry}
-\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
-Parameter & Nakazima & Marciniak & Punch-in-Punch \\ \midrule
-Punch type        & Hemisphere ($R=\SI{50}{mm}$) & Flat ($\varnothing\,\SI{100}{mm}$) & Annular + hemisphere \\
-Die inner radius  & \SI{52.5}{mm} & \SI{60}{mm} & \SI{55}{mm} \\
-Die fillet        & \SI{8}{mm}    & \SI{12}{mm} & \SI{15}{mm} \\
-Blank-holder inner radius   & \SI{54.5}{mm} & \SI{62}{mm} & \SI{62.5}{mm} \\
-Punch displacement & \SI{50}{mm}   & \SI{50}{mm} & $\SI{20}{mm} + \SI{20}{mm}$ \\
-Punch speed       & \SI{5}{mm/s}  & \SI{5}{mm/s} & \SI{2}{mm/s} \\ \bottomrule[1.5pt]
+\caption{Main user-tunable parameter groups in the numerical framework.}
+\label{tab:framework_parameters}
+\begin{tabular}{@{}lll@{}}\toprule[1.5pt]
+Parameter group & Examples & Purpose \\ \midrule
+Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup \\
+Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
+Tool geometry & Punch radius, punch variant, die radii & Study tooling and size effects \\
+Process conditions & Punch travel, speed, friction & Match or vary test conditions \\
+Material orientation & Rolling/transverse angle & Evaluate anisotropy effects \\
+Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial resolution \\
+Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
+Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
 \end{tabular}
 \end{center}
 \end{table}
 
-For the PiP configuration, the model includes five parts:
-\begin{itemize}
-  \item \textbf{Blank}: deformable solid, meshed with the reference specimen geometry.
-  \item \textbf{Punch~1}: annular rigid body (inner bore $r = 20$\,mm, outer $r = 43.75$\,mm).
-  \item \textbf{Punch~2}: inner hemispherical rigid body ($R = 15$\,mm).
-  \item \textbf{Die}: rigid ring with flat contact face and 15\,mm fillet.
-  \item \textbf{Blank holder}: rigid body with 2\,mm inner chamfer, inner radius 62.5\,mm.
-\end{itemize}
+\section{Specimen and Tool Modelling}
 
-For Nakazima and Marciniak, the standard four-part model is used (single punch, die, blank holder, blank). Specimen geometry files (\texttt{.cae}) are provided for widths $W \in \{20, 50, 80, 90, 100, 120, 200\}$\,mm and are shared between all test configurations. The workflow is parameterised such that sheet thickness, material orientation, punch travel, forming speed, mass scaling, and mesh refinement can be changed without editing the model-building scripts.
+For the standard Nakazima and Marciniak tests the model consists of four parts:
+the deformable specimen, the punch, the die, and the blank holder. In the
+Nakazima configuration the punch is a hemispherical analytical rigid surface.
+In the Marciniak configuration the punch is a flat analytical rigid surface
+with an edge fillet consistent with the ISO~12004-2 tooling recommendation.
 
-\section{Discretisation}
+The Punch-in-Punch model contains five parts. Punch~1 is an annular outer punch
+which pre-forms the specimen, while Punch~2 is the inner punch that continues
+the forming operation in the second step. The geometry of the inner punch is
+selectable, so that different Punch-in-Punch variants can be tested without
+changing the rest of the model.
 
-The blank is meshed with eight-node linear brick elements with reduced integration and hourglass control (\texttt{C3D8R}). A single element layer is used through the thickness, consistent with the reference geometry files and with the mesh configuration used in the reference model (PinP\_CR210H). The relevant mesh metric for this project is the element size in the dome and contact zone, because this is where strain localisation is evaluated.
+Specimens can be obtained from three geometry sources. The preferred route for
+the automated workflow is the BM mesh builder, which generates the blank from
+parameterised geometry and mesh settings. Existing \texttt{.cae} and
+\texttt{.inp} specimen files can also be imported. The import path preserves
+the named node and element sets required by the model, including the symmetry
+sets, outer-edge set, top and bottom contact surfaces, and the element set used
+for local history output.
 
-Maintaining a consistent element size across all specimen widths and test configurations is a primary requirement of the project outline. The model-building workflow therefore treats mesh size as a controlled parameter rather than as an incidental property of each imported geometry. A user-defined mesh-refinement factor is applied during model generation, allowing the same target element length to be imposed across widths, sheet thicknesses, and punch configurations. This prevents apparent differences in forming limits from being caused by different spatial resolutions.
+\section{Discretisation and Mesh Control}
 
-The automated mesh-size modification also enables the Task~III mesh study. Instead of manually preparing separate geometry files, the same build script generates a controlled set of meshes and post-processes them with identical criteria. The resulting convergence data are used to select the production mesh density for the full parametric campaign.
+The deformable blank is discretised with eight-node linear brick elements with
+reduced integration (\texttt{C3D8R}). A solid formulation is used so that
+through-thickness strain and element deletion can be evaluated consistently
+with the Hosford-Coulomb VUMAT. The number of elements through the sheet
+thickness is configurable. Hourglass control is assigned through the
+solid-section controls and element deletion is enabled through the material
+state variable specified by the VUMAT.
+
+A central requirement of the project is that mesh density can be controlled
+systematically across specimen widths and test configurations. The framework
+therefore treats meshing as a parameter of the simulation rather than as a
+fixed property of each imported geometry. For imported geometries, several seed
+modes are available. The default radial-zone strategy keeps the fine central
+region near the punch apex and applies progressively coarser seeds toward the
+flange. The nominal zones are 0.1\,mm in the apex region, 0.2\,mm in the punch
+contact zone, 0.5\,mm near the dome shoulder, and 1.0\,mm in the outer flange.
+A mesh refinement factor scales these target sizes during sensitivity studies.
+
+For post-processing, a dome observation set is defined from the undeformed
+element centroids. Its radius is
+\[
+  R_\mathrm{dome}=0.15\,D_\mathrm{punch},
+\]
+which corresponds to the ISO~12004-2 requirement that fracture relevant for an
+FLC point occurs within 15\,\% of the punch diameter. This zone is used to
+classify dome fracture, select critical elements, and extract local strain
+histories.
 
 \section{Material Model}
 
-The blank material is defined via a VUMAT Fortran subroutine (\texttt{VUMAT\_explicit.f}), which implements the Hosford-Coulomb criterion with 46 material constants. The subroutine computes the stress update using a radial return algorithm and evaluates the fracture criterion at each increment. Initial conditions for SDV8 ($\beta = 1.0$) and SDV17 ($\bar{\varepsilon}^p_f$) are injected programmatically at the start of the step to work around an Abaqus 2023 CAE limitation with VUMAT predefined fields.
+The blank material is defined by a user material subroutine
+\texttt{VUMAT\_explicit.f}. The material card uses 46 constants and 17
+solution-dependent variables. The constitutive model combines an anisotropic
+Hill-type yield and flow formulation with mixed Swift-Voce hardening. Fracture
+initiation is described by the Hosford-Coulomb criterion. After fracture
+initiation, the damage variables in the VUMAT control the element deletion
+state.
 
-\section{Boundary Conditions and Interactions}
+The material orientation is assigned through a local Cartesian coordinate
+system. The orientation angle in the configuration file rotates the rolling
+direction in the specimen plane, which allows the same numerical setup to be
+used for rolling-direction and transverse-direction studies. This is important
+for comparing the numerical model against the experimental campaign, where the
+effect of material orientation is evaluated before the punch-diameter and
+thickness trends are discussed.
 
-Symmetry boundary conditions are applied on the two cut planes of the quarter model. The blank holder and die are fully fixed. Surface-to-surface kinematic contact is defined between the blank and each rigid tool, with Coulomb friction coefficients set in \texttt{config.py}.
+Several state variables are initialised explicitly in the generated input deck.
+This avoids zero-valued initial damage or failure-strain variables at the first
+increment and makes the Abaqus 2023 explicit run robust when using the VUMAT.
 
-For the PiP configuration, the two-step process is controlled by separate boundary conditions on each punch reference point:
-\begin{itemize}
-  \item \textbf{Step~1} (\texttt{Step1\_Clamp}, 10\,s): both Punch~1 and Punch~2 advance 20\,mm together with a linear amplitude.
-  \item \textbf{Step~2} (\texttt{Step2\_Form}, 10\,s): Punch~1 is locked via an \texttt{EncastreBC} (zero nodal velocity, holding at end-of-step-1 position); Punch~2 advances a further 20\,mm with a linear amplitude.
-\end{itemize}
+\section{Loading, Boundary Conditions, and Contact}
 
-For Nakazima and Marciniak, a single \texttt{Forming} step (10\,s) uses a smooth-step amplitude to prescribe the 50\,mm punch displacement.
+For Nakazima and Marciniak simulations a single explicit forming step is used.
+The punch displacement, punch speed, and amplitude definition are user
+controlled. The displacement can be prescribed with a smooth-step amplitude or
+with an approximately constant-velocity profile with short end ramps. The
+constant-velocity option is useful when time-dependent necking criteria are
+studied, because it avoids artificial deceleration of the punch close to
+fracture.
 
-\section{Forming Speed and Mass Scaling}
+The Punch-in-Punch model uses two explicit steps. In the first step Punch~1 and
+Punch~2 advance together by 20\,mm, generating the pre-forming state. In the
+second step Punch~1 is held fixed at its end-of-step position, while Punch~2
+continues by a further 20\,mm and drives the specimen to failure.
 
-All simulations use a punch speed of 5\,mm/s. This is an artificial speed used in the quasi-static Abaqus/Explicit framework: the step time is set to $t = d/v$ (10\,s for Nakazima/Marciniak; $2 \times 10$\,s for PiP).
+The die and blank holder reference points are fixed. The punch reference point
+is constrained in all degrees of freedom except the forming displacement. The
+two specimen symmetry planes are constrained with \texttt{XSYMM} and
+\texttt{YSYMM} boundary conditions. The outer blank edge is fixed by default,
+which represents the clamping action while avoiding the computational cost of a
+full closing simulation.
 
-Fixed mass scaling with a target stable time increment $\Delta t = 1 \times 10^{-5}$\,s is applied to maintain computational efficiency. The quasi-static assumption is validated post-hoc by verifying that the ratio of kinetic to internal energy (ALLKE/ALLIE) remains below 5\% throughout the simulation.
+All tool--blank interactions use explicit surface-to-surface contact with hard
+normal contact and Coulomb friction. For the standard Nakazima and Marciniak
+models, the punch--blank coefficient is controlled independently from the
+die/blank-holder clamping coefficient. For the Punch-in-Punch model separate
+coefficients are used for Punch~1, Punch~2, and the clamping tools.
+
+\section{Mass Scaling and Quasi-Static Verification}
+
+The simulations are run with Abaqus/Explicit, but the forming process is
+intended to represent a quasi-static test. Variable mass scaling can therefore
+be used to reduce the computational cost by targeting a user-defined minimum
+stable time increment. Because mass scaling can introduce artificial inertia,
+every completed simulation is checked using the ratio of kinetic to internal
+energy,
+\[
+  \frac{\mathrm{ALLKE}}{\mathrm{ALLIE}}.
+\]
+The energy histories are written to \texttt{energy\_data.csv} and are plotted
+for each specimen. The final acceptance of a run is based on this energy ratio
+and on the stability of the extracted forming-limit point.
 
 \subsection{Mass Scaling Sensitivity Study}\label{sec:mass_scaling_study}
 
-Mass scaling introduces artificial mass to increase the stable time increment $\Delta t$, reducing the number of explicit increments and therefore the wall-clock time. The added mass inflates the kinetic energy, so the quasi-static assumption becomes less valid as $\Delta t$ grows: $\mathrm{ALLKE} \propto \dot{u}^2 \Delta m \propto \Delta t^2$, meaning a ten-fold increase in $\Delta t$ raises the kinetic-to-internal energy ratio by roughly two orders of magnitude.
-
-To identify the largest $\Delta t$ that keeps the simulation quasi-static, a dedicated one-dimensional sweep was conducted on a representative W200 specimen ($t = 1.5$\,mm) using four values:
+To quantify the influence of artificial mass, the framework supports a
+mass-scaling sweep on a representative W200 Nakazima specimen. The investigated
+target time increments are
 \[
-  \Delta t \in \{1\times10^{-7},\; 1\times10^{-6},\; 1\times10^{-5},\; 1\times10^{-4}\}\,\text{s}.
+  \Delta t \in \{1\times10^{-7},\,1\times10^{-6},\,1\times10^{-5},\,1\times10^{-4}\}\,\mathrm{s}.
 \]
-The quality metric is the mean ALLKE/ALLIE ratio evaluated over the second half of the simulation time, which avoids the transient spike that occurs at initial punch contact. The 5\,\% quasi-static threshold from the Abaqus documentation~\cite{AbaqusManual} is used as the acceptance criterion. Results are presented in Section~\ref{sec:study_mass_scaling}.
+The W200 geometry is selected because the large contact area and biaxial strain
+state make it a demanding case for both inertia and mesh convergence.
 
 \subsection{Mesh Refinement Study}\label{sec:mesh_refinement_study}
 
-Element size directly controls the accuracy with which strain gradients in the dome zone are resolved, and hence the reliability of the extracted FLC point. A mesh that is too coarse smears the localised neck over several elements, underestimating the peak major strain $\varepsilon_1$ at failure. Conversely, very fine meshes increase runtime significantly and can make full FLC campaigns computationally prohibitive. The mesh study is therefore part of the framework design, not a separate manual validation exercise.
-
-The mesh refinement factor $f_\mathrm{MR}$ scales the target element size relative to the reference geometry. Three levels were studied:
+The mesh refinement study varies the mesh refinement factor
+$f_\mathrm{MR}$. The current study grid uses
 \[
-  f_\mathrm{MR} \in \{1,\; 2,\; 4\},
+  f_\mathrm{MR} \in \{1,\,2,\,4\}.
 \]
-where $f_\mathrm{MR} = 1$ corresponds to the coarsest mesh and $f_\mathrm{MR} = 4$ to the finest. The deviation of the extracted major failure strain from the reference value (finest mesh, smallest $\Delta t$) is used as the convergence metric:
-\[
-  \Delta\varepsilon_1 = \frac{\varepsilon_1(f_\mathrm{MR},\,\Delta t) - \varepsilon_1^\mathrm{ref}}{\varepsilon_1^\mathrm{ref}} \times 100\,\%.
-\]
-Results are presented in Section~\ref{sec:study_mesh}.
+For each case the extracted major strain at the forming-limit point is compared
+against the finest and most conservative reference simulation. This gives a
+direct estimate of the numerical error introduced by using a coarser mesh.
 
 \subsection{Combined Parameter Study}\label{sec:combined_study}
 
-The mass scaling and mesh refinement studies were executed simultaneously as a fully factorial $4 \times 3$ grid (12 simulations total) on the W200 Nakazima specimen. Running both axes together reveals interactions between the two parameters: for coarser meshes the element-level stable time increment is inherently larger, so the same mass scaling $\Delta t$ produces a different ratio of artificial to natural mass. The combined study therefore provides a more realistic basis for parameter selection than independent one-at-a-time sweeps.
+Mass scaling and mesh refinement are evaluated together in a fully factorial
+$4\times3$ grid. This is necessary because the two parameters are coupled: a
+coarser mesh has a larger natural stable time increment and therefore requires
+less artificial mass to reach the same target $\Delta t$. The study is deployed
+automatically on the ETH Euler cluster. Each simulation is built with the same
+model generator, submitted as an independent SLURM job, post-processed with the
+same ODB script, and finally collected into a heatmap of runtime, energy ratio,
+and strain convergence.
 
-The grid was deployed via \texttt{deploy\_study.sh}, which pushes all scripts once via \texttt{rsync --checksum} and calls \texttt{submit\_one.sh} once per combination via blocking SSH, collecting the SLURM job IDs to wire a downstream \texttt{plot\_study.py} aggregation job with an \texttt{afterok} dependency. The aggregation produces a three-panel heatmap (wall time, mean ALLKE/ALLIE, $\Delta\varepsilon_1$) that simultaneously visualises all trade-offs. Results are presented in Section~\ref{sec:study_combined}.
+\section{Output Requests and Post-Processing}
 
-\section{Output Requests}
+The Abaqus input deck is modified after model generation to enforce a common
+set of output requests for all configurations. Field output includes stress,
+logarithmic strain, equivalent plastic strain, all solution-dependent
+variables, element status, triaxiality, Lode-related quantities, nodal
+displacement, and reaction force. History output includes punch displacement
+and force, die and blank-holder reaction forces, whole-model energies, and the
+history of a representative apex element.
 
-Field outputs are requested at regular intervals and include:
-\begin{itemize}
-  \item \texttt{LE}: Logarithmic strain tensor (used to compute principal strains $\varepsilon_1$, $\varepsilon_2$).
-  \item \texttt{SDV1--17}: All solution-dependent variables (EQPS, stress state, fracture strain).
-  \item \texttt{STATUS}: Element status (0 = deleted, used to detect failure frame).
-  \item \texttt{S}, \texttt{U}, \texttt{RF}: Stress, displacement, reaction forces.
-\end{itemize}
+After the solver has finished, \texttt{postproc.py} reads the ODB and writes a
+structured set of CSV files. The most important files are
+\texttt{punch\_fd.csv}, \texttt{energy\_data.csv}, \texttt{global.csv},
+\texttt{strain\_path.csv}, \texttt{elout.csv}, and
+\texttt{forming\_limits.csv}. The same post-processing script is used for all
+test configurations so that the resulting data can be compared directly.
 
-History output includes whole-model energies \texttt{ALLKE} and \texttt{ALLIE} for quasi-static validation.
+The fracture endpoint is detected primarily from the punch force history. The
+force maximum defines the last stable load point, while a configured post-peak
+force drop is used to identify the crack frame. Element deletion through
+\texttt{STATUS} is used to classify the fracture location and remains available
+as a fallback endpoint detector. If the first deletion occurs outside the dome
+zone, the run is flagged as an outside-dome or base fracture and is not treated
+as a valid FLC point.
 
-\section{Simulation Pipeline}
-
-The entire workflow is automated via a set of Python and shell scripts deployed on the ETH Euler HPC cluster. It follows three stages: model creation, solver execution, and post-processing. The pipeline runs end-to-end from a single deployment command on the local machine, which pushes all scripts to the cluster, builds Abaqus models for all specimen widths, submits the corresponding solver jobs, and queues a downstream FLC aggregation job with a SLURM dependency.
-
-Model building is handled by a central orchestrator script that calls eight modules sequentially (parts, assembly, material, step, contact, boundary, output, job) and writes the solver input file. After the explicit solver completes on the compute node, an ODB-based post-processing script extracts principal strains, equivalent plastic strain, damage, and energy histories into structured CSV files. A plotting script generates per-specimen diagnostic figures, and a final aggregation step combines all forming-limit points into a single FLC diagram.
-
-The full repository structure, file descriptions, and execution commands are provided in Appendix~\ref{app:pipeline}.
-
-\section{Failure and Necking Detection}
-
-Four independent criteria are implemented in \texttt{postproc.py} to extract a forming-limit point from each simulation, written as separate rows in \texttt{forming\_limits.csv}:
-
+Three forming-limit rows are written when the required data are available:
 \begin{enumerate}
-  \item \textbf{Fracture (HC criterion).} The failure frame is the last output frame before the first element deletion, detected by a drop in \texttt{STATUS} below 0.5. The search is restricted to the \textit{dome zone}: elements whose undeformed centroid lies within $R_\mathrm{dome}$ of the punch axis, set to 15\,\% of the punch diameter per ISO~12004-2~\cite{ISO120042}. If the first deletion occurs outside this zone the run is flagged as a \textit{base fracture} and excluded from the FLC. The critical element is the one with maximum SDV1 (EQPS) in the dome zone at the pre-failure frame; its principal strains are computed analytically from the LE tensor eigenvalues.
-
-  \item \textbf{Volk-Hora time-dependent criterion~\cite{VolkHora2011}.} Necking onset is identified from the thinning-rate history $\dot{\varepsilon}_\mathrm{thin}(t) = \dot{\varepsilon}_1 + \dot{\varepsilon}_2$ at the critical element. The signal is doubly smoothed and split at its inflection into a \textit{stable} phase (low, approximately linear increase) and an \textit{unstable} phase (rapid acceleration). A linear function is fitted to each phase; the intersection of the two lines is taken as the necking onset time. This criterion is purely time-dependent and does not rely on spatial strain gradients, making it directly applicable to FE history output.
-
-  \item \textbf{SDV6 damage criterion.} The dome-zone maximum damage variable $D(t)$ (SDV6 from the HC VUMAT) is monitored frame by frame. Necking onset is taken as the inflection of this curve: $\operatorname{argmax}\,\ddot{D}(t)$. This criterion is disabled if SDV6 is absent from the ODB.
-
-  \item \textbf{Min--Stoughton surface-curvature criterion~\cite{Min2017}.} The theoretical formulation is presented in Section~\ref{chap:theory}. In the numerical implementation, nodes on the outer surface of the sheet (opposite to the punch-contact interface) within the dome zone are read from the nodal displacement field \texttt{U} at each output frame. The default SAC value is $5\times10^{-4}$\,mm$^{-1}$, following the recommendation for Nakazima tests in~\cite{Min2017}. The necking condition must hold for eight consecutive frames. The method returns N/A if fewer than three dome-zone nodes are available or if \texttt{U} is absent from the ODB.
+  \item \textbf{Fracture limit.} The critical strain is taken at the last stable
+  frame before fracture. The critical element is selected in the dome zone from
+  the deletion or maximum-equivalent-plastic-strain information.
+  \item \textbf{Volk-Hora necking limit.} A DIC-like region is built around the
+  fracture neighbourhood. The mean thinning-rate history is fitted with a
+  stable and an unstable branch, and their intersection defines the necking
+  frame.
+  \item \textbf{SDV6 damage limit.} The maximum dome-zone damage history is
+  evaluated and the inflection of this curve is used as an additional
+  damage-based necking indicator.
 \end{enumerate}
 
-All four limit points are overlaid on the FLC diagram produced by \texttt{plot\_flc.py}, allowing a direct comparison across criteria.
+Diagnostic plots and movies are generated after post-processing. The per-run
+PDF contains the strain path, force-displacement curve, and quasi-static energy
+check. The movie export visualises the evolution of equivalent plastic strain
+and the final fracture location. Aggregation scripts combine the
+\texttt{forming\_limits.csv} files of multiple specimen widths into FLC plots,
+allowing the Nakazima, Marciniak, and Punch-in-Punch configurations to be
+compared on the same strain-space axes.
+
+\section{Execution on Euler}
+
+The complete workflow is designed for the ETH Euler cluster. The model is built
+with Abaqus/CAE in no-GUI mode, the input file and VUMAT are copied to scratch,
+and the Abaqus/Explicit solver is submitted with threaded CPU parallelisation.
+After the ODB has been post-processed, the compact CSV files, figures, and
+movies are copied back to the project directory, while the large ODB remains in
+scratch storage. This separation keeps the home directory small while retaining
+all data required for analysis and plotting.
