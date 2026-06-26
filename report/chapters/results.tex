@@ -18,6 +18,18 @@ output structure is important for the broader project because the numerical
 data can be compared directly with Task~I experiments and passed to the Task~II
 FLC identification framework.
 
+\section{Reported Simulation Configurations}
+
+Since the numerical framework is highly parameterised, the results are reported
+together with the configuration that generated them. For each campaign, the
+relevant settings are the test type, specimen width series, sheet thickness,
+material orientation, punch diameter or punch variant, punch travel, punch
+speed, friction coefficients, mass-scaling target, mesh refinement factor, and
+number of through-thickness seeds. This separation keeps
+Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
+while the present chapter documents the concrete parameter choices used for the
+simulations being compared.
+
 \section{Quasi-Static Validation}
 
 For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal energy (\texttt{ALLIE}) is monitored throughout the step to confirm that inertial effects remain negligible. A ratio below 5\% is used as the acceptance target for the quasi-static assumption in the Abaqus/Explicit framework~\cite{AbaqusManual}. The energy ratio history for each simulation is stored in the corresponding output directory and the peak or windowed ratio is printed to the job log.
@@ -27,7 +39,7 @@ For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal en
 %
 % \begin{figure}[ht]
 %   \centering
-%   \includegraphics[width=0.75\textwidth]{../Nakazima_W50_t1p0_ang0/energy_ratio.png}
+%   \includegraphics[width=0.75\textwidth]{img/results/energy_ratio.png}
 %   \caption{Kinetic-to-internal energy ratio (ALLKE/ALLIE) for the Nakazima W50 simulation.
 %            The ratio remains well below the 5\% quasi-static threshold throughout.}
 %   \label{fig:energy_ratio_w50}
@@ -58,7 +70,7 @@ $1\times10^{-4}$ & \checkmark & \checkmark & \checkmark \\
 %
 % \begin{figure}[ht]
 %   \centering
-%   \includegraphics[width=\textwidth]{../study_ms_mr_W200_t1p75_ang0_ps5p0/study_results.pdf}
+%   \includegraphics[width=\textwidth]{img/results/study_results.pdf}
 %   \caption{Sensitivity study heatmap (Nakazima W200, $t=1.75$\,mm). Left: wall-clock time (h).
 %            Centre: mean ALLKE/ALLIE over the second half of the simulation; the
 %            5\,\% quasi-static threshold is indicated. Right: deviation of the major
@@ -177,7 +189,7 @@ The FLC aggregation step combines the critical strain points from all specimen w
 %
 % \begin{figure}[ht]
 %   \centering
-%   \includegraphics[width=0.85\textwidth]{../FLC_output/flc_diagram.png}
+%   \includegraphics[width=0.85\textwidth]{img/results/flc_diagram.png}
 %   \caption{Numerically determined Forming Limit Curves for Nakazima, Marciniak, and
 %            Punch-in-Punch configurations. Sheet thickness $t = 1.0$\,mm, orientation $\alpha = 0^\circ$.}
 %   \label{fig:flc}
