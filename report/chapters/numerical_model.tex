@@ -3,87 +3,165 @@
 \section{Framework Overview}
 
 To complement the experimental campaign presented in
-Chapter~\ref{chap:experimental_campaign}, a fully automated finite element
-framework was developed in Abaqus/Explicit for the numerical identification of
-forming limits. The framework is configuration-driven and supports the complete
-simulation workflow, from finite element model generation to automated
-post-processing and forming-limit extraction, without requiring manual
-interaction with Abaqus/CAE.
+Chapter~\ref{chap:experimental_campaign}, a numerical simulation framework was
+developed in Abaqus/Explicit. Its purpose is to create, run, and post-process
+the specimen and punch configurations considered in Task~I in a reproducible
+way. The framework is not written for one single model, but for repeated
+simulation campaigns in which the test type, geometry, mesh density, material
+orientation, loading, and post-processing settings can be changed from a common
+interface.
 
-A single \emph{Master} configuration file acts as the central interface of the
-framework. It defines the complete simulation setup, including the test
-configuration, specimen geometry, mesh parameters, material model, boundary
-conditions, solver settings, post-processing options, and computational
-resources requested on the ETH Euler cluster. Consequently, complete simulation
-campaigns and parameter studies can be reproduced by modifying only the
-configuration file, while the underlying implementation remains unchanged.
+The main design goal was automation. Starting from a central configuration
+file, the pipeline builds the finite element model, writes the Abaqus input
+deck, submits the simulation, extracts the relevant quantities from the output
+database, and stores the processed results in a common format. This makes it
+possible to compare Nakazima, Marciniak, and Punch-in-Punch simulations using
+the same numerical and post-processing workflow.
 
-The framework has been designed around three principles:
-
-\begin{itemize}
-    \item \textbf{Unified model generation.} The same implementation supports
-    Nakazima, Marciniak, and Punch-in-Punch simulations. Differences between
-    the test types are handled through configuration, ensuring a common modelling and post-processing workflow.
-
-    \item \textbf{Parameterized model construction.} Geometry generation, mesh
-    generation, material assignment, loading, contact, and output requests are
-    created automatically from the selected configuration. In particular, the
-    parameterized spider-web meshing strategy allows systematic mesh refinement
-    while preserving a consistent mesh topology across different specimen
-    geometries.
-
-    \item \textbf{End-to-end automation.} The framework automatically generates
-the Abaqus input deck, executes the simulation on the ETH Euler cluster,
-extracts the quantities required for model validation and forming-limit
-identification from the output database (ODB), and produces the corresponding
-processed datasets and diagnostic plots..
-\end{itemize}
-
-The remainder of this chapter follows the execution of the framework. First,
-the overall pipeline architecture and its integration with the ETH Euler
-cluster are presented. The automated generation of the finite element models
-for the three test configurations is then described, followed by the numerical
-formulation, mesh generation strategy, and quasi-static verification. Finally,
-the automated post-processing and forming-limit extraction procedures are
-introduced.
+Special attention was paid to the mesh. Since the numerical results should be
+compared across different specimen and punch configurations, the element size
+must be controlled systematically. The framework therefore includes
+user-defined mesh-size modification routines, which allow mesh-refinement
+studies to be generated automatically instead of manually rebuilding each
+model.
 
 \section{Framework Architecture}
-\subsection{Master Configuration}
+\subsection{Central Configuration}
 
-The framework is controlled through a single \emph{Master} configuration file,
-which serves as the primary user interface to the numerical framework. All
-parameters expected to vary between simulation campaigns are exposed through
-this file, while implementation-specific definitions, such as the rigid tool
-models and their interaction formulations, remain fixed within the framework.
+The framework is controlled through a central configuration file, which acts as
+the user interface of the numerical model. It defines the selected test
+configuration, specimen dimensions, punch setup, mesh controls, material
+orientation, contact parameters, loading conditions, solver settings, and
+post-processing options. Parameters that are expected to change between
+campaigns are exposed there, while the implementation of the model-building
+steps remains fixed.
 
-The Master configuration gathers the user-defined parameters that typically vary
-during simulation campaigns, such as the test configuration, loading,
-discretization, and solver settings. Additional options are activated only when
-required by a specific test configuration, allowing all studies to be conducted
-through a common interface.
+This separation reduces the risk of introducing unintended differences between
+simulation cases. For example, a change in sheet thickness, punch diameter, or
+mesh refinement factor does not require editing the Abaqus model manually. The
+complete list of available configuration groups is given in
+Appendix~\ref{app:configuration_parameters}.
 
-This separation between user-defined simulation parameters and implementation
-details enables complete simulation campaigns and parameter studies to be
-conducted by modifying a single configuration file, while preserving a
-consistent numerical implementation and minimizing the risk of unintended model
-modifications. The complete list of available configuration parameters is given
-in Appendix~\ref{app:configuration_parameters}.
 \subsection{Automated Workflow}
 
+The model generation is organised as a sequence of Python modules. The main
+script first reads the configuration and then creates the specimen, tools,
+assembly, material definition, analysis step, contact interactions, boundary
+conditions, output requests, and job definition. Each simulation therefore
+passes through the same sequence of operations, independent of the selected
+test type.
+
+After the model has been generated, the input file and the user material
+subroutine are placed in the simulation directory. Once the Abaqus/Explicit job
+has finished, the same post-processing script reads the output database (ODB)
+and writes the force-displacement data, energy histories, strain paths, and
+forming-limit points. The resulting file structure is kept identical for all
+test configurations so that the results can be aggregated without additional
+manual work.
+
 \subsection{Integration with the ETH Euler Cluster}
+
+The simulations are executed on the ETH Euler cluster. The local project files
+are copied to the cluster, where Abaqus/CAE is used in no-GUI mode to build the
+model and write the input deck. The solver job is then submitted through SLURM,
+and the ODB post-processing is performed after the analysis has completed.
+
+Only the compact result files, figures, and movies are copied back to the
+project directory. The large ODB files remain in scratch storage. This keeps
+the workflow practical for complete specimen-width campaigns and for mesh or
+mass-scaling studies, where many independent simulations have to be submitted.
 
 \section{Automated Model Generation}
 
 \subsection{Test Configurations}
 
+Three test configurations are supported. The Nakazima model represents the
+standard hemispherical-punch test and is used as the main reference
+configuration. The Marciniak model uses a flat punch and provides a second
+forming setup with a different strain-path character. The Punch-in-Punch model
+contains an outer and an inner punch and is used to study a two-stage forming
+process.
+
+All three configurations are generated by the same framework. Differences such
+as the number of punches, tool geometry, contact pairs, and loading sequence
+are selected through the configuration file. This common structure is important
+because it allows the forming-limit points from the different tests to be
+compared in the same post-processing pipeline.
+
 \subsection{Geometry, Contact and Boundary Conditions}
 
-\subsection{Parameterized Mesh Generation}
+To reduce computational cost, one quarter of the specimen is modelled. Symmetry
+boundary conditions are applied on the two cut planes, while the tools are
+treated as rigid bodies. The punch motion is prescribed through its reference
+point, and the die and blank holder are fixed. The outer blank edge is
+constrained to represent the clamping action of the experimental setup.
+
+Tool--blank contact is defined with hard normal contact and Coulomb friction.
+For the standard Nakazima and Marciniak models the same contact formulation is
+used, while the Punch-in-Punch configuration activates the additional contact
+pairs required by the second punch. In this way, the contact definition remains
+consistent but can still represent the different experimental setups.
+
+\subsection{Parameterised Mesh Generation}
+
+The deformable sheet is discretised with solid brick elements. A solid
+formulation is used because the material model includes through-thickness
+deformation, damage evolution, and element deletion. The mesh is generated or
+adapted automatically from the selected specimen geometry.
+
+The mesh routines are designed to keep the element size comparable between
+different cases. A mesh refinement factor can be applied to scale the target
+element size, which makes it possible to run a mesh-size study from the same
+model definition. This is especially important for forming-limit simulations,
+because the extracted failure strain can be sensitive to the spatial resolution
+in the necking region. The detailed mesh-study grid is therefore reported with
+the results rather than fixed in the model description.
 
 \section{Numerical Formulation}
 
 \subsection{Material Model}
 
+The sheet material is described by a user material subroutine. The model
+combines anisotropic plasticity, mixed hardening, and a Hosford--Coulomb damage
+criterion. The material orientation can be changed in the configuration file,
+which allows rolling-direction and transverse-direction cases to be simulated
+with the same model setup.
+
+Element deletion is activated through the damage variables of the material
+model. This makes it possible to identify the fracture location in the
+post-processing step and to distinguish valid dome fractures from failures that
+occur outside the evaluation zone.
+
 \subsection{Explicit Solution Strategy}
 
+All simulations are run with Abaqus/Explicit. Although an explicit solver is
+used, the forming process is intended to represent a quasi-static experiment.
+For this reason, the punch velocity and mass-scaling settings are controlled
+carefully, and each run is checked using the ratio of kinetic energy to
+internal energy.
+
+The energy history is exported for every simulation. A low kinetic-to-internal
+energy ratio indicates that inertial effects remain small and that the
+simulation can be interpreted as quasi-static. This check is used together with
+the stability of the extracted forming-limit point when selecting suitable
+solver and mesh settings.
+
 \section{Automated Post-Processing and Forming-Limit Extraction}
+
+After each simulation, the ODB is processed automatically. The post-processing
+script extracts the punch force-displacement curve, global energy histories,
+local strain paths, element status information, and the quantities required for
+forming-limit identification. These data are written to CSV files with the same
+schema for every test configuration.
+
+The fracture endpoint is detected primarily from the punch force history and
+is checked against the element-deletion information. The critical strain is
+then extracted from the dome region. In addition to the fracture limit, the
+pipeline can write necking indicators based on the Volk--Hora method and on
+the damage evolution of the material model when the required data are
+available.
+
+This automated post-processing step closes the numerical workflow. It converts
+the raw finite element output into the same type of forming-limit data used in
+the experimental evaluation, allowing the numerical and experimental results
+to be compared in Chapter~\ref{chap:results}.
