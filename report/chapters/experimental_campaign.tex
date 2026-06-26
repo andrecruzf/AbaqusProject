@@ -72,4 +72,50 @@ Each set consists of seven specimens (W20, W50, W80, W90, W100, W120, W200), cov
 
 \section{Data Acquisition}
 
-Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:flc_identification}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram.
+Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:identification_framework}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram.
+
+\section{Influence of Material Orientation}
+\label{sec:orientation_influence}
+
+A dedicated subset of the campaign was used to isolate the influence of material orientation on the experimentally determined forming limits. For every sheet thickness (A--D), the \SI{100}{\milli\meter} hemispherical punch was tested with the specimen long axis aligned both with the rolling direction (RD, configuration \texttt{E0\_RM00\_000}) and with the transverse direction (TD, configuration \texttt{E0\_RM00\_090}). The configuration label encodes the punch and orientation: the trailing \texttt{000} and \texttt{090} denote the in-plane angle $\alpha$ between the specimen long axis and the rolling direction, so that \texttt{E0\_RM00\_000} corresponds to RD ($\alpha = \SI{0}{\degree}$) and \texttt{E0\_RM00\_090} to TD ($\alpha = \SI{90}{\degree}$). All other parameters (punch diameter, specimen widths, and test bench settings) are held identical between the two orientations, so that any difference in the resulting forming limits can be attributed to anisotropy alone.
+
+For each orientation and thickness, two complete campaigns of seven specimen widths were performed, and the forming-limit points reported here are the mean over the two campaigns. Averaging over two independent sets reduces the influence of anomalies that a single set may carry, such as local material defects, specimen handling or operator errors, or other test-specific outliers, so that the reported curve reflects the representative material response rather than the particular condition of one set. The limit points themselves were extracted with the same evaluation pipeline used throughout this work, applying both the robustness and accuracy selection criteria. Figure~\ref{fig:rd_vs_td} overlays the resulting RD and TD forming limit curves for the four thicknesses.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/RD_vs_TD_A.png}
+        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \label{fig:rd_vs_td_a}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/RD_vs_TD_B.png}
+        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \label{fig:rd_vs_td_b}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/RD_vs_TD_C.png}
+        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \label{fig:rd_vs_td_c}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/RD_vs_TD_D.png}
+        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \label{fig:rd_vs_td_d}
+    \end{subfigure}
+    \caption{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. Each curve is the mean of two complete campaigns, with limit points selected using the robustness and accuracy criteria.}
+    \label{fig:rd_vs_td}
+\end{figure}
+
+Across all four thicknesses the RD and TD forming limit curves are essentially coincident. The two orientations follow the same trajectory from the uniaxial branch through the plane-strain minimum and into the biaxial branch, and the residual differences between them remain within the scatter of the underlying campaigns. The separation between the RD and TD curves is consistently smaller than the spread observed between the two repeated campaigns of a single orientation, so it cannot be distinguished from experimental repeatability. No systematic trend with thickness is observed: the orientations do not diverge more strongly for the thinner sheets (A, B) than for the thicker ones (C, D).
+
+These results indicate that, for the AA5754 sheet material and thickness range investigated here, in-plane material orientation has no measurable influence on the forming limits. This justifies restricting the remaining punch-diameter campaigns to the rolling direction and supports the use of an in-plane isotropic description of the forming limits in the numerical model developed in Chapter~\ref{chap:numerical_model}.
