@@ -14,8 +14,7 @@ project requires:
   \item \textbf{A single pipeline for the three test types.} The same pipeline
   builds and runs the Nakazima, Marciniak, and Punch-in-Punch configurations.
   Only the configuration changes between them, while the model-building logic,
-  the output requests, and the post-processing schema stay identical, so that the
-  three test types remain directly comparable.
+  the output requests, and the post-processing schema stay identical.
   \item \textbf{Mesh tunability.} Mesh density is set by configuration-driven
   meshing rather than by manually edited models. The element size can be varied
   systematically and kept consistent across specimen widths and test types, which
@@ -36,16 +35,12 @@ reported with the results in Chapter~\ref{chap:results}.
 
 The pipeline is controlled from a central configuration file and runs the full
 chain without manual intervention. For a selected configuration it creates the
-tool geometry, meshes or imports the specimen, assigns the material, applies the
+tool geometry, meshes according to user input, assigns the material, applies the
 contact and boundary conditions, writes the Abaqus input deck, submits the
 explicit job, and extracts the relevant quantities from the resulting output
-database (ODB). The same chain is reused for parameter studies. Because a study is
-generated only by changing configuration values, the mass-scaling and
-mesh-refinement grids of Chapter~\ref{chap:results} are produced by the same
-pipeline rather than by separate models.
+database (ODB). The same chain is reused for parameter studies. 
 
-The workflow is designed for the ETH Euler cluster. Models are built with
-Abaqus/CAE in no-GUI mode, the input file and the user material are copied to
+The workflow is designed for the ETH Euler cluster. The input file and the user material are copied to
 scratch storage, and the explicit solver is submitted with threaded CPU
 parallelisation. After post-processing, the compact CSV files, figures, and
 movies are copied back to the project directory, while the large ODB remains in
