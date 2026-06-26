@@ -72,14 +72,12 @@ FLC identification framework.
 \section{Reported Simulation Configurations}
 
 Since the numerical framework is highly parameterised, the results are reported
-together with the configuration that generated them. For each campaign, the
-relevant settings are the test type, specimen width series, sheet thickness,
-material orientation, punch diameter or punch variant, punch travel, punch
-speed, friction coefficients, mass-scaling target, mesh refinement factor, and
-number of through-thickness seeds. This separation keeps
+together with the configuration that generated them. The full inventory of
+adjustable settings is given in Appendix~\ref{app:configuration_parameters};
+the present chapter only repeats the concrete values that are needed to
+interpret a specific comparison. This separation keeps
 Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
-while the present chapter documents the concrete parameter choices used for the
-simulations being compared.
+while preserving traceability for the simulations being compared.
 
 \section{Quasi-Static Validation}
 
@@ -98,24 +96,18 @@ For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal en
 
 \section{Sensitivity Study: Mass Scaling and Mesh Refinement}
 
-A fully factorial $4 \times 3$ sensitivity study was set up on the Nakazima W200 specimen ($t = 1.75$\,mm, $\alpha = 0^\circ$) to determine the largest stable time increment $\Delta t$ and the coarsest mesh that still yield results within acceptable tolerances. This study directly addresses the Task~III requirement that the framework maintain identical element size across configurations and support automated mesh-size modification. The W200 geometry was chosen because equibiaxial stretching produces high strain gradients and therefore provides a demanding test of both mass scaling and spatial discretisation. Twelve simulations form the study grid (Table~\ref{tab:study_grid}) and are aggregated by \texttt{plot\_study.py} into a three-panel heatmap for wall time, energy ratio, and strain convergence.
-
-\begin{table}[ht]
-\begin{center}
-\caption{Parameter grid for the mass scaling $\times$ mesh refinement sensitivity study (Nakazima W200, $t=1.75$\,mm). Each cell is one independent simulation.}
-\label{tab:study_grid}
-\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
- & \multicolumn{3}{c}{Mesh refinement factor $f_\mathrm{MR}$} \\
-\cmidrule(l){2-4}
-$\Delta t$ [s] & 1 & 2 & 4 \\ \midrule
-$1\times10^{-7}$ & \checkmark & \checkmark & \checkmark \\
-$1\times10^{-6}$ & \checkmark & \checkmark & \checkmark \\
-$1\times10^{-5}$ & \checkmark & \checkmark & \checkmark \\
-$1\times10^{-4}$ & \checkmark & \checkmark & \checkmark \\
-\bottomrule[1.5pt]
-\end{tabular}
-\end{center}
-\end{table}
+A fully factorial sensitivity study was set up on the Nakazima W200 specimen
+($t = 1.75$\,mm, $\alpha = 0^\circ$) to determine the largest stable time
+increment $\Delta t$ and the coarsest mesh that still yield results within
+acceptable tolerances. This study directly addresses the Task~III requirement
+that the framework maintain identical element size across configurations and
+support automated mesh-size modification. The W200 geometry was chosen because
+equibiaxial stretching produces high strain gradients and therefore provides a
+demanding test of both mass scaling and spatial discretisation. The full study
+grid is reported in Appendix~\ref{app:configuration_parameters}
+(Table~\ref{tab:study_grid}), and the simulations are aggregated by
+\texttt{plot\_study.py} into a three-panel heatmap for wall time, energy ratio,
+and strain convergence.
 
 % TODO: Insert study_results.pdf once all 12 jobs complete.
 %

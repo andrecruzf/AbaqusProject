@@ -5,12 +5,11 @@
 A finite element simulation framework was developed in Abaqus/Explicit to
 reproduce the forming tests considered in the experimental campaign and to
 generate comparable forming-limit data for the identification framework. The
-main objective of the numerical work was therefore not to reproduce one fixed
-simulation configuration, but to create a versatile and repeatable modelling
-environment. The same code base can be used to vary specimen width, sheet
-thickness, punch diameter, punch travel, forming speed, material orientation,
-friction, mesh density, mass scaling, output frequency, and post-processing
-thresholds without changing the model-building logic.
+main objective of the numerical work was therefore not to document one fixed
+simulation setup, but to create a versatile and repeatable modelling
+environment in which geometry, process conditions, discretisation, solver
+settings, and post-processing choices can be changed without modifying the
+model-building logic.
 
 The model generation is controlled from a central configuration file. The
 selected test type is one of \texttt{nakazima}, \texttt{marciniak}, or
@@ -23,44 +22,23 @@ Marciniak studies, but was extended here to support automated parameter studies
 and the Punch-in-Punch configuration.
 
 This parameterisation is essential for the project because it allows individual
-effects to be studied without rebuilding the model manually. For example, the
-same specimen family can be simulated with different sheet thicknesses, the
-same punch can be combined with different friction or mass-scaling settings,
-and the same post-processing routine can be applied to all resulting ODB files.
-The numerical model chapter therefore describes the capabilities and modelling
-assumptions of the framework. The specific parameter values used for each
-reported campaign are stated together with the corresponding results in
-Chapter~\ref{chap:results}.
+effects to be studied without rebuilding the model manually. The numerical
+model chapter therefore describes the capabilities, assumptions, and data flow
+of the framework at a general level. The complete list of user-facing
+configuration controls is collected in Appendix~\ref{app:configuration_parameters},
+while campaign-specific numerical values are stated together with the
+corresponding results in Chapter~\ref{chap:results}.
 
 To reduce computational cost, only one quarter of the specimen is simulated.
 The blank lies in the global $X$--$Y$ plane and the forming direction is the
 global $Z$ direction. Symmetry boundary conditions are applied on the two cut
 planes. The rigid tools are represented analytically where possible, while the
 Punch-in-Punch secondary punch can also be imported from a prepared CAE file.
-The specimen geometries are available for widths
-$W \in \{20,50,80,90,100,120,200\}$\,mm and are shared across the standard
-Nakazima and Marciniak configurations.
-
-Table~\ref{tab:framework_parameters} summarises the main parameter groups
-exposed by the framework.
-
-\begin{table}[ht]
-\begin{center}
-\caption{Main user-tunable parameter groups in the numerical framework.}
-\label{tab:framework_parameters}
-\begin{tabular}{@{}lll@{}}\toprule[1.5pt]
-Parameter group & Examples & Purpose \\ \midrule
-Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup \\
-Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
-Tool geometry & Punch radius, punch variant, die radii & Study tooling and size effects \\
-Process conditions & Punch travel, speed, friction & Match or vary test conditions \\
-Material orientation & Rolling/transverse angle & Evaluate anisotropy effects \\
-Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial resolution \\
-Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
-Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
-\end{tabular}
-\end{center}
-\end{table}
+A shared family of specimen geometries is used for the standard Nakazima and
+Marciniak configurations. This keeps the model topology and post-processing
+sets consistent across campaigns, so that changes in the extracted forming
+limits can be traced to controlled configuration choices rather than to
+separate model definitions.
 
 \section{Specimen and Tool Modelling}
 
@@ -96,13 +74,12 @@ state variable specified by the VUMAT.
 
 A central requirement of the project is that mesh density can be controlled
 systematically across specimen widths and test configurations. The framework
-therefore treats meshing as a parameter of the simulation rather than as a
-fixed property of each imported geometry. For imported geometries, several seed
-modes are available. The default radial-zone strategy keeps the fine central
-region near the punch apex and applies progressively coarser seeds toward the
-flange. The nominal zones are 0.1\,mm in the apex region, 0.2\,mm in the punch
-contact zone, 0.5\,mm near the dome shoulder, and 1.0\,mm in the outer flange.
-A mesh refinement factor scales these target sizes during sensitivity studies.
+therefore treats meshing as a configuration-controlled part of the simulation
+rather than as a fixed property of each imported geometry. For imported
+geometries, several seed modes are available. The radial-zone strategy keeps a
+fine central region near the punch apex and applies progressively coarser seeds
+toward the flange. The actual target sizes and refinement factors are reported
+with the sensitivity studies rather than being fixed in the model description.
 
 For post-processing, a dome observation set is defined from the undeformed
 element centroids. Its radius is
@@ -147,9 +124,11 @@ studied, because it avoids artificial deceleration of the punch close to
 fracture.
 
 The Punch-in-Punch model uses two explicit steps. In the first step Punch~1 and
-Punch~2 advance together by 20\,mm, generating the pre-forming state. In the
-second step Punch~1 is held fixed at its end-of-step position, while Punch~2
-continues by a further 20\,mm and drives the specimen to failure.
+Punch~2 advance together to generate the pre-forming state. In the second step
+Punch~1 is held fixed at its end-of-step position, while Punch~2 continues the
+forming process and drives the specimen to failure. The step amplitudes and
+travel values are campaign settings and are therefore documented with the
+corresponding result configuration.
 
 The die and blank holder reference points are fixed. The punch reference point
 is constrained in all degrees of freedom except the forming displacement. The
@@ -179,38 +158,15 @@ The energy histories are written to \texttt{energy\_data.csv} and are plotted
 for each specimen. The final acceptance of a run is based on this energy ratio
 and on the stability of the extracted forming-limit point.
 
-\subsection{Mass Scaling Sensitivity Study}\label{sec:mass_scaling_study}
-
-To quantify the influence of artificial mass, the framework supports a
-mass-scaling sweep on a representative W200 Nakazima specimen. The investigated
-target time increments are
-\[
-  \Delta t \in \{1\times10^{-7},\,1\times10^{-6},\,1\times10^{-5},\,1\times10^{-4}\}\,\mathrm{s}.
-\]
-The W200 geometry is selected because the large contact area and biaxial strain
-state make it a demanding case for both inertia and mesh convergence.
-
-\subsection{Mesh Refinement Study}\label{sec:mesh_refinement_study}
-
-The mesh refinement study varies the mesh refinement factor
-$f_\mathrm{MR}$. The current study grid uses
-\[
-  f_\mathrm{MR} \in \{1,\,2,\,4\}.
-\]
-For each case the extracted major strain at the forming-limit point is compared
-against the finest and most conservative reference simulation. This gives a
-direct estimate of the numerical error introduced by using a coarser mesh.
-
-\subsection{Combined Parameter Study}\label{sec:combined_study}
-
-Mass scaling and mesh refinement are evaluated together in a fully factorial
-$4\times3$ grid. This is necessary because the two parameters are coupled: a
-coarser mesh has a larger natural stable time increment and therefore requires
-less artificial mass to reach the same target $\Delta t$. The study is deployed
-automatically on the ETH Euler cluster. Each simulation is built with the same
-model generator, submitted as an independent SLURM job, post-processed with the
-same ODB script, and finally collected into a heatmap of runtime, energy ratio,
-and strain convergence.
+The same framework is used to perform mass-scaling and mesh-refinement
+sensitivity studies. These studies are not separate models; they are generated
+by changing the relevant configuration values while keeping the geometry,
+material model, boundary conditions, output requests, and post-processing
+schema unchanged. This makes the influence of numerical settings traceable and
+allows the selected production settings to be justified from runtime,
+quasi-static validity, and strain-convergence metrics. The parameter grids used
+for these studies are documented in Appendix~\ref{app:configuration_parameters}
+and discussed with the results.
 
 \section{Output Requests and Post-Processing}
 

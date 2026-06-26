@@ -30,6 +30,54 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
  \texttt{run\_flc.sh}           \> SLURM FLC aggregation job (runs after all solver jobs)
 \end{tabbing}
 
+\section{Configurable Simulation Parameters}
+\label{app:configuration_parameters}
+
+The numerical framework is controlled from a central configuration file. The
+main text describes the modelling assumptions and data flow, while the
+configuration groups are collected here to keep the numerical model chapter
+focused on the general framework.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Main user-tunable parameter groups in the numerical framework.}
+\label{tab:framework_parameters}
+\begin{tabular}{@{}lll@{}}\toprule[1.5pt]
+Parameter group & Examples & Purpose \\ \midrule
+Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup \\
+Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
+Tool geometry & Punch radius, punch variant, die radii & Study tooling and size effects \\
+Process conditions & Punch travel, speed, friction & Match or vary test conditions \\
+Material orientation & Rolling/transverse angle & Evaluate anisotropy effects \\
+Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial resolution \\
+Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
+Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+For the mass-scaling and mesh-refinement sensitivity study, the framework
+generates a fully factorial grid of simulations while keeping the model
+definition and post-processing schema unchanged. The grid used in the current
+study is reported in Table~\ref{tab:study_grid}.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Parameter grid for the mass scaling $\times$ mesh refinement sensitivity study (Nakazima W200, $t=1.75$\,mm). Each cell is one independent simulation.}
+\label{tab:study_grid}
+\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
+ & \multicolumn{3}{c}{Mesh refinement factor $f_\mathrm{MR}$} \\
+\cmidrule(l){2-4}
+$\Delta t$ [s] & 1 & 2 & 4 \\ \midrule
+$1\times10^{-7}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-6}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-5}$ & \checkmark & \checkmark & \checkmark \\
+$1\times10^{-4}$ & \checkmark & \checkmark & \checkmark \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
 \section{Running a Simulation Campaign}
 
 To launch a full campaign for all widths with a given test configuration:
