@@ -51,6 +51,90 @@ Across all four thicknesses the RD and TD forming limit curves are essentially c
 
 These results indicate that, for the AA5754 sheet material and thickness range investigated here, in-plane material orientation has no measurable influence on the forming limits. This justifies restricting the remaining punch-diameter campaigns to the rolling direction and supports the use of an in-plane isotropic description of the forming limits in the numerical model developed in Chapter~\ref{chap:numerical_model}.
 
+\subsection{Punch Diameter, Sheet Thickness, and the Evaluation Window}
+\label{sec:punch_thickness}
+
+The second experimental study varies the punch diameter ($\varnothing$40, 60, 80, and 100\,mm) across the four sheet thicknesses (A--D) to expose the coupling between punch geometry and sheet thickness. Physically, a smaller punch superimposes more bending on the membrane stretch and produces a steeper through-thickness strain gradient, which stabilises the deformation against localised necking. The magnitude of this effect scales with the ratio $t/R$ of sheet thickness to punch radius. Two trends are therefore expected: the forming limit curve should rise as the punch diameter decreases, and the spread between punch diameters should widen with increasing thickness, since $t/R$ grows fastest for the smallest punch on the thickest sheet.
+
+Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the standard ISO~12004-2 evaluation, that is, the intersection-line method of Section~\ref{sec:din_method} using the window width of Eq.~\eqref{eq:din_window} with its calibration constant of $10$. For the 100, 80, and 60\,mm punches the expected ordering is recovered, but the 40\,mm punch does not follow it: its limit curve lies far above the others, by a margin that grows with thickness and that is too large to be attributed to the $t/R$ curvature effect alone. Because all curves in a given diagram originate from the same material and thickness, this incoherence points to the evaluation rather than to the material response. The standard window is calibrated for the $\varnothing$100\,mm Nakazima geometry, whereas the 40\,mm punch produces a much narrower neck, so a window sized for the standard punch no longer matches the strain field to which it is applied.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_norm_A.png}
+        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \label{fig:flc_norm_a}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_norm_B.png}
+        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \label{fig:flc_norm_b}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_norm_C.png}
+        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \label{fig:flc_norm_c}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_norm_D.png}
+        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \label{fig:flc_norm_d}
+    \end{subfigure}
+    \caption{Forming limit curves for the four punch diameters (\texttt{014}/40, \texttt{016}/60, \texttt{018}/80, \texttt{000}/100\,mm) obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The 40\,mm punch (green) departs from the expected ordering by an implausibly large margin that grows with thickness.}
+    \label{fig:flc_norm}
+\end{figure}
+
+The intersection-line method exposes two fixed length-scale parameters: the spacing between intersection lines ($2$\,mm) and the constant factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These correspond to two physically distinct scales. The fitting window is governed by the extent of the strained dome, which scales with the punch diameter $D$, whereas the excluded near-crack zone is governed by the neck width, which scales with the sheet thickness $t$. The fixed constant captures neither. A minimal, norm-consistent generalisation replaces the constant with $D/10$, so that the window width becomes $\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to the standard value for the $\varnothing$100\,mm punch ($100/10 = 10$). Figure~\ref{fig:flc_pscaled} shows the limit curves re-evaluated with this punch-scaled window. Scaling the window with the punch diameter markedly shifts the extracted 40\,mm limit, which confirms that its position under the standard evaluation is governed largely by the window choice rather than by the material.
+% TODO(andre): confirm and state precisely whether the D/10 window restores the expected
+% 40 > 60 > 80 > 100 ordering, and for which thicknesses it holds. The intersection-line
+% spacing (currently fixed at 2 mm) was also varied; describe that variant here if it is kept.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_pscaled_A.png}
+        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \label{fig:flc_pscaled_a}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_pscaled_B.png}
+        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \label{fig:flc_pscaled_b}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_pscaled_C.png}
+        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \label{fig:flc_pscaled_c}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/FLC_pscaled_D.png}
+        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \label{fig:flc_pscaled_d}
+    \end{subfigure}
+    \caption{Forming limit curves re-evaluated with a punch-scaled window ($\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$), for the four sheet thicknesses A--D. The constant of the standard window (Eq.~\eqref{eq:din_window}) is replaced by $D/10$, recovering the norm for the $\varnothing$100\,mm punch.}
+    \label{fig:flc_pscaled}
+\end{figure}
+
+These observations indicate that the ISO~12004-2 evaluation, calibrated for a single standardised punch, cannot be transferred unchanged to a campaign that varies the punch diameter: the extracted 40\,mm limit reflects the fixed window as much as the material response. The window width and, by the same argument, the intersection-line spacing should be made tunable and geometry-aware, scaling with the punch diameter and the sheet thickness respectively. The $D/10$ rule is a first, deliberately simple candidate. A defensible parameter choice additionally requires verifying that the extracted limit is insensitive to the window in the neighbourhood of the selected value (a convergence criterion), and cross-validating against the window-independent criteria of Sections~\ref{sec:vh_method} and~\ref{sec:minstoughton_method} (Volk \& Hora and Min--Stoughton). This validation is left to future work.
+
 \section{Framework Outputs and Configuration Coverage}
 
 The results chapter focuses on the implemented numerical workflow and its

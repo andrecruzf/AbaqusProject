@@ -48,14 +48,16 @@ The process consists of two steps. In Step~1, both punches advance together, pre
 Determining the onset of localised necking from full-field strain data is non-trivial, as the transition from diffuse to localised necking is gradual and its detection depends on the chosen criterion. Several methods have been proposed in the literature, which can be broadly classified into position-dependent and time-dependent approaches. Position-dependent methods evaluate the spatial strain distribution at a single time instant, whereas time-dependent methods track the temporal evolution of the strain field and detect necking from changes in the strain rate. The following subsections describe the methods considered in this work.
 
 \subsection{Intersection Line Method (DIN EN ISO 12004-2)}
+\label{sec:din_method}
 
 The intersection line method specified in ISO~12004-2~\cite{ISO120042} is a position-dependent approach that evaluates the spatial strain distribution on the last DIC frame recorded before fracture. Five parallel cross-sections (intersection lines) are constructed perpendicular to the crack, spaced 2\,mm apart, each extending 20\,mm on both sides of the fracture line. The orientation of the intersection lines depends on the minor strain at the crack position: for $\varepsilon_2 < 0$ (left side of the FLD), the lines run parallel to the specimen edges, whereas for $\varepsilon_2 > 0$, they are oriented perpendicular to the crack line.
 
 Along each intersection line, the crack position is first determined by fitting a bell-shaped curve to the major strain profile $\varepsilon_1$ within a 4\,mm window around the strain maximum. The peak of this fit defines the precise crack location. Two fitting regions are then defined on either side of the crack. The interior boundary of each region is placed at 3\,mm from the crack, and the exterior boundary is set by the fitting window width:
 \begin{equation}
     \omega = 10 \left[1 + \frac{\bar{\varepsilon}_2}{\bar{\varepsilon}_1}\right],
+    \label{eq:din_window}
 \end{equation}
-where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal strains at the interior boundaries of both sides. An inverse parabola is fitted over each region, and the value of the fit evaluated at the crack position yields the major necking strain $\varepsilon_{1,\text{neck}}$. The minor necking strain is obtained from the thickness strain:
+where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal strains at the interior boundaries of both sides. The intersection-line spacing (2\,mm) and the constant factor of $10$ in Eq.~\eqref{eq:din_window} are calibrated for the standard Nakazima geometry with a $\varnothing$100\,mm hemispherical punch. An inverse parabola is fitted over each region, and the value of the fit evaluated at the crack position yields the major necking strain $\varepsilon_{1,\text{neck}}$. The minor necking strain is obtained from the thickness strain:
 \begin{equation}
     \varepsilon_3 = -(\varepsilon_1 + \varepsilon_2), \qquad
     \varepsilon_{2,\text{neck}} = -(\varepsilon_{3,\text{neck}} + \varepsilon_{1,\text{neck}}).
@@ -64,6 +66,7 @@ where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal 
 The method is straightforward and widely used, but relies on a single time frame and is sensitive to the selected cross-section and the regularity of the strain field near the crack.
 
 \subsection{Volk \& Hora Time-Dependent Method}
+\label{sec:vh_method}
 
 In contrast to the intersection line method, the approach proposed by Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies necking onset from the evolution of the thickness strain rate. First, the thickness strain rate is computed from the in-plane DIC strains using incompressibility:
 \begin{equation}
@@ -105,6 +108,7 @@ where $\mu$ and $\sigma$ are the mean and standard deviation of the major strain
 During homogeneous deformation, the mean strain rate increases steadily while the standard deviation remains approximately constant, causing the CoV to decrease. Once localisation begins, the standard deviation increases sharply, leading to a rapid rise in the CoV. The global minimum of the CoV therefore identifies the onset of necking. The limit strains are the mean principal strains in the region of interest at the frame corresponding to this minimum.
 
 \subsection{Min--Stoughton Curvature Method}
+\label{sec:minstoughton_method}
 
 Min et al.~\cite{Min2017} proposed a curvature-based criterion that detects the onset of localised necking from the evolution of the deformed outer-surface geometry rather than from the strain field. Originally developed for Marciniak tests, where strain paths are approximately linear, the method was extended to Nakazima tests by incorporating corrections for the non-linear strain path effects introduced by the hemispherical punch geometry and through-thickness strain gradients.
 
