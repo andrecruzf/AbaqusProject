@@ -2,14 +2,13 @@
 
 \section{Numerical Simulation Framework}
 
-A finite element simulation framework was developed in Abaqus/Explicit to
-reproduce the forming tests considered in the experimental campaign and to
-generate comparable forming-limit data for the identification framework. The
-main objective of the numerical work was therefore not to document one fixed
-simulation setup, but to create a versatile and repeatable modelling
-environment in which geometry, process conditions, discretisation, solver
-settings, and post-processing choices can be changed without modifying the
-model-building logic.
+A numerical simulation framework was developed in Abaqus/Explicit to enable
+the fully automated creation, execution, and post-processing of the specimen
+and punch configurations considered in Task~I. The framework was designed to
+generate comparable forming-limit data for the identification workflow while
+remaining flexible enough to vary the experimental configuration, numerical
+discretisation, solver settings, and post-processing choices without changing
+the model-building logic.
 
 The model generation is controlled from a central configuration file. The
 selected test type is one of \texttt{nakazima}, \texttt{marciniak}, or
@@ -20,6 +19,13 @@ the relevant output quantities from the resulting ODB file. This modular setup
 is similar in spirit to the numerical framework used in previous Nakazima and
 Marciniak studies, but was extended here to support automated parameter studies
 and the Punch-in-Punch configuration.
+
+Special attention was paid to maintaining a consistent element size across
+specimen and punch configurations. Mesh density is therefore controlled by
+user-defined mesh-size modification scripts rather than by manually edited
+models. This allows mesh-refinement studies to be generated automatically and
+ensures that changes in the forming-limit response can be interpreted in terms
+of controlled numerical or physical parameters.
 
 This parameterisation is essential for the project because it allows individual
 effects to be studied without rebuilding the model manually. The numerical
