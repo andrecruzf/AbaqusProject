@@ -2,8 +2,7 @@
 # =============================================================
 # submit_one.sh  —  Build one model and submit solver job.
 #                   Runs ON Euler — do not run locally.
-#                   Launched by deploy.sh (single job) or
-#                   deploy_study.sh (study loop) via SSH.
+#                   Launched by deploy.sh or manually via SSH.
 #
 # Args:
 #   $1  TEST_TYPE
@@ -15,10 +14,10 @@
 #   $7  MASS_SCALING_DT         (default "none" → use config.py default)
 #   $8  STUDY_SUBDIR            (default "" → flat layout under EULER_DIR)
 #
-# When STUDY_SUBDIR is set (study mode):
+# When STUDY_SUBDIR is set (grouped-output mode):
 #   - job dir goes to EULER_DIR/STUDY_SUBDIR/JOB_NAME/
 #   - SLURM logs go to EULER_DIR/STUDY_SUBDIR/logs/
-#   - run_plots.sh flc aggregation is NOT submitted (caller handles it)
+#   - run_plots.sh flc aggregation is NOT submitted
 #   - last stdout line is "JOB_ID=<slurm_id>" for caller to capture
 #
 # When STUDY_SUBDIR is empty (normal mode):
@@ -233,7 +232,7 @@ done
 [ ${_build_ok} -eq 0 ] && { echo "  ERROR: build failed 3 times — aborting."; exit 1; }
 echo "  Build done."
 
-# Move job dir into study subdir if needed
+# Move job dir into grouped output subdir if needed.
 if [ -n "$STUDY_SUBDIR" ]; then
     mkdir -p "${OUTPUT_BASE}/logs"
     rm -rf "${OUTPUT_BASE}/${JOB_NAME}"
@@ -288,5 +287,5 @@ if [ -z "$STUDY_SUBDIR" ]; then
     echo "  Plot job    : ${PLOT_ID}  (afterok:${JOB_ID})"
 fi
 
-# In study mode, emit parseable ID on last line for deploy_study.sh to capture
+# In grouped-output mode, emit parseable ID on last line for callers to capture.
 [ -n "$STUDY_SUBDIR" ] && echo "JOB_ID=${JOB_ID}"

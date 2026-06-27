@@ -58,7 +58,7 @@ EULER_HOST  = "euler.ethz.ch"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 WIDTH_OPTIONS = [20, 50, 80, 90, 100, 120, 200]
-MS_OPTIONS = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+MS_OPTIONS = [1e-3, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 1e-7]
 PIP_OPTIONS   = ["PUNCH_2", "PUNCH_21", "PUNCH_23", "PUNCH_24", "PUNCH_25"]
 VH_ALPHA = 0.55
 VH_FRACTURE_RADIUS_MM = max(0.0, float(os.environ.get("POSTPROC_VH_FRACTURE_RADIUS_MM", "3.0")))
@@ -1252,8 +1252,8 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
     Strategy: run_cluster.sh prints "  SCRATCH  : <path>" early in the SLURM
     stdout log.  We find the log on HOME (fast, bounded filesystem) using the
     known filename pattern {JOB_NAME}_{JOB_ID}.out, extract the scratch path,
-    then tail the .sta file in that directory.  Works for all submission modes
-    (submit_one flat, submit_study) without any path inference.
+    then tail the .sta file in that directory.  Works for flat and grouped
+    submit_one layouts without any path inference.
     """
     home       = f"/cluster/home/{user}/AbaqusProject"
     job_names  = [jn for _, jn in job_rows]
