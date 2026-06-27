@@ -121,7 +121,7 @@ negligible cost, without running a forming simulation.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{report/img/mesh_settings_zones_clean.png}
+    \includegraphics[width=0.85\linewidth]{img/mesh_settings_zones_clean.png}
     \caption{Partitioned meshing topology shared by all specimen geometries,
 shown for the W20--W120 family (left) and the W200 family (right). Each specimen
 is divided into concentric sections, from the fine central zone (innermost,
@@ -178,21 +178,21 @@ the same proportion.
     \centering
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR1_top.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR1_top.png}
         \caption{Baseline.}
         \label{fig:mesh_mr1}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR2_top.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR2_top.png}
         \caption{Coarsened (factor 2).}
         \label{fig:mesh_mr2}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR4_top.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR4_top.png}
         \caption{Coarsened (factor 4).}
         \label{fig:mesh_mr4}
     \end{subfigure}
@@ -221,21 +221,21 @@ illustrates the flexibility of the sectioned approach.
     \centering
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_15.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_15.png}
         \caption{Gentle grading.}
         \label{fig:mesh_growth_15}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_20.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_20.png}
         \caption{Moderate grading.}
         \label{fig:mesh_growth_20}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_30.png}
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_30.png}
         \caption{Steep grading.}
         \label{fig:mesh_growth_30}
     \end{subfigure}
@@ -288,9 +288,10 @@ reduces the stable time increment, increasing the computational cost, whereas a
 higher punch velocity or more aggressive mass scaling improves computational
 efficiency at the expense of increased inertial effects. To reduce this coupling
 to a tractable study, the punch velocity is fixed at
-\SI{5}{\milli\meter\per\second}, following the approach of Sen~\cite{Sen2025}.
-This value reflects a compromise between physical fidelity and computational
-cost. In the experiment the punch advances at roughly
+\SI{5}{\milli\meter\per\second}, using the previous numerical setup of
+Sen~\cite{Sen2025} as a starting point rather than as a validation of
+quasi-staticity. This value reflects a compromise between physical fidelity and
+computational cost. In the experiment the punch advances at roughly
 \SI{1}{\milli\meter\per\second}, and a typical test requires a punch travel on
 the order of \SI{30}{\milli\meter} before fracture, so the physical forming event
 lasts on the order of \SI{30}{\second}. Because Abaqus/Explicit advances the
@@ -299,10 +300,11 @@ forming speed would require an excessive number of increments and a prohibitive
 run time. Increasing the punch velocity shortens the simulated process time in
 proportion and therefore reduces the cost, at the price of larger inertial
 effects. At \SI{5}{\milli\meter\per\second} the simulated process is reduced to
-about \SI{6}{\second}, a fivefold saving, while the response remains slow enough
-to stay quasi-static. The quasi-static behaviour is then controlled through the mesh
-density and the mass scaling alone, which are selected jointly to obtain an
-efficient simulation while preserving the quasi-static response.
+about \SI{6}{\second}, a fivefold saving. Fixing this value locks one degree of
+freedom in the explicit setup, so the scalar sensitivity study can focus on the
+two remaining numerical controls: mesh density and mass scaling. Whether the
+resulting simulations are sufficiently quasi-static is not assumed from the
+punch speed; it is checked from the energy histories for each run.
 
 To verify the validity of each simulation, the kinetic and internal energy
 histories are extracted automatically during post-processing. The ratio of
