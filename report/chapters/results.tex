@@ -186,7 +186,61 @@ energy and internal energy, $\mathrm{ALLKE}/\mathrm{ALLIE}$, was monitored
 throughout the forming step. A ratio below 5\% was used as the acceptance
 criterion.
 
+\subsection{Element-Size Control Across Configurations}
+\label{sec:mesh_control}
 
+A central requirement of this work is that the element size is controlled in a
+reproducible, geometry-independent way, so that simulations of different
+specimen widths and punch configurations can be compared without the mesh acting
+as a hidden variable. This is handled by the modular meshing tool, which seeds
+the specimen from a single radius-based zone table rather than from a manually
+built mesh per model. Because the resulting discretisation is produced entirely
+at the meshing stage and does not depend on the solver, the element-size control
+can be generated and verified at negligible cost, independently of the more
+expensive forming simulations.
+
+The in-plane discretisation is defined by a fixed table of concentric seeding
+zones (Table~\ref{tab:mesh_zones}). Each edge is assigned the target size of the
+first zone whose outer radius exceeds the edge radius, so the element size is a
+function of radial position alone. Two properties follow directly. First, at any
+given radius the target element size is identical across all specimen widths and
+punch diameters, because the same zone table is applied to every geometry; the
+specimen width only determines how many of the outer zones are present, since
+outer zones are silently skipped on narrow specimens. Second, the apex zone
+($r < 5$\,mm) can be locked to a fixed size during refinement studies, so the
+critical fracture region retains a constant resolution while the surrounding mesh
+is varied. Through the thickness, the sheet is seeded with a fixed number of
+element layers ($N_\mathrm{thk} = 10$), so the through-thickness resolution is
+likewise constant across configurations. The partitioned topology and the radial
+and circumferential seeding controls that expose these zones are shown in
+Figure~\ref{fig:bm_mesh_zones}.
+
+\begin{table}[H]
+\begin{center}
+\caption{Radius-based seeding zones applied to every specimen geometry. The
+target element size depends only on the radial position, which makes the element
+size identical across specimen widths and punch diameters by construction. Sizes
+are shown for the baseline refinement factor $f_\mathrm{MR}=1$.}
+\label{tab:mesh_zones}
+\begin{tabular}{@{}lccl@{}}\toprule[1.5pt]
+Radius range [mm] & Radial size [mm] & Circ.\ size [mm] & Region \\ \midrule
+$r \le 5$       & 0.1 & 0.1 & Punch apex \\
+$5 < r \le 20$  & 0.2 & 0.2 & Punch contact zone \\
+$20 < r \le 30$ & 0.2 & 0.2 & Transition \\
+$30 < r \le 55$ & 0.5 & 0.5 & Dome shoulder \\
+$r > 55$        & 1.0 & 1.0 & Flange / clamped zone \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+The overall mesh density is driven by a single global mesh refinement factor
+$f_\mathrm{MR}$, which scales the in-plane target sizes uniformly on top of the
+fixed partition topology ($f_\mathrm{MR}=1$ baseline, $f_\mathrm{MR}=0.5$ finer,
+$f_\mathrm{MR}=2$ coarser). Because refinement is a single configuration value
+rather than a manual remeshing step, the mesh-size study reported in
+Section~\ref{sec:mesh_refinement_analysis} is generated automatically by sweeping
+$f_\mathrm{MR}$, which realises the user-defined automated mesh-size modification
+targeted by the framework.
 
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
