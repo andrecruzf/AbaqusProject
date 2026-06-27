@@ -45,10 +45,12 @@ Appendix~\ref{app:configuration_parameters}.
 In addition to editing this configuration directly, the framework provides an
 early-stage graphical interface, built with Streamlit, that exposes the same
 parameters through interactive controls and submits the selected case to the
-cluster. It is a prototype meant to lower the entry barrier for occasional use
-rather than a production tool; experienced users can continue to work with the
-configuration file directly, and both entry points drive the same underlying
-pipeline. The interface layout is shown in Appendix~\ref{app:interface}.
+cluster. As the number of configurable parameters grows, such an interface
+improves usability, since it groups the settings into clear sections, shows their
+current values, and helps the user assemble a valid configuration without editing
+source files. The interface is currently a prototype rather than a production
+tool, but it drives the same underlying pipeline as the configuration file. Its
+layout is shown in Appendix~\ref{app:interface}.
 
 \subsection{Automated Workflow}
 
