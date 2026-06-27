@@ -30,6 +30,89 @@ Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
 while the present chapter documents the concrete parameter choices used for the
 simulations being compared.
 
+\section{Automated Mesh Generation and Element-Size Control}
+\label{sec:mesh_control}
+
+A central requirement of this work is that the element size is controlled in a
+reproducible, geometry-independent way, so that simulations of different
+specimen widths and punch configurations can be compared without the mesh acting
+as a hidden variable. This is handled by a modular meshing tool that seeds the
+specimen from a single radius-based zone table rather than from a manually built
+mesh per model. Because the resulting discretisation is produced entirely at the
+meshing stage and does not depend on the solver, the element-size control can be
+generated and verified at negligible cost with \texttt{build\_mesh\_only.py} and
+\texttt{screenshot\_mesh.py}, independently of the more expensive forming
+simulations.
+
+\subsection{Radius-Based Seeding}\label{sec:mesh_zones}
+
+The in-plane discretisation is defined by a fixed table of concentric seeding
+zones (Table~\ref{tab:mesh_zones}). Each edge is assigned the target size of the
+first zone whose outer radius exceeds the edge radius, so the element size is a
+function of radial position alone. Two properties follow directly. First, at any
+given radius the target element size is identical across all specimen widths and
+punch diameters, because the same zone table is applied to every geometry; the
+specimen width only determines how many of the outer zones are present, since
+outer zones are silently skipped on narrow specimens. Second, the apex zone
+($r < 5$\,mm) can be locked to a fixed size during refinement studies
+(\texttt{MESH\_CORE\_FIXED}), so the critical fracture region retains a constant
+resolution while the surrounding mesh is varied. Through the thickness, the
+sheet is seeded with a fixed number of element layers ($N_\mathrm{thk} = 10$), so
+the through-thickness resolution is likewise constant across configurations.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Radius-based seeding zones applied to every specimen geometry
+(\texttt{MESH\_ZONES}). The target element size depends only on the radial
+position, which makes the element size identical across specimen widths and
+punch diameters by construction. Sizes shown for the baseline refinement factor
+$f_\mathrm{MR}=1$.}
+\label{tab:mesh_zones}
+\begin{tabular}{@{}lccl@{}}\toprule[1.5pt]
+Radius range [mm] & Radial size [mm] & Circ.\ size [mm] & Region \\ \midrule
+$r \le 5$    & 0.1 & 0.1 & Punch apex \\
+$5 < r \le 20$  & 0.2 & 0.2 & Punch contact zone \\
+$20 < r \le 30$ & 0.2 & 0.2 & Transition \\
+$30 < r \le 55$ & 0.5 & 0.5 & Dome shoulder \\
+$r > 55$     & 1.0 & 1.0 & Flange / clamped zone \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Global Refinement Factor and Automated Mesh-Size Modification}
+\label{sec:mesh_refinement_factor}
+
+A single global parameter, the mesh refinement factor $f_\mathrm{MR}$
+(\texttt{MESH\_REFINEMENT\_FACTOR}), scales the in-plane target sizes uniformly:
+$f_\mathrm{MR}=1$ is the baseline, $f_\mathrm{MR}=0.5$ halves the element size,
+and $f_\mathrm{MR}=2$ doubles it. The outer zones are additionally capped at
+\texttt{MESH\_OUTER\_MAX\_SIZE} after scaling to avoid excessively coarse flange
+elements, and the apex zone can be held fixed as described above. Because the
+entire mesh density is driven by this one factor on top of a fixed partition
+topology, the mesh-size study of Section~\ref{sec:study_mesh} is generated
+automatically by sweeping $f_\mathrm{MR}$, with no manual remeshing of any model.
+This is the user-defined, automated mesh-size modification capability targeted by
+the framework: refinement is a configuration value rather than a manual modelling
+step.
+
+The partitioned topology and the radial and circumferential seeding controls are
+shown in Figure~\ref{fig:bm_mesh_zones}. Because meshes are rendered directly
+with \texttt{screenshot\_mesh.py}, the seeding produced for each configuration can
+be inspected visually without running the solver, which makes the element-size
+control auditable even when simulation runtime is limited.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{report/img/mesh_settings_zones_clean.png}
+    \caption{Parameterized mesh topology for the specimen geometries. The
+partitioned regions define a common meshing topology, and the highlighted radial
+and circumferential partition lines expose the independent seeding controls of
+Table~\ref{tab:mesh_zones}. Because seeding is keyed to radial position, the same
+topology and target element sizes are reused across all specimen widths and punch
+configurations.}
+    \label{fig:bm_mesh_zones}
+\end{figure}
+
 \section{Quasi-Static Validation}
 
 For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal energy (\texttt{ALLIE}) is monitored throughout the step to confirm that inertial effects remain negligible. A ratio below 5\% is used as the acceptance target for the quasi-static assumption in the Abaqus/Explicit framework~\cite{AbaqusManual}. The energy ratio history for each simulation is stored in the corresponding output directory and the peak or windowed ratio is printed to the job log.
@@ -47,7 +130,7 @@ For each simulation, the ratio of kinetic energy (\texttt{ALLKE}) to internal en
 
 \section{Sensitivity Study: Mass Scaling and Mesh Refinement}
 
-A fully factorial $4 \times 3$ sensitivity study was set up on the Nakazima W200 specimen ($t = 1.75$\,mm, $\alpha = 0^\circ$) to determine the largest stable time increment $\Delta t$ and the coarsest mesh that still yield results within acceptable tolerances. This study directly addresses the Task~III requirement that the framework maintain identical element size across configurations and support automated mesh-size modification. The W200 geometry was chosen because equibiaxial stretching produces high strain gradients and therefore provides a demanding test of both mass scaling and spatial discretisation. Twelve simulations form the study grid (Table~\ref{tab:study_grid}) and are aggregated by \texttt{plot\_study.py} into a three-panel heatmap for wall time, energy ratio, and strain convergence.
+A fully factorial $4 \times 3$ sensitivity study was set up on the Nakazima W200 specimen ($t = 1.75$\,mm, $\alpha = 0^\circ$) to determine the largest stable time increment $\Delta t$ and the coarsest mesh that still yield results within acceptable tolerances. Whereas Section~\ref{sec:mesh_control} establishes that the element size is held identical across configurations by construction, this study selects how coarse the common mesh may be made, by sweeping the global refinement factor $f_\mathrm{MR}$ through the automated mesh-size modification described in Section~\ref{sec:mesh_refinement_factor}. The W200 geometry was chosen because equibiaxial stretching produces high strain gradients and therefore provides a demanding test of both mass scaling and spatial discretisation. Twelve simulations form the study grid (Table~\ref{tab:study_grid}) and are aggregated by \texttt{plot\_study.py} into a three-panel heatmap for wall time, energy ratio, and strain convergence.
 
 \begin{table}[ht]
 \begin{center}
