@@ -136,8 +136,8 @@ def make_pipeline():
         mpatches.Patch(color=B_POST,   label='Post-processing (postproc.py)'),
         mpatches.Patch(color=B_FLC,    label='FLC aggregation (plot_flc.py)'),
         mpatches.Patch(color=B_OUT,    label='Outputs'),
-    ], loc='upper left', fontsize=7, framealpha=0.93, ncol=2,
-       bbox_to_anchor=(0.61, 0.385), title='Components', title_fontsize=8)
+    ], loc='upper center', fontsize=7.5, framealpha=0.93, ncol=5,
+       bbox_to_anchor=(0.5, -0.012), title='Components', title_fontsize=8)
 
     ax.set_title('Automated simulation pipeline  (single selected case)',
                  fontsize=13, fontweight='bold', color='#1e293b', pad=10)
