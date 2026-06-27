@@ -29,40 +29,68 @@ to be applied to the same DIC dataset.
 
 \section{Draft of the Min–Stoughton Criterion}
 
-
 The Min–Stoughton criterion was studied as a possible extension of the
-existing FLC identification framework. In the project outline, this criterion
-is mentioned as a new method to be added to the evaluation framework. However,
-within the scope of the present semester project, the work remained at a
-preliminary workflow stage and was not integrated as a fully operational GUI
-feature.
+existing FLC identification framework. The method of Min, Stoughton, Carsley
+and Lin~\cite{Min2017} is a spatio-temporal curvature criterion: instead of
+identifying necking from a final strain profile, it tracks the evolution of the
+measured three-dimensional specimen surface and detects the sudden curvature
+increase caused by the first local through-thickness dimple. This links the
+criterion directly to the physical picture of localized necking: after diffuse
+necking, a small surface dimple appears and then expands into the final neck
+band.
 
-The main difficulty was not only the formulation of the criterion itself, but
-also the connection between the different sources of information required to
-apply it. The existing post-processing environment already contains routines to
-load and visualize VIC3D data, as well as user-interactive tools to define the
-crack or localization region. In addition, metadata from the VIC3D processing
-describe the structure of the exported data and the corresponding deformation
-sequence. For the Min–Stoughton method, these different pieces of information
-must be brought together in a consistent way.
+In the improved three-dimensional version of the method, the curvature is not
+fitted along a single manually selected line. A narrow rectangular point matrix
+is placed around the necking region, with width $W_X$ across the neck band and
+length $W_Y$ along the neck band. For Marciniak tests, the DIC surface
+coordinates $(X,Y,Z)$ are extracted for this matrix over the image sequence. A
+reference frame $M$ is selected before localized necking, and the background
+surface shape is removed by subtracting the reference height,
+$Z'_{ij}(k)=Z_{ij}(k)-Z_{ij}(M)$. A small superimposed artificial curvature
+($C_\mathrm{SAC}$) is then added before fitting circles to the profiles in the
+matrix columns; this stabilizes the least-squares circle fit when the true
+curvature is close to zero. The curvature signal $C_\mathrm{pm}(k)$ is defined
+as the averaged fitted curvature over the point matrix.
 
-The preliminary work therefore focused on identifying which quantities are
-needed by the method and where they can be accessed in the existing workflow.
-This includes the VIC3D point data, strain histories over the deformation
-sequence, user-defined crack information, and the associated processing
-metadata. Since these quantities are not directly available in one common
-format, several extraction and transformation steps are required before the
-criterion can be applied.
+The onset frame is determined from the time history of $C_\mathrm{pm}$. For a
+candidate frame $K$, a predicted curvature $C_{\mathrm{pm},P}$ is obtained by a
+linear regression through the previously measured curvature values. The onset
+of localized necking is assigned to the first frame $K$ for which
+\[
+  C_\mathrm{pm}(k) > C_{\mathrm{pm},P}(k) + \Delta
+  \quad \text{for} \quad K \leq k \leq K+n-1 .
+\]
+In the examples of Min et al.~\cite{Min2017}, $n=8$ consecutive frames and
+$\Delta=C_\mathrm{SAC}/10$ were used. The parameters $W_X$, $W_Y$,
+$C_\mathrm{SAC}$, $n$, and the reference-frame selection therefore form the
+practical calibration set of the method. The paper suggests
+$2\,\mathrm{mm}\leq W_X\leq 8\,\mathrm{mm}$ and
+$10\,\mathrm{mm}<W_Y\leq 40\,\mathrm{mm}$ for the investigated cases, with
+smaller $W_X$ suitable for neck bands perpendicular to the major stress
+direction and larger $W_X$ for inclined or crossed neck bands.
 
-Another important aspect is that the method is expected to be sensitive to the
-quality of the input data. Noise in the DIC strain fields, the definition of
-the crack or localization line, filtering choices, and calibration parameters
-can all influence the detected onset of localized necking. These aspects would
-need to be investigated further before the method could be considered robust.
+For Nakazima tests, the same physical curvature idea cannot be applied directly
+to the raw $(Y,Z)$ profiles because the specimen undergoes out-of-plane
+wrapping over a hemispherical punch. Min et al.~\cite{Min2017} therefore
+transform the measured surface into an equivalent profile described by the
+spherical arc distance $D$ and the distance $R_\mathrm{out}$ from the punch
+centre. The reference subtraction is then performed on $R_\mathrm{out}$ rather
+than on $Z$,
+$R'_{\mathrm{out},ij}(k)=R_{\mathrm{out},ij}(k)-R_{\mathrm{out},ij}(M)$, and
+the same curvature-history criterion is applied. This transformation requires
+the punch radius, sheet thickness, pole position, strain state at the pole, and
+the deformed DIC surface coordinates. It also imposes an important validity
+condition: the reference frame has to be selected after the evaluated local
+surface has wrapped onto the punch but before localized necking starts.
 
-For this reason, the work presented here should be understood as a first
-structured step towards a future implementation. It clarifies the required data
-links between VIC3D output, user-defined post-processing information, metadata,
-and the Min–Stoughton criterion, while leaving the final GUI integration and
-parameter calibration for future work.
-
+Within this project the Min–Stoughton method was therefore treated as a
+methodology and data-integration task rather than as a finalized GUI feature.
+The required VIC3D quantities are the measured surface positions and
+displacements $(X,Y,Z,U,V,W)$, the strain fields $(\varepsilon_1,
+\varepsilon_2)$, the crack or localization location used to place the point
+matrix, and metadata such as punch diameter and sheet thickness. A provisional
+standalone workflow was created to test these data links and to explore the
+Nakazima transformation, but the detected onset remained sensitive to the
+matrix dimensions, reference-frame choice, smoothing, and persistence
+definition. The final integration therefore still requires a validated
+parameter choice and a consistent treatment of decimated VIC3D frame sequences.
