@@ -97,7 +97,42 @@ Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the stand
     \label{fig:flc_norm}
 \end{figure}
 
-The intersection-line method exposes two fixed length-scale parameters: the spacing between intersection lines ($2$\,mm) and the constant factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These correspond to two physically distinct scales. The fitting window is governed by the extent of the strained dome, which scales with the punch diameter $D$, whereas the excluded near-crack zone is governed by the neck width, which scales with the sheet thickness $t$. The fixed constant captures neither. Alternative fixed window constants, including the 10, 9, 8, and 7\,mm variants inspected in the preliminary window study, shift the extracted curves but do not introduce a geometric length-scale relation. A minimal, norm-consistent generalisation therefore replaces the constant with $D/10$, so that the window width becomes $\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to the standard value for the $\varnothing$100\,mm punch ($100/10 = 10$). Figure~\ref{fig:flc_pscaled} shows the limit curves re-evaluated with this punch-scaled window. Scaling the window with the punch diameter markedly shifts the extracted 40\,mm limit, which confirms that its position under the standard evaluation is governed largely by the window choice rather than by the material.
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/FLC_wvar_A.png}
+        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \label{fig:flc_wvar_a}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/FLC_wvar_B.png}
+        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \label{fig:flc_wvar_b}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/FLC_wvar_C.png}
+        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \label{fig:flc_wvar_c}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/FLC_wvar_D.png}
+        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \label{fig:flc_wvar_d}
+    \end{subfigure}
+    \caption{Forming limit curves re-evaluated with the smaller fixed window constants 10, 9, 8, and 7 from the preliminary window study, for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. Reducing the constant shifts the extracted curves relative to the standard constant-10 evaluation, confirming the sensitivity of the limit to the window factor, but the fixed values introduce no geometric length-scale relation.}
+    \label{fig:flc_wvar}
+\end{figure}
+
+The intersection-line method exposes two fixed length-scale parameters: the spacing between intersection lines ($2$\,mm) and the constant factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These correspond to two physically distinct scales. The fitting window is governed by the extent of the strained dome, which scales with the punch diameter $D$, whereas the excluded near-crack zone is governed by the neck width, which scales with the sheet thickness $t$. The fixed constant captures neither. Alternative fixed window constants, including the 10, 9, 8, and 7\,mm variants inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift the extracted curves but do not introduce a geometric length-scale relation. A minimal, norm-consistent generalisation therefore replaces the constant with $D/10$, so that the window width becomes $\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to the standard value for the $\varnothing$100\,mm punch ($100/10 = 10$). Figure~\ref{fig:flc_pscaled} shows the limit curves re-evaluated with this punch-scaled window. Scaling the window with the punch diameter markedly shifts the extracted 40\,mm limit, which confirms that its position under the standard evaluation is governed largely by the window choice rather than by the material.
 
 \begin{figure}[H]
     \centering
