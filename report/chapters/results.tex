@@ -240,7 +240,41 @@ $f_\mathrm{MR}=2$ coarser). Because refinement is a single configuration value
 rather than a manual remeshing step, the mesh-size study reported in
 Section~\ref{sec:mesh_refinement_analysis} is generated automatically by sweeping
 $f_\mathrm{MR}$, which realises the user-defined automated mesh-size modification
-targeted by the framework.
+targeted by the framework. Figure~\ref{fig:mesh_mr_sweep} illustrates this on the
+$W100$ Nakazima specimen for $f_\mathrm{MR}=1$, $2$, and $4$: the partition
+topology and the locked apex zone are preserved across the three meshes, while
+the element size in the surrounding zones scales with the refinement factor.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR1_top.png}
+        \caption{$f_\mathrm{MR}=1$ (baseline).}
+        \label{fig:mesh_mr1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR2_top.png}
+        \caption{$f_\mathrm{MR}=2$.}
+        \label{fig:mesh_mr2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR4_top.png}
+        \caption{$f_\mathrm{MR}=4$.}
+        \label{fig:mesh_mr4}
+    \end{subfigure}
+    \caption{Automated mesh-size modification on the $W100$ Nakazima specimen
+(quarter model, face-on view) for global refinement factors
+$f_\mathrm{MR}=1$, $2$, and $4$. The partition topology and the fixed apex zone
+are identical across the three meshes; only the global refinement factor is
+changed, and the surrounding element size scales accordingly. The meshes were
+generated and rendered automatically without running the solver.}
+    \label{fig:mesh_mr_sweep}
+\end{figure}
 
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
