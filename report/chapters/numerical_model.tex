@@ -288,10 +288,21 @@ reduces the stable time increment, increasing the computational cost, whereas a
 higher punch velocity or more aggressive mass scaling improves computational
 efficiency at the expense of increased inertial effects. To reduce this coupling
 to a tractable study, the punch velocity is fixed at
-\SI{5}{\milli\meter\per\second}, following the approach of Sen~\cite{Sen2025}, so
-that the quasi-static response is then controlled through the mesh density and
-the mass scaling alone. These two parameters are selected jointly to obtain an
-efficient simulation while preserving a quasi-static response.
+\SI{5}{\milli\meter\per\second}, following the approach of Sen~\cite{Sen2025}.
+This value reflects a compromise between physical fidelity and computational
+cost. In the experiment the punch advances at roughly
+\SI{1}{\milli\meter\per\second}, and a typical test requires a punch travel of
+about \SI{35}{\milli\meter} before fracture, so the physical forming event lasts
+on the order of \SI{35}{\second}. Because Abaqus/Explicit advances the solution
+at the stable time increment, reproducing this duration at the true forming speed
+would require an excessive number of increments and a prohibitive run time.
+Increasing the punch velocity shortens the simulated process time in proportion
+and therefore reduces the cost, at the price of larger inertial effects. At
+\SI{5}{\milli\meter\per\second} the simulated process is reduced to about
+\SI{7}{\second}, a fivefold saving, while the response remains slow enough to
+stay quasi-static. The quasi-static behaviour is then controlled through the mesh
+density and the mass scaling alone, which are selected jointly to obtain an
+efficient simulation while preserving the quasi-static response.
 
 To verify the validity of each simulation, the kinetic and internal energy
 histories are extracted automatically during post-processing. The ratio of
