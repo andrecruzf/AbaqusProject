@@ -190,3 +190,31 @@ large ODB remains in scratch storage.
 \section{Cluster Configuration}
 
 Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. Each solver job currently requests 24 CPUs, 4\,GB per CPU, and a 48-hour time limit. The Abaqus module is loaded via \texttt{module load abaqus/2023}. Post-processing scripts use \texttt{xvfb-run} for headless ODB rendering. Results are stored in \texttt{/cluster/scratch/acruzfaria/} during the run and copied to \texttt{/cluster/home/acruzfaria/} on completion.
+
+\chapter{User Interface}
+\label{app:interface}
+
+The framework includes an early-stage graphical interface, built with Streamlit,
+that acts as a front-end to the configuration file described in
+Chapter~\ref{chap:numerical_model}. It is a prototype rather than a production
+tool, intended mainly to make occasional use of the pipeline more convenient.
+
+Figure~\ref{fig:app_interface} shows the main view. The interface is organised
+into four areas: \emph{Submit Job}, which exposes the case parameters (test type,
+specimen width, sheet thickness, orientation, punch diameter, mesh factor and
+thickness seeds, mass scaling, punch speed, punch travel, velocity profile, and
+friction) together with the computational resources and the advanced mesh
+settings; \emph{Job Status}, for monitoring submitted cluster jobs;
+\emph{Results}, for inspecting the post-processed outputs; and an experimental
+\emph{AI Assistant}. Each control writes the corresponding configuration value,
+so a case prepared in the interface is equivalent to one configured directly in
+the configuration file.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{img/app_interface.png}
+    \caption{Main view of the prototype Streamlit interface (Submit Job tab),
+exposing the simulation parameters and computational settings that are otherwise
+set in the configuration file.}
+    \label{fig:app_interface}
+\end{figure}

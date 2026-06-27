@@ -18,4 +18,6 @@ The following directions are identified for future investigation, ordered by pri
   \item \textbf{HC material constant calibration.} The 46 VUMAT constants used in this work were taken from a reference calibration. A calibration against dedicated characterisation tests (uniaxial tension, notched tension, shear) for the specific sheet batch used in Task~I would improve predictive accuracy.
 
   \item \textbf{Friction sensitivity.} The Coulomb friction coefficients are set to fixed values in \texttt{config.py}. A parametric study varying the punch--blank and die--blank coefficients would quantify their influence on the FLC and on the prevalence of base fracture vs.\ dome fracture.
+
+  \item \textbf{Mature the user interface.} The current Streamlit interface (Appendix~\ref{app:interface}) is an early-stage prototype: it runs as a web application and is convenient for configuring and launching individual cases, but it has not been hardened for routine use. A natural next step is to migrate it to a standalone local application, which would remove the web-server dependency, improve responsiveness for larger result sets, and integrate more directly with the local project and cluster workflow.
 \end{enumerate}

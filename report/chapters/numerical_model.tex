@@ -42,6 +42,14 @@ mesh refinement factor does not require editing the Abaqus model manually. The
 complete list of available configuration groups is given in
 Appendix~\ref{app:configuration_parameters}.
 
+In addition to editing this configuration directly, the framework provides an
+early-stage graphical interface, built with Streamlit, that exposes the same
+parameters through interactive controls and submits the selected case to the
+cluster. It is a prototype meant to lower the entry barrier for occasional use
+rather than a production tool; experienced users can continue to work with the
+configuration file directly, and both entry points drive the same underlying
+pipeline. The interface layout is shown in Appendix~\ref{app:interface}.
+
 \subsection{Automated Workflow}
 
 The model generation is organised as a sequence of Python modules. The main
