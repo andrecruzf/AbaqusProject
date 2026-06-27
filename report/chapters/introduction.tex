@@ -54,4 +54,35 @@ The specific objectives are:
 
 \section{Report Structure}
 
-Chapter~\ref{chap:theory} introduces the theoretical background, including the FLC concept, the test methods, the Hosford-Coulomb failure criterion, and selected FLC identification criteria. Chapter~\ref{chap:experimental_campaign} describes the experimental campaign and robustness requirements of Task~I. Chapter~\ref{chap:identification_framework} summarises the Task~II identification framework and its data interface. Chapter~\ref{chap:numerical_model} describes the FE model, mesh-size control, simulation pipeline, and post-processing methodology of Task~III. Chapter~\ref{chap:results} presents framework verification, sensitivity studies, and representative simulation outputs. Chapter~\ref{chap:conclusion} summarises the findings, while Chapter~\ref{chap:future_work} outlines recommended future work.
+Chapter~\ref{chap:theory} introduces the theoretical background needed for the
+three project tasks. It summarises sheet-metal formability, forming-limit
+diagrams, the Nakazima, Marciniak, and Punch-in-Punch test concepts, and the
+forming-limit identification methods considered in this work.
+
+Chapter~\ref{chap:experimental_campaign} describes the AA5754 experimental
+campaign, including the material batches, specimen widths, punch diameters,
+sheet thicknesses, orientation cases, and DIC data acquisition. The reported
+experimental results focus on the Nakazima subset of the broader campaign.
+
+Chapter~\ref{chap:identification_framework} presents the existing FLC
+identification workflow and the investigated Min--Stoughton extension. The
+chapter clarifies which criteria were already available, what was studied for
+the curvature-based method, and which integration issues remain open.
+
+Chapter~\ref{chap:numerical_model} describes the automated Abaqus/Explicit
+framework developed for Task~III. It covers the common configuration interface,
+model generation for the three forming setups, mesh-size control, Euler cluster
+execution, quasi-static solution strategy, and post-processing outputs.
+
+Chapter~\ref{chap:results} reports the available results. The first part
+analyses the experimental influence of material orientation, punch diameter,
+sheet thickness, and ISO~12004-2 window choice. The second part documents the
+current numerical framework status and defines the mass-scaling and
+mesh-refinement studies required before production simulations are interpreted
+quantitatively.
+
+Chapter~\ref{chap:conclusion} summarises the main findings, and
+Chapter~\ref{chap:future_work} lists the work required to complete the
+experimental evaluation, Min--Stoughton integration, and numerical validation.
+Appendix~\ref{app:pipeline} documents the simulation pipeline, configurable
+parameters, output files, and cluster execution details.
