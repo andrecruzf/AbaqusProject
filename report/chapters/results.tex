@@ -276,6 +276,47 @@ generated and rendered automatically without running the solver.}
     \label{fig:mesh_mr_sweep}
 \end{figure}
 
+Beyond a uniform refinement, the seeding controls also allow the element size to
+grow at different rates from the fine apex region towards the coarse flange. The
+target size assigned to each radial section is set independently, so the ratio
+between adjacent sections, that is, the rate at which the mesh coarsens outwards,
+can be tuned while keeping the apex resolution fixed. Figure~\ref{fig:mesh_growth}
+shows the $W100$ Nakazima specimen meshed with the same $0.2$\,mm apex size but
+section-to-section growth ratios of $1.5$, $2.0$, and $3.0$. A gentle ratio keeps
+a fine mesh across the whole dome at a higher element count, whereas an
+aggressive ratio concentrates the elements near the apex and coarsens rapidly
+towards the flange, reducing the model size at the cost of dome resolution.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_15.png}
+        \caption{Growth ratio $1.5$.}
+        \label{fig:mesh_growth_15}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_20.png}
+        \caption{Growth ratio $2.0$.}
+        \label{fig:mesh_growth_20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_30.png}
+        \caption{Growth ratio $3.0$.}
+        \label{fig:mesh_growth_30}
+    \end{subfigure}
+    \caption{Element-size growth control on the $W100$ Nakazima specimen
+(quarter model, face-on view). All three meshes share the same fixed $0.2$\,mm
+apex size; only the section-to-section growth ratio is changed ($1.5$, $2.0$,
+$3.0$), controlling how rapidly the elements coarsen from the apex towards the
+flange. Generated and rendered automatically without running the solver.}
+    \label{fig:mesh_growth}
+\end{figure}
+
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
 
