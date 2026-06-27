@@ -1,44 +1,68 @@
-\chapter{FLC Identification Framework}\label{chap:identification_framework}
+\chapter{FLC Identification Framework}
+\label{chap:identification_framework}
 
-\section{Role in the Project}
+\section{Motivation and Scope}
 
-Task~II develops the data evaluation layer of the project. Its purpose is to
-identify forming-limit points from experimental DIC data and from numerical
-strain histories in a modular, robust, and user-friendly way. This is necessary
-because FLC values can vary strongly with the selected detection criterion,
-noise treatment, frame selection, and crack-section definition.
+The identification of forming-limit points is a key step in the construction
+of forming limit curves. After a forming test, the measured strain field must
+be evaluated in order to determine the strain state at the onset of localized
+necking. Since different identification criteria can lead to different limit
+strains, it is useful to compare them within the same post-processing workflow.
 
-\section{Criterion Families}
+In this project, the starting point was an existing graphical user interface
+developed in the laboratory for the post-processing of DIC measurements. This
+tool already included data import, visualization, plotting routines, and the
+DIN/ISO~12004-2 and Volk–Hora identification methods. The contribution of the
+present work was therefore to study an additional criterion based on the work
+of Min, Stoughton, Carsley, and Lin, and to prepare a draft methodology for its
+future integration into the existing framework.
 
-The framework is structured around several criterion families rather than a
-single fixed method:
-\begin{itemize}
-  \item the ISO~12004-2 position-dependent method
-  \item time-dependent criteria such as Volk-Hora and Merklein
-  \item the Pham-Sigvant coefficient-of-variation approach
-  \item Stoughton-type curvature and instability criteria.
-\end{itemize}
+\section{Existing Identification Criteria}
 
-Keeping these methods in one framework allows direct comparison of the
-criterion-dependent FLC values for the same test. This is especially important
-for materials where the ISO evaluation can become unstable, for example when
-dynamic strain ageing produces non-smooth strain localisation.
+The existing framework contains two forming-limit identification methods. The
+DIN/ISO~12004-2 method evaluates the strain distribution along a section
+crossing the localization or crack region and determines the limit strain from
+a spatial fit. The Volk–Hora criterion uses the temporal evolution of the
+strain field to detect the onset of instability.
+Both methods are available within the same GUI environment, which allows them
+to be applied to the same DIC dataset.
 
-\section{Data Interface}
+\section{Draft of the Min–Stoughton Criterion}
 
-The identification framework consumes strain-field or strain-history data and
-returns forming-limit points in a common schema. The numerical post-processing
-pipeline therefore exports \texttt{strain\_path.csv} and
-\texttt{forming\_limits.csv} with fixed column names, while the experimental
-workflow provides equivalent DIC-derived strain histories. This shared interface
-allows the same identification logic to be applied to both Task~I experiments
-and Task~III simulations.
 
-\section{Connection to the Numerical Model}
+The Min–Stoughton criterion was studied as a possible extension of the
+existing FLC identification framework. In the project outline, this criterion
+is mentioned as a new method to be added to the evaluation framework. However,
+within the scope of the present semester project, the work remained at a
+preliminary workflow stage and was not integrated as a fully operational GUI
+feature.
 
-The numerical model does not replace the experimental identification framework.
-Instead, it supplies controlled reference data where geometry, mesh size,
-material orientation, punch motion, and failure frame can be inspected directly.
-This makes the simulations useful for testing whether a criterion responds to
-physical strain localisation or to artefacts introduced by sampling, smoothing,
-or endpoint selection.
+The main difficulty was not only the formulation of the criterion itself, but
+also the connection between the different sources of information required to
+apply it. The existing post-processing environment already contains routines to
+load and visualize VIC3D data, as well as user-interactive tools to define the
+crack or localization region. In addition, metadata from the VIC3D processing
+describe the structure of the exported data and the corresponding deformation
+sequence. For the Min–Stoughton method, these different pieces of information
+must be brought together in a consistent way.
+
+The preliminary work therefore focused on identifying which quantities are
+needed by the method and where they can be accessed in the existing workflow.
+This includes the VIC3D point data, strain histories over the deformation
+sequence, user-defined crack information, and the associated processing
+metadata. Since these quantities are not directly available in one common
+format, several extraction and transformation steps are required before the
+criterion can be applied.
+
+Another important aspect is that the method is expected to be sensitive to the
+quality of the input data. Noise in the DIC strain fields, the definition of
+the crack or localization line, filtering choices, and calibration parameters
+can all influence the detected onset of localized necking. These aspects would
+need to be investigated further before the method could be considered robust.
+
+For this reason, the work presented here should be understood as a first
+structured step towards a future implementation. It clarifies the required data
+links between VIC3D output, user-defined post-processing information, metadata,
+and the Min–Stoughton criterion, while leaving the final GUI integration and
+parameter calibration for future work.
+
