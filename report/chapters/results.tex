@@ -317,6 +317,46 @@ flange. Generated and rendered automatically without running the solver.}
     \label{fig:mesh_growth}
 \end{figure}
 
+The global refinement factor and the section-to-section growth rate shown above
+are only two particular combinations drawn from a much larger control space. The
+meshing model is deliberately modular: rather than exposing a single element
+size, it exposes the full partition layout and an independent target size for
+every section, in both the radial and circumferential directions, together with
+the number of through-thickness layers. The two figures above are therefore
+representative examples, and many further meshes can be produced by combining
+these settings differently, for example refining one region while coarsening
+another, or shifting the partition boundaries themselves.
+
+These controls are surfaced to the user through a dedicated panel in the pipeline
+interface, shown in Figure~\ref{fig:mesh_gui}. The upper part of the panel
+reproduces the partition diagram of the two specimen families (W20--W120 and
+W200) and maps each coloured region to a named section (S1 finest centre, S2
+transition, S3 outer transition, the S3\_1 band specific to W20/W50, and S4 outer
+coarse band). The controls below act on this layout in two groups. The
+\emph{partition geometry} fields (inner split $x$, inner arc radius, circle
+radius, and the $\mathrm{XZ}$-plane position, with their W200 counterparts) move
+the boundaries between sections, that is, they decide \emph{where} the mesh
+density changes. The \emph{target element size} fields (S1--S4 in $x$ and $y$,
+and the dedicated W200 sizes) set the absolute element size \emph{within} each
+section. A global mesh factor and a through-thickness seed count complete the
+set. The refinement sweep of Figure~\ref{fig:mesh_mr_sweep} corresponds to
+scaling all target sizes by the global factor, while the growth-rate study of
+Figure~\ref{fig:mesh_growth} corresponds to changing the ratio between adjacent
+section sizes; both are thus special cases of the same underlying control set.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{report/img/mesh_gui_settings.png}
+    \caption{User-defined mesh-settings panel of the pipeline interface. The
+embedded diagram maps each partitioned section (S1--S4) of the W20--W120 and W200
+specimen families, while the fields below expose the partition geometry (section
+boundaries) and the per-section target element sizes independently in the radial
+and circumferential directions. The refinement-factor and growth-rate meshes of
+Figures~\ref{fig:mesh_mr_sweep} and~\ref{fig:mesh_growth} are two particular
+configurations of this control set.}
+    \label{fig:mesh_gui}
+\end{figure}
+
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
 
