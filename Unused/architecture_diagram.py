@@ -124,6 +124,13 @@ def make_pipeline():
     ax.annotate('', xy=(10.4, 1.55), xytext=(9.7, 5.02),
                 arrowprops=dict(arrowstyle='->', color=B_FLC, lw=1.5,
                                 connectionstyle='arc3,rad=0.0'), zorder=6)
+    # mesh render is collected as a verification output
+    ax.annotate('', xy=(6.7, 1.55), xytext=(9.6, 8.42),
+                arrowprops=dict(arrowstyle='->', color=B_MESH, lw=1.4, linestyle='dashed',
+                                connectionstyle='arc3,rad=0.30'), zorder=5)
+    ax.text(8.9, 4.0, 'mesh render\ncollected as output', fontsize=7, color=B_MESH,
+            ha='center', va='center', zorder=7,
+            bbox=dict(fc='white', ec='none', pad=1.2, alpha=0.85))
 
     # ── Legend (below the figure) ────────────────────────────────────────────
     ax.legend(handles=[
