@@ -110,21 +110,21 @@ During homogeneous deformation, the mean strain rate increases steadily while th
 \subsection{Min--Stoughton Curvature Method}
 \label{sec:minstoughton_method}
 
-Min et al.~\cite{Min2017} proposed a curvature-based criterion that detects the onset of localised necking from the evolution of the deformed outer-surface geometry rather than from the strain field. Originally developed for Marciniak tests, where strain paths are approximately linear, the method was extended to Nakazima tests by incorporating corrections for the non-linear strain path effects introduced by the hemispherical punch geometry and through-thickness strain gradients.
+The criterion proposed by Min et al.~\cite{Min2017} differs from the previous methods in that it does not look at the strain field at all; it detects necking from the \emph{shape} of the deformed sheet. The idea is simple: as long as the deformation stays homogeneous, the stretched dome keeps a smooth, gradually varying curvature, but once a local neck develops the outer surface gains an additional, sharper curvature concentrated in the necking band. Following how the surface curvature evolves therefore reveals the moment localisation begins. The method was first developed for the near-linear strain paths of the Marciniak test and later extended to the Nakazima test, where the hemispherical punch adds bending and a non-linear strain path that must be corrected for.
 
-At each frame during the test, the deformed positions of the outer-surface points within the dome zone are transformed to polar coordinates $(D,\,R^{\mathrm{out}})$, where $D$ is the arc length measured from the dome apex along the surface and $R^{\mathrm{out}}$ is the radial distance from the instantaneous punch centre $O'$. The punch centre is corrected for sheet thinning:
+At each frame, the outer-surface points in the dome region are described in a polar frame centred on the punch: each point is given by its arc length $D$ along the surface from the apex and its distance $R^{\mathrm{out}}$ from the punch centre $O'$. Because the sheet thins as it stretches, the effective punch centre shifts inward, which is corrected through the current thickness:
 \begin{equation}
     O' = \bigl(0,\;0,\;Z_P - R_{\mathrm{punch}} - t_P\bigr), \qquad
     t_P = t_0\,\exp\!\bigl(-\varepsilon_1 - \varepsilon_2\bigr),
 \end{equation}
-where $Z_P$ is the vertical coordinate of the apex, $R_{\mathrm{punch}}$ the punch radius, $t_0$ the initial sheet thickness, and $t_P$ the current thickness computed from volume conservation.
+where $Z_P$ is the apex height, $R_{\mathrm{punch}}$ the punch radius, $t_0$ the initial thickness, and $t_P$ the current thickness from volume conservation.
 
-To isolate the necking signature from the global punch curvature, a reference profile $R^{\mathrm{out}}_M$ recorded at approximately 20\,\% of the forming history is subtracted. A Superimposed Artificial Curvature (SAC) is added to stabilise the subsequent circle fit when the deviation from the reference is close to zero~\cite{Min2017}:
+The raw profile $R^{\mathrm{out}}(D)$ is dominated by the overall dome curvature, which would mask the small local change due to necking. To remove it, an early-stage profile $R^{\mathrm{out}}_M$, taken at about 20\,\% of the stroke while the deformation is still homogeneous, is subtracted as a reference. What remains is the deviation from the smooth dome shape, that is, the part of the geometry that grows when a neck forms. A small known curvature, the Superimposed Artificial Curvature (SAC), is added on top purely to keep the following circle fit well conditioned while this deviation is still near zero~\cite{Min2017}:
 \begin{equation}
     R'' = \bigl(R^{\mathrm{out}} - R^{\mathrm{out}}_M\bigr) + \tfrac{1}{2}\,\mathrm{SAC}\cdot D^2.
 \end{equation}
-A circle is fitted to the resulting $(D,\,R'')$ point cloud by linear least squares, yielding the curvature measure $C_{pm} = 1/\rho - \mathrm{SAC}$, where $\rho$ is the fitted circle radius. Necking onset is declared at the first frame $K$ where the condition
+A circle is then fitted to the resulting $(D,\,R'')$ points by linear least squares, and its radius $\rho$ gives one curvature value per frame, $C_{pm} = 1/\rho - \mathrm{SAC}$, with the artificial part removed again. During homogeneous deformation $C_{pm}$ follows a slow, regular trend; when necking starts it departs sharply from it. Onset is therefore declared at the first frame where $C_{pm}$ rises clearly above the value $C_{pm,P}$ expected from its own past history,
 \begin{equation}
-    C_{pm}(k) > C_{pm,P}(k) + \mathrm{SAC}/10
+    C_{pm}(k) > C_{pm,P}(k) + \mathrm{SAC}/10,
 \end{equation}
-holds for a prescribed number of consecutive frames, with $C_{pm,P}$ obtained from a rolling linear regression over all preceding frames.
+and stays above it for a prescribed number of consecutive frames, with $C_{pm,P}$ obtained from a rolling linear regression over all preceding frames. Requiring several consecutive frames prevents triggering on isolated noise.
