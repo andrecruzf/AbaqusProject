@@ -302,7 +302,7 @@ N_FIELD_INTERVALS = int(_os.environ.get('N_FIELD_INTERVALS', '') or
 # =============================================================
 # FRICTION
 # =============================================================
-FR_PUNCH = 0.0   # Coulomb coefficient — punch / blank (nakazima/marciniak)
+FR_PUNCH = float(_os.environ.get('FR_PUNCH', '') or 0.0)   # Coulomb coefficient — punch / blank (nakazima/marciniak)
 if TEST_TYPE != 'pip':
     FR_CLAMP = 0.35   # die / blank and blank-holder / blank
 else:
@@ -547,8 +547,9 @@ _bm_suffix = ('_bm' + (_bm_tag or 'man')) if BM_MESH_USE_MANUAL else ''
 # so constant-velocity runs get a distinct ODB/output dir and never collide with
 # the smooth-step results.
 _vp_suffix = ('_vconst' if PUNCH_VELOCITY_PROFILE == 'constant' else '')
+_fr_suffix = ('_fr' + '{:.4g}'.format(FR_PUNCH).replace('.', 'p')) if abs(FR_PUNCH) > 1e-9 else ''
 
-JOB_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
-CAE_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
-INP_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix)
+JOB_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}{}'.format(_test_cap, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix, _fr_suffix)
+CAE_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}{}.cae'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix, _fr_suffix)
+INP_NAME   = '{}_W{}_t{}_ang{}{}{}{}{}{}{}{}{}{}'.format(TEST_TYPE, SPECIMEN_WIDTH, _t, _ang, _pip_suffix, _ms_suffix, _mr_suffix, _ts_suffix, _ps_suffix, _pd_suffix, _bm_suffix, _vp_suffix, _fr_suffix)
 OUTPUT_DIR = _os.path.join(_os.environ.get('OUTPUT_BASE_DIR', _os.getcwd()), JOB_NAME)

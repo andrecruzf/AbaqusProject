@@ -22,8 +22,8 @@ Figure~\ref{fig:FLD_example} illustrates a typical FLD and the corresponding def
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\linewidth]{report/img/FLD_example.png}
-    \caption{FLC for a Serie 5 aluminum determined using the intersection line method.}
+    \includegraphics[width=0.75\linewidth]{img/FLD_example.png}
+    \caption{FLC for a 5xxx-series aluminium alloy determined using the intersection line method.}
     \label{fig:FLD_example}
 \end{figure}
 
@@ -34,14 +34,14 @@ In the Nakazima test, a hemispherical punch is driven into a clamped sheet speci
 
 The Marciniak test employs a flat-bottomed cylindrical punch together with a carrier blank positioned between the punch and the specimen. This arrangement prevents direct contact between the punch and the investigated sheet and promotes failure in a region of more homogeneous deformation. As a result, the Marciniak configuration generally produces more linear strain paths than the Nakazima test and is often considered more suitable for fundamental investigations of forming limits~\cite{ISO120042, Min2017}.
 
-While ISO~12004-2 specifies a reference punch diameter of 100\,mm for both testing methods, the present work additionally investigates the influence of punch geometry by considering hemispherical punch diameters of 40\,mm, 60\,mm, 80\,mm, and 100\,mm in the Nakazima configuration. This enables a systematic assessment of the influence of punch size on the measured forming limits and contributes to the broader investigation of size effects in sheet metal forming.
+While ISO~12004-2 specifies a reference punch diameter of \SI{100}{mm} for both testing methods, the present work additionally investigates the influence of punch geometry by considering hemispherical punch diameters of \SI{40}{mm}, \SI{60}{mm}, \SI{80}{mm}, and \SI{100}{mm} in the Nakazima configuration. This enables a systematic assessment of the influence of punch size on the measured forming limits and contributes to the broader investigation of size effects in sheet metal forming.
 
 
 \section{Punch-in-Punch Test}
 
 The Punch-in-Punch (PiP) test is an alternative forming test designed to generate more linear strain paths than the standard Nakazima configuration, particularly in the biaxial stretching regime. It employs two coaxial punches acting sequentially on the specimen:
 
-The process consists of two steps. In Step~1, both punches advance together, pre-forming the specimen. In Step~2, the outter punch is held fixed while the inner one advances further, deepening the dome until fracture. This two-stage loading produces a more controlled strain path.
+The process consists of two steps. In Step~1, both punches advance together, pre-forming the specimen. In Step~2, the outer punch is held fixed while the inner one advances further, deepening the dome until fracture. This two-stage loading produces a more controlled strain path.
 
 \section{Forming Limit Identification Methods}
 
@@ -71,15 +71,15 @@ In contrast to the intersection line method, the approach proposed by Volk and H
 \end{equation}
 For discrete time steps, the central difference formula is preferred for its higher accuracy. If the frame rate changes during the experiment, the effective time step is defined as $\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values are linearly interpolated to ensure a uniform differencing stencil. The thinning rate is then $\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
 
-A necking zone is identified using a threshold criterion on the thinning rate. The representative maximum thinning rate $\bar{\dot{\varepsilon}}_{\max}$ is defined as the mean thinning rate over the last five frames:
+A necking zone is identified using a threshold criterion on the thinning rate. On the last frame before fracture (frame $b-1$), the DIC facets are sorted by their thinning rate in ascending order. The representative maximum thinning rate $\bar{\dot{\varepsilon}}_{\max}$ is defined as the mean of the five highest values:
 \begin{equation}
     \bar{\dot{\varepsilon}}_{\max} = \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
 \end{equation}
-where $g$ is the number of elements and $b$ the number of frames. The necking zone $N$ is defined as:
+where $g$ is the total number of facets (sorted by thinning rate), $b$ the total number of frames, and the subscript $b-1$ indicates that the thinning rate is evaluated at the last frame before fracture. The necking zone $N$ is then defined as all facets whose thinning rate at frame $b-1$ exceeds a fraction $\alpha$ of this representative maximum:
 \begin{equation}
-    N = \left\{ \text{elements with } \dot{\varepsilon}_{b-1,i} \geq \alpha \cdot \bar{\dot{\varepsilon}}_{\max} \right\},
+    N = \left\{ \text{facets with } \dot{\varepsilon}_{b-1,i} \geq \alpha \cdot \bar{\dot{\varepsilon}}_{\max} \right\},
 \end{equation}
-where $\alpha$ is a factor chosen to ensure a sufficient number of elements in the necking zone (typically $\alpha = 0.55$ for a grid size of 1\,mm).
+where $\alpha$ is chosen to ensure a sufficient number of facets in the necking zone (typically $\alpha = 0.55$ for a grid size of 1\,mm).
 
 The mean thinning rate in the necking zone is then plotted against time. Two linear fits are applied: one to the stable (pre-necking) region and one to the unstable (post-necking) region. The transition between the two regimes, determined by minimising the combined fitting error, defines the last stable frame. The limit strains $\varepsilon_{1,\text{lim}}$ and $\varepsilon_{2,\text{lim}}$ are computed as the mean principal strains in the necking zone at this last stable frame:
 \begin{equation}
@@ -106,4 +106,21 @@ During homogeneous deformation, the mean strain rate increases steadily while th
 
 \subsection{Min--Stoughton Curvature Method}
 
-Min et al.~\cite{Min2017} proposed a curvature-based criterion that detects the onset of localised necking from the second spatial derivative of the major strain along cross-sections perpendicular to the crack. Originally developed for Marciniak tests, where strain paths are approximately linear, the method was extended to Nakazima tests by incorporating corrections for the non-linear strain path effects introduced by the hemispherical punch geometry and through-thickness strain gradients.
+Min et al.~\cite{Min2017} proposed a curvature-based criterion that detects the onset of localised necking from the evolution of the deformed outer-surface geometry rather than from the strain field. Originally developed for Marciniak tests, where strain paths are approximately linear, the method was extended to Nakazima tests by incorporating corrections for the non-linear strain path effects introduced by the hemispherical punch geometry and through-thickness strain gradients.
+
+At each frame during the test, the deformed positions of the outer-surface points within the dome zone are transformed to polar coordinates $(D,\,R^{\mathrm{out}})$, where $D$ is the arc length measured from the dome apex along the surface and $R^{\mathrm{out}}$ is the radial distance from the instantaneous punch centre $O'$. The punch centre is corrected for sheet thinning:
+\begin{equation}
+    O' = \bigl(0,\;0,\;Z_P - R_{\mathrm{punch}} - t_P\bigr), \qquad
+    t_P = t_0\,\exp\!\bigl(-\varepsilon_1 - \varepsilon_2\bigr),
+\end{equation}
+where $Z_P$ is the vertical coordinate of the apex, $R_{\mathrm{punch}}$ the punch radius, $t_0$ the initial sheet thickness, and $t_P$ the current thickness computed from volume conservation.
+
+To isolate the necking signature from the global punch curvature, a reference profile $R^{\mathrm{out}}_M$ recorded at approximately 20\,\% of the forming history is subtracted. A Superimposed Artificial Curvature (SAC) is added to stabilise the subsequent circle fit when the deviation from the reference is close to zero~\cite{Min2017}:
+\begin{equation}
+    R'' = \bigl(R^{\mathrm{out}} - R^{\mathrm{out}}_M\bigr) + \tfrac{1}{2}\,\mathrm{SAC}\cdot D^2.
+\end{equation}
+A circle is fitted to the resulting $(D,\,R'')$ point cloud by linear least squares, yielding the curvature measure $C_{pm} = 1/\rho - \mathrm{SAC}$, where $\rho$ is the fitted circle radius. Necking onset is declared at the first frame $K$ where the condition
+\begin{equation}
+    C_{pm}(k) > C_{pm,P}(k) + \mathrm{SAC}/10
+\end{equation}
+holds for a prescribed number of consecutive frames, with $C_{pm,P}$ obtained from a rolling linear regression over all preceding frames.

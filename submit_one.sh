@@ -81,6 +81,8 @@ BM_MESH_W200_SECTION4=${BM_MESH_W200_SECTION4:-}
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
 _punch_r=${PUNCH_RADIUS:-50}
+# Guard against a 0/blank punch radius (degenerate punch); keep in sync with config.py
+_punch_r=$(python3 -c "r=float('${_punch_r}' or 50); print(r if r>0 else 50)")
 _punch_d=$(python3 -c "import math; print(int(round(float('${_punch_r}') * 2)))")
 if   [ "$TEST_TYPE" = "nakazima"  ]; then _test_cap="Naka${_punch_d}"
 elif [ "$TEST_TYPE" = "marciniak" ]; then _test_cap="Marc${_punch_d}"
@@ -129,8 +131,12 @@ if [ "$(printf '%s' "${PUNCH_VELOCITY_PROFILE}" | tr '[:upper:]' '[:lower:]')" =
 else
     _vp_suffix=""
 fi
+_fr_suffix=$(python3 -c "
+v = float('${FR_PUNCH:-0.0}')
+print('_fr' + ('%.4g' % v).replace('.','p') if abs(v) > 1e-9 else '')
+")
 
-JOB_NAME="${_test_cap}_W${SPECIMEN_WIDTH}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}${_ts_suffix}${_ps_suffix}${_pd_suffix}${_bm_suffix}${_vp_suffix}"
+JOB_NAME="${_test_cap}_W${SPECIMEN_WIDTH}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}${_ts_suffix}${_ps_suffix}${_pd_suffix}${_bm_suffix}${_vp_suffix}${_fr_suffix}"
 
 if [ -n "$STUDY_SUBDIR" ]; then
     OUTPUT_BASE="${EULER_DIR}/${STUDY_SUBDIR}"

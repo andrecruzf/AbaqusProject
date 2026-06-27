@@ -14,9 +14,11 @@
 %             2013/03/08	(Soren Ebbesen)
 %             2014/03/13	(Soren Ebbesen)
 % ______________________________________________________________________________
-\documentclass[11pt,twoside,a4paper,fleqn]{report}
+\documentclass[11pt,twoside,a4paper]{report}
 
 \usepackage[utf8]{inputenc}
+\usepackage{siunitx}
+\usepackage{subcaption}
 
 \usepackage[english,st]{ethidsc} % Special IDSC styles and commands      	
 									 % {german}/english: language of headings, etc.
@@ -64,21 +66,21 @@
 \pagenumbering{arabic}				% Begin arabic page numbering (1,2,...)
 
 \input{chapters/introduction}
-\cleardoublepage
+
 \input{chapters/theory}
-\cleardoublepage
+
 \input{chapters/experimental_campaign}
-\cleardoublepage
+
 \input{chapters/identification_framework}
-\cleardoublepage
+
 \input{chapters/numerical_model}
-\cleardoublepage
+
 \input{chapters/results}
-\cleardoublepage
+
 \input{chapters/conclusion}
-\cleardoublepage
+
 \input{chapters/future_work}
-\cleardoublepage
+
 
 % Appendix______________________________________________________________________
 \appendix
