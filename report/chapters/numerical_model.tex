@@ -102,177 +102,155 @@ configurations, with only the geometry and loading sequence being adapted.
 \subsection{Parameterized Mesh Generation}
 \label{sec:mesh_generation}
 
-The deformable sheet is discretised using eight-node linear
-reduced-integration hexahedral elements (\texttt{C3D8R}). A solid formulation
-is adopted because the constitutive model accounts for through-thickness
-deformation, damage evolution, and element deletion.
+The deformable sheet is discretised using eight-node linear reduced-integration
+hexahedral elements (C3D8R). A solid formulation is adopted because the
+constitutive model accounts for through-thickness deformation, damage evolution,
+and element deletion.
 
-A central requirement of the framework is that the element size is controlled
-in a reproducible, geometry-independent way, so that simulations of different
-specimen widths and punch configurations can be compared without the mesh
-acting as a hidden variable. The mesh is therefore generated from a
-parameterized partitioning strategy rather than meshed by hand for each model.
-Each specimen is divided into a fixed set of sections that establish a common
-meshing topology across all geometries, shown in
-Figure~\ref{fig:bm_mesh_zones} for the two specimen families (W20--W120 and
-W200), and every section is assigned an independent target element size.
-Because the discretisation is produced entirely at the meshing stage and is
-independent of the solver, any mesh can be generated and inspected at negligible
-cost, without running a forming simulation.
+A central requirement of the framework is that the element size is controlled in
+a reproducible, geometry-independent way, so that simulations of different
+specimen widths and punch configurations can be compared without the mesh acting
+as a hidden variable. Rather than meshing each model by hand, the specimen is
+partitioned into a fixed set of concentric sections that establish a common
+meshing topology for every geometry, shown in Figure~\ref{fig:bm_mesh_zones} for
+the two specimen families. The sections run from a fine zone at the pole, where
+the strain gradients are highest, outward to a coarser zone at the clamped
+flange. Because the discretisation is produced entirely at the meshing stage and
+is independent of the solver, any mesh can be generated and inspected at
+negligible cost, without running a forming simulation.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{report/img/mesh_zone_diagram.png}
-    \caption{Partitioned mesh-zone layout used for all specimen geometries. Each
-specimen family (W20--W120 and W200) is divided into named sections S1--S4
-(plus the S3\_1 band specific to W20/W50). The partition variables mark the
-section boundaries and the control mapping (bottom) identifies each zone. The
-target element size of every section is set independently in the radial and
-circumferential directions.}
+    \includegraphics[width=0.85\linewidth]{report/img/mesh_settings_zones_clean.png}
+    \caption{Partitioned meshing topology shared by all specimen geometries,
+shown for the W20--W120 family (left) and the W200 family (right). Each specimen
+is divided into concentric sections, from the fine central zone (innermost,
+blue) through the transition and dome sections outward to the coarse flange zone
+(outermost, pink). The same topology is reused for every specimen width and
+punch.}
     \label{fig:bm_mesh_zones}
 \end{figure}
 
-\subsubsection{Radius-Based Seeding}
-\label{sec:mesh_zones}
+\subsubsection{Concentric Sections}
 
-The in-plane element size is keyed to radial position through a fixed table of
-concentric seeding zones (Table~\ref{tab:mesh_zones}): each edge is assigned the
-target size of the first zone whose outer radius exceeds its own radius. Two
-properties follow by construction. First, at a given radius the target element
-size is identical across all specimen widths and punch diameters, because the
-same table is applied to every geometry; the specimen width only determines how
-many of the outer zones are present, as outer zones are skipped on narrow
-specimens. Second, the apex zone ($r \le 5$\,mm) can be locked to a fixed size,
-so the critical fracture region retains a constant resolution while the
-surrounding mesh is varied. Through the thickness, a fixed number of element
-layers ($N_\mathrm{thk} = 10$) keeps the through-thickness resolution constant
-as well. The element size is therefore held identical across configurations by
-the construction of the seeding scheme, which directly satisfies the requirement
-of a controlled, comparable discretisation.
+Each section is assigned a target element size, and the specimen edges within it
+are seeded to reproduce that size. The target size increases from the pole
+towards the flange, following the decreasing strain gradient: the central zone
+is the finest and the flange zone the coarsest, with two intermediate sections in
+between (Table~\ref{tab:mesh_zones}). Two properties follow from this
+construction. First, because the same sectioning and the same target sizes are
+applied to every geometry, the element size at a corresponding location is
+identical across all specimen widths and punch diameters; the specimen width only
+changes how far the outer sections extend. Second, the central zone keeps a
+constant fine resolution, so the region where fracture initiates is always
+resolved consistently. Through the thickness, a fixed number of element layers is
+used, which keeps the through-thickness resolution constant as well.
 
 \begin{table}[H]
 \begin{center}
-\caption{Radius-based seeding zones applied to every specimen geometry. The
-target element size depends only on the radial position, which makes the element
-size identical across specimen widths and punch diameters by construction. Sizes
-are shown for the baseline refinement factor $f_\mathrm{MR}=1$.}
+\caption{Default target element sizes of the concentric sections, from the pole
+outward, for the standard specimen family. The same sectioning is applied to
+every geometry, which makes the element size identical across specimen widths and
+punch diameters by construction.}
 \label{tab:mesh_zones}
-\begin{tabular}{@{}lccl@{}}\toprule[1.5pt]
-Radius range [mm] & Radial size [mm] & Circ.\ size [mm] & Region \\ \midrule
-$r \le 5$       & 0.1 & 0.1 & Punch apex \\
-$5 < r \le 20$  & 0.2 & 0.2 & Punch contact zone \\
-$20 < r \le 30$ & 0.2 & 0.2 & Transition \\
-$30 < r \le 55$ & 0.5 & 0.5 & Dome shoulder \\
-$r > 55$        & 1.0 & 1.0 & Flange / clamped zone \\ \bottomrule[1.5pt]
+\begin{tabular}{@{}llc@{}}\toprule[1.5pt]
+Section & Region & Target element size [mm] \\ \midrule
+Central & Pole / punch apex   & 0.2 \\
+Transition & Below the dome    & 0.4 \\
+Dome & Main stretched region   & 0.8 \\
+Flange & Clamped outer zone    & 1.2 \\ \bottomrule[1.5pt]
 \end{tabular}
 \end{center}
 \end{table}
 
-\subsubsection{Global Refinement Factor}
-\label{sec:mesh_refinement_factor}
+\subsubsection{Global Refinement}
 
-The overall mesh density is driven by a single global refinement factor
-$f_\mathrm{MR}$ that scales all in-plane target sizes uniformly on top of the
-fixed partition topology ($f_\mathrm{MR}=1$ baseline, values below one finer,
-values above one coarser). Because refinement is a single configuration value
-rather than a manual remeshing step, a mesh-convergence study can be generated
-automatically by sweeping $f_\mathrm{MR}$, which realises the user-defined
-automated mesh-size modification targeted by the framework. Figure~\ref{fig:mesh_mr_sweep}
-shows the resulting meshes for the W100 specimen at $f_\mathrm{MR}=1$, $2$, and
-$4$: the partition topology and the locked apex zone are preserved across the
-three meshes, while the element size in the surrounding zones scales with the
-factor.
+For routine use and for mesh-convergence studies, the whole mesh is refined or
+coarsened with a single global refinement factor that multiplies all section
+sizes by the same amount, leaving the sectioning unchanged. This makes a
+convergence study straightforward: the factor is stepped through a range and the
+corresponding meshes are produced automatically, without remeshing any model by
+hand. Figure~\ref{fig:mesh_mr_sweep} shows the W100 specimen at three increasing
+values of the factor; the sectioning is preserved and every section coarsens by
+the same proportion.
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_MR1_top.png}
-        \caption{$f_\mathrm{MR}=1$ (baseline).}
+        \caption{Baseline.}
         \label{fig:mesh_mr1}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_MR2_top.png}
-        \caption{$f_\mathrm{MR}=2$.}
+        \caption{Coarsened (factor 2).}
         \label{fig:mesh_mr2}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_MR4_top.png}
-        \caption{$f_\mathrm{MR}=4$.}
+        \caption{Coarsened (factor 4).}
         \label{fig:mesh_mr4}
     \end{subfigure}
     \caption{Global mesh refinement on the W100 Nakazima specimen (quarter
-model, face-on view) for refinement factors $f_\mathrm{MR}=1$, $2$, and $4$. The
-partition topology and the fixed apex zone are identical across the three
-meshes; only the global factor is changed, and the surrounding element size
-scales accordingly.}
+model, face-on view). A single factor scales all section sizes together,
+coarsening the mesh uniformly from left to right while preserving the
+sectioning. The meshes are generated automatically without running the solver.}
     \label{fig:mesh_mr_sweep}
 \end{figure}
 
-\subsubsection{Section-Wise Growth Control}
-\label{sec:mesh_growth}
+\subsubsection{Independent Section Sizing}
 
-Independently of the global factor, the target size of each section can be set
-individually, so that the rate at which the mesh coarsens from the fine apex
-towards the flange, the section-to-section growth ratio, can be tuned while
-keeping the apex resolution fixed. Figure~\ref{fig:mesh_growth} illustrates this
-for the W100 specimen at growth ratios of $1.5$, $2.0$, and $3.0$ from a common
-$0.2$\,mm apex size: a gentle ratio retains a fine mesh across the whole dome at
-a higher element count, whereas an aggressive ratio concentrates the elements
-near the apex and coarsens rapidly towards the flange, reducing the model size
-at the cost of dome resolution.
+Beyond uniform refinement, the target size of each section can be chosen
+independently. This makes the mesh grading adaptable: the rate at which the
+elements coarsen from the fine pole towards the flange can be tuned to
+concentrate elements where they are most needed. As an example,
+Figure~\ref{fig:mesh_growth} shows three meshes that share the same fine central
+size but coarsen towards the flange at increasingly steep rates. A gentle grading
+keeps a fine mesh across the whole dome at a higher element count, whereas a
+steep grading concentrates the elements near the pole and reduces the overall
+model size at the expense of resolution further out. These gradings are not
+separate settings but particular choices of the per-section sizes, which
+illustrates the flexibility of the sectioned approach.
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_15.png}
-        \caption{Growth ratio $1.5$.}
+        \caption{Gentle grading.}
         \label{fig:mesh_growth_15}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_20.png}
-        \caption{Growth ratio $2.0$.}
+        \caption{Moderate grading.}
         \label{fig:mesh_growth_20}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.32\textwidth}
         \centering
         \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_30.png}
-        \caption{Growth ratio $3.0$.}
+        \caption{Steep grading.}
         \label{fig:mesh_growth_30}
     \end{subfigure}
-    \caption{Section-wise growth control on the W100 Nakazima specimen (quarter
-model, face-on view). All three meshes share the same fixed $0.2$\,mm apex size;
-only the section-to-section growth ratio is changed ($1.5$, $2.0$, $3.0$),
-controlling how rapidly the elements coarsen from the apex towards the flange.}
+    \caption{Example of independent section sizing on the W100 Nakazima specimen
+(quarter model, face-on view). All three meshes share the same fine central
+element size; only the rate at which the elements coarsen towards the flange
+differs, from gentle (left) to steep (right).}
     \label{fig:mesh_growth}
 \end{figure}
 
-\subsubsection{Mesh Degrees of Freedom}
-
-The global refinement factor and the section-to-section growth ratio are only
-two particular combinations drawn from a larger control set. The meshing model
-exposes the full partition layout together with an independent target size for
-every section, in both the radial and circumferential directions, and the
-through-thickness layer count. As summarised on the mesh-zone layout of
-Figure~\ref{fig:bm_mesh_zones}, these controls fall into two groups: the
-\emph{partition geometry} (the inner split, the inner arc radius
-$P_\mathrm{inner\_r}$, the circle radius $P_\mathrm{circle\_r}$, the
-$\mathrm{XZ}$-plane position, and the W200 radii $P_\mathrm{section\,1\,y}$,
-$P_\mathrm{section\,2\,r}$, and $P_\mathrm{section\,3\,r}$) sets \emph{where} the
-density changes by moving the section boundaries, whereas the \emph{per-section
-target sizes} (S1--S4) set the element size \emph{within} each section. The
-complete set is exposed both through the pipeline web interface and directly in
-the configuration file, so that a mesh can be defined interactively or scripted
-in code, and the refinement and growth studies above are recovered as special
-cases of the same control set.
+The section boundaries and the per-section target sizes can be set either through
+the pipeline web interface or directly in its configuration, so that a mesh can
+be defined interactively or reproduced in a scripted study. The global refinement
+factor and the gradings shown above are recovered as particular choices within
+this same set of controls.
 
 \section{Numerical Formulation}
 

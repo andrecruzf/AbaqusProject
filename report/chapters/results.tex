@@ -199,9 +199,8 @@ criterion.
 
 The influence of mesh refinement was assessed by comparing the extracted failure
 strain for different element sizes. The meshes were generated automatically by
-sweeping the global refinement factor $f_\mathrm{MR}$ of
-Section~\ref{sec:mesh_generation}, so that the partition topology and the apex
-resolution were preserved while the surrounding element size was varied
+sweeping the global refinement factor of Section~\ref{sec:mesh_generation}, which
+scales all section sizes together while leaving the sectioning unchanged
 (Figure~\ref{fig:mesh_mr_sweep}). Since strain localization is mesh-sensitive,
 the production mesh was selected as the coarsest discretisation for which the
 extracted forming-limit point had converged, that is, the largest element size
