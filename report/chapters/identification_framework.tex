@@ -31,57 +31,32 @@ to be applied to the same DIC dataset.
 
 The Min–Stoughton criterion was studied as a possible extension of the
 existing FLC identification framework. The method of Min, Stoughton, Carsley
-and Lin~\cite{Min2017} is a spatio-temporal curvature criterion: instead of
-identifying necking from a final strain profile, it tracks the evolution of the
-measured three-dimensional specimen surface and detects the sudden curvature
-increase caused by the first local through-thickness dimple. This links the
-criterion directly to the physical picture of localized necking: after diffuse
-necking, a small surface dimple appears and then expands into the final neck
-band.
+and Lin~\cite{Min2017} is a geometric, spatio-temporal curvature
+criterion. Instead of evaluating only the final strain profile, it follows how
+the measured three-dimensional specimen surface bends during the test. The
+geometric idea is simple: before localized necking, the surface curvature
+evolves smoothly; when a local through-thickness dimple starts to form, the
+surface bends more sharply and the fitted curvature rises faster than expected.
 
-In the improved three-dimensional version of the method, the curvature is not
-fitted along a single manually selected line. A narrow rectangular point matrix
-is placed around the necking region, with width $W_X$ across the neck band and
-length $W_Y$ along the neck band. For Marciniak tests, the DIC surface
-coordinates $(X,Y,Z)$ are extracted for this matrix over the image sequence. A
-reference frame $M$ is selected before localized necking, and the background
-surface shape is removed by subtracting the reference height,
-$Z'_{ij}(k)=Z_{ij}(k)-Z_{ij}(M)$. A small superimposed artificial curvature
-($C_\mathrm{SAC}$) is then added before fitting circles to the profiles in the
-matrix columns; this stabilizes the least-squares circle fit when the true
-curvature is close to zero. The curvature signal $C_\mathrm{pm}(k)$ is defined
-as the averaged fitted curvature over the point matrix.
+The method therefore compares two curvature histories. The first one is the
+tracked curvature, obtained from the current DIC surface around the necking
+region. It represents what the specimen is actually doing. The second one is a
+predicted curvature, obtained by extrapolating the previous smooth evolution of
+the same surface. It represents what the curvature should have been if the
+deformation had continued without localization. As long as deformation remains
+stable, the tracked curvature follows the prediction. When the tracked
+curvature persistently exceeds the predicted value, the surface is bending more
+than the previous deformation history can explain, which is interpreted as the
+onset of localized necking.
 
-The onset frame is determined from the time history of $C_\mathrm{pm}$. For a
-candidate frame $K$, a predicted curvature $C_{\mathrm{pm},P}$ is obtained by a
-linear regression through the previously measured curvature values. The onset
-of localized necking is assigned to the first frame $K$ for which
-\[
-  C_\mathrm{pm}(k) > C_{\mathrm{pm},P}(k) + \Delta
-  \quad \text{for} \quad K \leq k \leq K+n-1 .
-\]
-In the examples of Min et al.~\cite{Min2017}, $n=8$ consecutive frames and
-$\Delta=C_\mathrm{SAC}/10$ were used. The parameters $W_X$, $W_Y$,
-$C_\mathrm{SAC}$, $n$, and the reference-frame selection therefore form the
-practical calibration set of the method. The paper suggests
-$2\,\mathrm{mm}\leq W_X\leq 8\,\mathrm{mm}$ and
-$10\,\mathrm{mm}<W_Y\leq 40\,\mathrm{mm}$ for the investigated cases, with
-smaller $W_X$ suitable for neck bands perpendicular to the major stress
-direction and larger $W_X$ for inclined or crossed neck bands.
-
-For Nakazima tests, the same physical curvature idea cannot be applied directly
-to the raw $(Y,Z)$ profiles because the specimen undergoes out-of-plane
-wrapping over a hemispherical punch. Min et al.~\cite{Min2017} therefore
-transform the measured surface into an equivalent profile described by the
-spherical arc distance $D$ and the distance $R_\mathrm{out}$ from the punch
-centre. The reference subtraction is then performed on $R_\mathrm{out}$ rather
-than on $Z$,
-$R'_{\mathrm{out},ij}(k)=R_{\mathrm{out},ij}(k)-R_{\mathrm{out},ij}(M)$, and
-the same curvature-history criterion is applied. This transformation requires
-the punch radius, sheet thickness, pole position, strain state at the pole, and
-the deformed DIC surface coordinates. It also imposes an important validity
-condition: the reference frame has to be selected after the evaluated local
-surface has wrapped onto the punch but before localized necking starts.
+For Marciniak tests, this curvature is fitted on a small narrow surface patch
+around the neck band, rather than on one manually selected line. This makes the
+criterion less dependent on the exact line chosen by the operator. For
+Nakazima tests, the same idea is applied after a geometric transformation,
+because the sheet wraps around a hemispherical punch. The measured surface is
+expressed relative to the punch geometry, so that the local curvature increase
+caused by necking can be separated from the global curvature imposed by the
+punch.
 
 Within this project the Min–Stoughton method was therefore treated as a
 methodology and data-integration task rather than as a finalized GUI feature.
