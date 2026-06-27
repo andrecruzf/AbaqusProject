@@ -20,16 +20,33 @@ This work is part of the project \textit{Towards Robust Forming Limit Curve Iden
 
 \section{Objectives}
 
-The objective of this report is to document the complete project structure and
-to develop the numerical part in sufficient detail for direct integration with
-the experimental and identification work packages. The specific goals are:
+The objective of this semester project is to connect the experimental,
+identification, and numerical parts of the forming-limit workflow and to bring
+the numerical pipeline to a reproducible state. The report does not aim to
+deliver a complete validated numerical FLC database for every test
+configuration. Instead, it documents the implemented framework, reports the
+available experimental trends, and defines the numerical studies required before
+production simulations can be interpreted quantitatively.
+
+The specific objectives are:
 
 \begin{enumerate}
-  \item Define the experimental campaign parameters and robustness requirements for Nakazima, Marciniak, and Punch-in-Punch testing.
-  \item Describe the FLC identification framework and the role of ISO, Volk-Hora, Merklein, Pham-Sigvant, and Stoughton-type criteria.
-  \item Parameterise Nakazima, Marciniak, and Punch-in-Punch simulations in Abaqus/Explicit for the relevant specimen widths, sheet thicknesses, punch radii, forming travels, and material orientations.
-  \item Automate the numerical workflow from model building to solver submission, post-processing, and result synchronisation on the ETH Euler HPC cluster.
-  \item Maintain comparable element sizes across specimen and punch configurations, and export force--displacement curves, energy histories, strain paths, forming-limit points, and visual diagnostics in a format shared with the identification framework.
+  \item Analyse the available Nakazima experimental results, with emphasis on
+  the influence of material orientation, punch diameter, sheet thickness, and
+  the ISO~12004-2 evaluation window.
+  \item Document the existing FLC identification framework and clarify the
+  status of the implemented criteria and the investigated Min--Stoughton
+  curvature extension.
+  \item Develop a parameterised Abaqus/Explicit pipeline that can generate,
+  submit, and post-process Nakazima, Marciniak, and Punch-in-Punch simulations
+  from a common configuration interface.
+  \item Implement mesh controls that preserve comparable element sizes across
+  specimen and punch configurations and define the independent mesh-refinement
+  and mass-scaling studies needed to select production settings.
+  \item Export a consistent set of numerical result files, including force--
+  displacement histories, energy histories, strain paths, forming-limit points,
+  and diagnostic visualisations, so that future simulations can be compared
+  directly with the experimental and identification workflows.
 \end{enumerate}
 
 \section{Report Structure}
