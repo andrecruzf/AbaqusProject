@@ -177,6 +177,22 @@ energy and internal energy, $\mathrm{ALLKE}/\mathrm{ALLIE}$, was monitored
 throughout the forming step. A ratio below 5\% was used as the acceptance
 criterion.
 
+The way the punch motion is ramped over time also influences the inertial
+response, and two velocity profiles were compared for this purpose. In the
+smooth-step profile the punch velocity rises gradually from zero to a peak at
+mid-stroke and returns to zero, whereas in the constant-velocity profile the
+punch advances at a steady speed with only short smooth ramps at the start and
+end of the stroke. The choice between them is a trade-off. The smooth-step
+profile is the softer option from a computational point of view: its gradual
+acceleration and deceleration limit the inertial disturbance and keep the energy
+ratio low, which makes it more forgiving for the explicit solution. The
+constant-velocity profile is closer to reality, since it reproduces the steady
+advance of the physical test bench and maintains a uniform strain rate during
+forming, at the cost of relying on the end ramps to avoid an inertial spike at
+first punch contact. In both cases a gradual onset is essential, as an
+instantaneous velocity step at first contact would spike the kinetic energy and
+break the quasi-static assumption.
+
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
 
