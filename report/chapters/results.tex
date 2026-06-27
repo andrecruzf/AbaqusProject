@@ -139,43 +139,34 @@ The intersection-line method exposes two fixed length-scale parameters: the spac
 
 These observations indicate that the ISO~12004-2 evaluation, calibrated for a single standardised punch, cannot be transferred unchanged to a campaign that varies the punch diameter: the extracted 40\,mm limit reflects the fixed window as much as the material response. The window width and, by the same argument, the intersection-line spacing should be made tunable and geometry-aware, scaling with the punch diameter and the sheet thickness respectively. The $D/10$ rule is a first, deliberately simple candidate. A defensible parameter choice additionally requires verifying that the extracted limit is insensitive to the window in the neighbourhood of the selected value (a convergence criterion), and cross-validating against the window-independent criteria of Sections~\ref{sec:vh_method} and~\ref{sec:minstoughton_method} (Volk \& Hora and Min--Stoughton). This validation is left to future work.
 
-\section{Task II: FLC Identification Workflow}
-\label{sec:results_task2}
+\section{Task III: Numerical Simulation Results}
+\label{sec:numerical_results}
 
-The results chapter focuses on the implemented numerical workflow and its
-interfaces to the experimental campaign and identification framework. For each
-selected configuration, the pipeline creates the Abaqus model, submits the
-solver job on Euler, runs ODB-based post-processing, and synchronises structured
-result artefacts. The same interface is used for Nakazima, Marciniak, and
-Punch-in-Punch simulations, so that specimen width, sheet thickness, punch
-radius, punch travel, material orientation, mass scaling, and mesh refinement
-can be varied without changing the post-processing schema.
-
-Each completed simulation produces the same set of data products:
-\texttt{punch\_fd.csv}, \texttt{energy\_data.csv}, \texttt{strain\_path.csv},
-\texttt{forming\_limits.csv}, diagnostic figures, and movie files. This common
-output structure is important for the broader project because the numerical
-data can be compared directly with Task~I experiments and passed to the Task~II
-FLC identification framework.
+This section reports the verification of the numerical framework and the
+representative forming results obtained with it. For each selected
+configuration, the pipeline creates the Abaqus model, submits the solver job on
+the Euler cluster, runs the ODB-based post-processing, and synchronises a
+structured set of result artefacts. The same interface is used for the Nakazima,
+Marciniak, and Punch-in-Punch configurations, so that specimen width, sheet
+thickness, punch radius, punch travel, material orientation, mass scaling, and
+mesh refinement can be varied without changing the post-processing schema. Every
+simulation produces the same data products (\texttt{punch\_fd.csv},
+\texttt{energy\_data.csv}, \texttt{strain\_path.csv},
+\texttt{forming\_limits.csv}, diagnostic figures, and movies), so that the
+numerical results can be compared directly with the Task~I experiments and
+passed to the Task~II identification framework. The structure and capabilities
+of the framework itself were described in Chapter~\ref{chap:numerical_model} and
+are not repeated here.
 
 \subsection{Reported Simulation Configurations}
 
-Since the numerical framework is highly parameterised, the results are reported
-together with the configuration that generated them. The full inventory of
-adjustable settings is given in Appendix~\ref{app:configuration_parameters}.
-The present chapter only repeats the concrete values that are needed to
-interpret a specific comparison. This separation keeps
-Chapter~\ref{chap:numerical_model} focused on the modelling framework itself,
-while preserving traceability for the simulations being compared.
-
-\section{Numerical Simulation Results}
-\label{sec:numerical_results}
-
-The numerical results presented in this section focus on the validation of the
-simulation settings and on representative forming results obtained with the
-automated framework. The general structure and capabilities of the framework
-were introduced in Chapter~\ref{chap:numerical_model}; they are therefore not
-repeated here.
+Since the numerical framework is highly parameterised, each result is reported
+together with the configuration that generated it. The full inventory of
+adjustable settings is given in Appendix~\ref{app:configuration_parameters}; the
+present chapter only repeats the concrete values needed to interpret a specific
+comparison. This keeps Chapter~\ref{chap:numerical_model} focused on the
+modelling framework while preserving traceability for the simulations being
+compared.
 
 \subsection{Quasi-Static Validation}
 \label{sec:quasi_static_validation}
@@ -185,181 +176,6 @@ checked for quasi-static behaviour. For this purpose, the ratio between kinetic
 energy and internal energy, $\mathrm{ALLKE}/\mathrm{ALLIE}$, was monitored
 throughout the forming step. A ratio below 5\% was used as the acceptance
 criterion.
-
-\subsection{Element-Size Control Across Configurations}
-\label{sec:mesh_control}
-
-A central requirement of this work is that the element size is controlled in a
-reproducible, geometry-independent way, so that simulations of different
-specimen widths and punch configurations can be compared without the mesh acting
-as a hidden variable. This is handled by the modular meshing tool, which seeds
-the specimen from a single radius-based zone table rather than from a manually
-built mesh per model. Because the resulting discretisation is produced entirely
-at the meshing stage and does not depend on the solver, the element-size control
-can be generated and verified at negligible cost, independently of the more
-expensive forming simulations.
-
-The in-plane discretisation is defined by a fixed table of concentric seeding
-zones (Table~\ref{tab:mesh_zones}). Each edge is assigned the target size of the
-first zone whose outer radius exceeds the edge radius, so the element size is a
-function of radial position alone. Two properties follow directly. First, at any
-given radius the target element size is identical across all specimen widths and
-punch diameters, because the same zone table is applied to every geometry; the
-specimen width only determines how many of the outer zones are present, since
-outer zones are silently skipped on narrow specimens. Second, the apex zone
-($r < 5$\,mm) can be locked to a fixed size during refinement studies, so the
-critical fracture region retains a constant resolution while the surrounding mesh
-is varied. Through the thickness, the sheet is seeded with a fixed number of
-element layers ($N_\mathrm{thk} = 10$), so the through-thickness resolution is
-likewise constant across configurations. The partitioned topology and the radial
-and circumferential seeding controls that expose these zones are shown in
-Figure~\ref{fig:bm_mesh_zones}.
-
-\begin{table}[H]
-\begin{center}
-\caption{Radius-based seeding zones applied to every specimen geometry. The
-target element size depends only on the radial position, which makes the element
-size identical across specimen widths and punch diameters by construction. Sizes
-are shown for the baseline refinement factor $f_\mathrm{MR}=1$.}
-\label{tab:mesh_zones}
-\begin{tabular}{@{}lccl@{}}\toprule[1.5pt]
-Radius range [mm] & Radial size [mm] & Circ.\ size [mm] & Region \\ \midrule
-$r \le 5$       & 0.1 & 0.1 & Punch apex \\
-$5 < r \le 20$  & 0.2 & 0.2 & Punch contact zone \\
-$20 < r \le 30$ & 0.2 & 0.2 & Transition \\
-$30 < r \le 55$ & 0.5 & 0.5 & Dome shoulder \\
-$r > 55$        & 1.0 & 1.0 & Flange / clamped zone \\ \bottomrule[1.5pt]
-\end{tabular}
-\end{center}
-\end{table}
-
-The overall mesh density is driven by a single global mesh refinement factor
-$f_\mathrm{MR}$, which scales the in-plane target sizes uniformly on top of the
-fixed partition topology ($f_\mathrm{MR}=1$ baseline, $f_\mathrm{MR}=0.5$ finer,
-$f_\mathrm{MR}=2$ coarser). Because refinement is a single configuration value
-rather than a manual remeshing step, the mesh-size study reported in
-Section~\ref{sec:mesh_refinement_analysis} is generated automatically by sweeping
-$f_\mathrm{MR}$, which realises the user-defined automated mesh-size modification
-targeted by the framework. Figure~\ref{fig:mesh_mr_sweep} illustrates this on the
-$W100$ Nakazima specimen for $f_\mathrm{MR}=1$, $2$, and $4$: the partition
-topology and the locked apex zone are preserved across the three meshes, while
-the element size in the surrounding zones scales with the refinement factor.
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR1_top.png}
-        \caption{$f_\mathrm{MR}=1$ (baseline).}
-        \label{fig:mesh_mr1}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR2_top.png}
-        \caption{$f_\mathrm{MR}=2$.}
-        \label{fig:mesh_mr2}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_MR4_top.png}
-        \caption{$f_\mathrm{MR}=4$.}
-        \label{fig:mesh_mr4}
-    \end{subfigure}
-    \caption{Automated mesh-size modification on the $W100$ Nakazima specimen
-(quarter model, face-on view) for global refinement factors
-$f_\mathrm{MR}=1$, $2$, and $4$. The partition topology and the fixed apex zone
-are identical across the three meshes; only the global refinement factor is
-changed, and the surrounding element size scales accordingly. The meshes were
-generated and rendered automatically without running the solver.}
-    \label{fig:mesh_mr_sweep}
-\end{figure}
-
-Beyond a uniform refinement, the seeding controls also allow the element size to
-grow at different rates from the fine apex region towards the coarse flange. The
-target size assigned to each radial section is set independently, so the ratio
-between adjacent sections, that is, the rate at which the mesh coarsens outwards,
-can be tuned while keeping the apex resolution fixed. Figure~\ref{fig:mesh_growth}
-shows the $W100$ Nakazima specimen meshed with the same $0.2$\,mm apex size but
-section-to-section growth ratios of $1.5$, $2.0$, and $3.0$. A gentle ratio keeps
-a fine mesh across the whole dome at a higher element count, whereas an
-aggressive ratio concentrates the elements near the apex and coarsens rapidly
-towards the flange, reducing the model size at the cost of dome resolution.
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_15.png}
-        \caption{Growth ratio $1.5$.}
-        \label{fig:mesh_growth_15}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_20.png}
-        \caption{Growth ratio $2.0$.}
-        \label{fig:mesh_growth_20}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{report/img/mesh_W100_growth_30.png}
-        \caption{Growth ratio $3.0$.}
-        \label{fig:mesh_growth_30}
-    \end{subfigure}
-    \caption{Element-size growth control on the $W100$ Nakazima specimen
-(quarter model, face-on view). All three meshes share the same fixed $0.2$\,mm
-apex size; only the section-to-section growth ratio is changed ($1.5$, $2.0$,
-$3.0$), controlling how rapidly the elements coarsen from the apex towards the
-flange. Generated and rendered automatically without running the solver.}
-    \label{fig:mesh_growth}
-\end{figure}
-
-The global refinement factor and the section-to-section growth rate shown above
-are only two particular combinations drawn from a much larger control space. The
-meshing model is deliberately modular: rather than exposing a single element
-size, it exposes the full partition layout and an independent target size for
-every section, in both the radial and circumferential directions, together with
-the number of through-thickness layers. The two figures above are therefore
-representative examples, and many further meshes can be produced by combining
-these settings differently, for example refining one region while coarsening
-another, or shifting the partition boundaries themselves.
-
-These controls are organised around the partitioned mesh-zone layout shown in
-Figure~\ref{fig:mesh_gui}, which the pipeline exposes both through its web
-interface and directly in the configuration file, so that the same mesh can be
-defined interactively or scripted in code. The diagram maps the two specimen
-families (W20--W120 and W200) and assigns each coloured region a named section:
-S1 the finest centre zone, S2 the transition, S3 the outer transition, the S3\_1
-band specific to W20/W50, and S4 the outer coarse band. Two groups of variables
-act on this layout. The \emph{partition geometry} (the inner split $x$, inner arc
-radius $P_\mathrm{inner\_r}$, circle radius $P_\mathrm{circle\_r}$, and the
-$\mathrm{XZ}$-plane position, together with the W200 radii $P_\mathrm{section\,1\,y}$,
-$P_\mathrm{section\,2\,r}$, and $P_\mathrm{section\,3\,r}$) sets the boundaries
-between sections, that is, it decides \emph{where} the mesh density changes. The
-\emph{target element size} assigned to each section (S1--S4, independently in the
-radial and circumferential directions) sets the element size \emph{within} that
-section. A global mesh factor and a through-thickness seed count complete the
-set. The refinement sweep of Figure~\ref{fig:mesh_mr_sweep} corresponds to
-scaling all section sizes by the global factor, while the growth-rate study of
-Figure~\ref{fig:mesh_growth} corresponds to changing the ratio between adjacent
-section sizes; both are thus special cases of this same underlying control set.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\linewidth]{report/img/mesh_zone_diagram.png}
-    \caption{Partitioned mesh-zone layout exposed by the pipeline (web interface
-and configuration file). Each specimen family (W20--W120 and W200) is divided
-into named sections S1--S4, with the partition variables marking the section
-boundaries and the control mapping (bottom) identifying each zone. The target
-element size of every section is set independently in the radial and
-circumferential directions; the refinement-factor and growth-rate meshes of
-Figures~\ref{fig:mesh_mr_sweep} and~\ref{fig:mesh_growth} are two particular
-configurations of this control set.}
-    \label{fig:mesh_gui}
-\end{figure}
 
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
@@ -381,10 +197,16 @@ criterion.
 \subsubsection{Mesh Refinement Analysis}
 \label{sec:mesh_refinement_analysis}
 
-The influence of mesh refinement was assessed by comparing the extracted
-failure strain for different element sizes. Since strain localization is
-mesh-sensitive, the selected mesh had to provide a stable forming-limit point
-while keeping the computational cost acceptable.
+The influence of mesh refinement was assessed by comparing the extracted failure
+strain for different element sizes. The meshes were generated automatically by
+sweeping the global refinement factor $f_\mathrm{MR}$ of
+Section~\ref{sec:mesh_generation}, so that the partition topology and the apex
+resolution were preserved while the surrounding element size was varied
+(Figure~\ref{fig:mesh_mr_sweep}). Since strain localization is mesh-sensitive,
+the production mesh was selected as the coarsest discretisation for which the
+extracted forming-limit point had converged, that is, the largest element size
+beyond which further refinement no longer changed the failure strain
+appreciably, so as to keep the computational cost acceptable.
 
 \subsubsection{Selection of Numerical Parameters}
 \label{sec:selection_numerical_parameters}
@@ -406,8 +228,9 @@ points.
 \label{sec:nakazima_results}
 
 The Nakazima simulations provide the main reference case. The different
-specimen widths cover strain states from uniaxial tension to biaxial stretching.
-The extracted limit strains are reported in Table~\ref{tab:nakazima_flc}.
+specimen widths cover strain states from uniaxial tension to biaxial stretching,
+and the extracted limit strains are reported as principal-strain points at the
+onset of failure for each specimen width.
 
 \subsubsection{Marciniak Configuration}
 \label{sec:marciniak_results}
