@@ -7,7 +7,7 @@ Figure~\ref{fig:architecture} shows the full pipeline architecture, from local c
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\textwidth]{img/architecture.png}
-  \caption{Automated simulation pipeline architecture. Local machine (blue) deploys to the ETH Euler HPC cluster. The login node builds all FE models; compute nodes run the solver and post-processing jobs in parallel under SLURM. The FLC aggregation job runs after all solver jobs complete via a SLURM \texttt{afterok} dependency.}
+  \caption{Automated simulation pipeline architecture. Local machine (blue) pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the Abaqus/Explicit solver and post-processing under SLURM. Optional plotting jobs can be submitted with a SLURM \texttt{afterok} dependency after the solver has completed.}
   \label{fig:architecture}
 \end{figure}
 
@@ -17,34 +17,261 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
 
 \begin{tabbing}
  \hspace*{4.5cm} \= \kill
- \texttt{config.py}             \> Central configuration — all model parameters \\[0.5ex]
+ \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
+ \texttt{app.py}                \> Streamlit interface for inspecting results and preparing scalar runs \\[0.5ex]
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
  \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job} \\[0.5ex]
  \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran 77) \\[0.5ex]
  \texttt{geometries/}           \> Reference blank geometry files (W20--W200) \\[0.5ex]
+ \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
+ \texttt{submit\_one.sh}        \> Builds and submits one selected simulation case on Euler \\[0.5ex]
+ \texttt{run\_cluster.sh}       \> SLURM job script: solver, ODB post-processing, plots, and copy-back \\[0.5ex]
  \texttt{postproc.py}           \> Extracts strain path and energy ratio from ODB \\[0.5ex]
  \texttt{postproc\_movie.py}    \> Renders SDV1 (EQPS) animation to \texttt{.webm} \\[0.5ex]
- \texttt{flc\_plot.py}          \> Aggregates all \texttt{strain\_path.csv} files and plots FLC \\[0.5ex]
- \texttt{deploy\_all.sh}        \> Entry point: push scripts to Euler, build all widths, submit jobs \\[0.5ex]
- \texttt{run\_cluster.sh}       \> SLURM job script: solver + postproc + copy results to home \\[0.5ex]
- \texttt{run\_flc.sh}           \> SLURM FLC aggregation job (runs after all solver jobs)
+ \texttt{plot\_results.py}      \> Creates per-specimen diagnostic plots \\[0.5ex]
+ \texttt{plot\_flc.py}          \> Aggregates selected \texttt{strain\_path.csv} files and plots FLC \\[0.5ex]
+ \texttt{run\_plots.sh}         \> Optional SLURM plotting and FLC aggregation job
+\end{tabbing}
+
+\section{Configurable Simulation Parameters}
+\label{app:configuration_parameters}
+
+The numerical framework is controlled from a central configuration file. The
+main text describes the modelling assumptions and data flow, while the
+configuration groups are collected here to keep the numerical model chapter
+focused on the general framework.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Main user-tunable parameter groups in the numerical framework.}
+\label{tab:framework_parameters}
+\begin{tabular}{@{}lll@{}}\toprule[1.5pt]
+Parameter group & Examples & Purpose \\ \midrule
+Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup \\
+Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
+Tool geometry & Punch radius, punch variant, die radii & Study tooling and size effects \\
+Process conditions & Punch travel, speed, friction & Match or vary test conditions \\
+Material orientation & Rolling/transverse angle & Evaluate anisotropy effects \\
+Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial resolution \\
+Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
+Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+For the current scalar sensitivity study, mass scaling and mesh refinement are
+not treated as a fully factorial grid. Instead, two independent sweeps are run
+on the same Nakazima W100 reference case with a \SI{100}{\milli\meter} punch
+and a fixed punch speed of \SI{5}{\milli\meter\per\second}. This keeps the
+number of Abaqus token-consuming jobs manageable and separates inertial effects
+from spatial-discretisation effects.
+
+\begin{table}[ht]
+\begin{center}
+\caption{Mass-scaling sweep for the scalar Nakazima W100 study. The mesh
+refinement factor is kept fixed at the reference value $f_\mathrm{MR}=2$ while
+the mass-scaling target time increment is varied.}
+\label{tab:mass_scaling_sweep}
+\begin{tabular}{@{}lccccc@{}}\toprule[1.5pt]
+Run & MS1 & MS2 & MS3 & MS4 & MS5 \\ \midrule
+$\Delta t_\mathrm{MS}$ [s] &
+$1\times10^{-6}$ &
+$5\times10^{-6}$ &
+$1\times10^{-5}$ &
+$5\times10^{-5}$ &
+$1\times10^{-4}$ \\
+$f_\mathrm{MR}$ & 2 & 2 & 2 & 2 & 2 \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}[ht]
+\begin{center}
+\caption{Mesh-refinement sweep for the scalar Nakazima W100 study. The
+mass-scaling target is kept fixed at the reference value
+$\Delta t_\mathrm{MS}=1\times10^{-5}$\,s while the global mesh-refinement factor
+is varied.}
+\label{tab:mesh_refinement_sweep}
+\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
+Run & MR1 & MR2 & MR3 \\ \midrule
+$f_\mathrm{MR}$ & 1 & 2 & 3 \\
+$\Delta t_\mathrm{MS}$ [s] &
+$1\times10^{-5}$ &
+$1\times10^{-5}$ &
+$1\times10^{-5}$ \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Numerical Framework Implementation Details}
+\label{app:numerical_implementation}
+
+Chapter~\ref{chap:numerical_model} describes the framework at the level of
+modelling choices and data flow. The implementation-level identifiers, the
+enforced output requests, and the post-processing file catalogue referenced
+there are collected here.
+
+\subsection{Element and Model Identifiers}
+
+\begin{tabbing}
+ \hspace*{4.0cm} \= \kill
+ \texttt{C3D8R}                \> 8-node linear brick element with reduced integration (deformable blank) \\[0.5ex]
+ \texttt{XSYMM}, \texttt{YSYMM} \> Symmetry boundary conditions on the two quarter-model cut planes \\[0.5ex]
+ \texttt{STATUS}              \> Element-deletion state used for fracture-location and fallback endpoint detection \\[0.5ex]
+ \texttt{SDV6}                \> Damage solution-dependent variable used for the damage-based limit \\[0.5ex]
+ \texttt{VUMAT\_explicit.f}   \> Hosford--Coulomb user material (46 material constants, 17 SDVs)
+\end{tabbing}
+
+Hourglass control is assigned through the solid-section controls, and element
+deletion is enabled through the VUMAT state variable. Several solution-dependent
+variables are initialised explicitly in the generated input deck to avoid
+zero-valued initial damage at the first increment.
+
+\subsection{Enforced Output Requests}
+
+The input deck is modified after model generation to enforce a common output set
+for all configurations:
+\begin{itemize}
+  \item \textbf{Field output:} stress, logarithmic strain, equivalent plastic
+  strain, all solution-dependent variables, element status, triaxiality,
+  Lode-related quantities, nodal displacement, and reaction force.
+  \item \textbf{History output:} punch displacement and force, die and
+  blank-holder reaction forces, whole-model energies (\texttt{ALLKE},
+  \texttt{ALLIE}), and the history of a representative apex element.
+\end{itemize}
+
+\subsection{Post-Processing File Catalogue}
+
+A single post-processing script reads the ODB and writes the following files,
+which are identical in schema across all test configurations:
+\begin{tabbing}
+ \hspace*{4.0cm} \= \kill
+ \texttt{punch\_fd.csv}       \> Punch force--displacement history \\[0.5ex]
+ \texttt{energy\_data.csv}    \> Whole-model energy histories and the ALLKE/ALLIE ratio \\[0.5ex]
+ \texttt{global.csv}          \> Per-frame global summary quantities \\[0.5ex]
+ \texttt{strain\_path.csv}    \> Major/minor strain path of the critical dome element \\[0.5ex]
+ \texttt{elout.csv}           \> Local history output of the apex element set \\[0.5ex]
+ \texttt{forming\_limits.csv} \> Extracted fracture, Volk--Hora, and damage-based limit points
 \end{tabbing}
 
 \section{Running a Simulation Campaign}
 
-To launch a full campaign for all widths with a given test configuration:
+Because Abaqus token availability limits the number of simultaneous solver
+jobs, the current workflow submits scalar simulations sequentially. A single
+case is launched from the local machine with \texttt{deploy.sh}; the script
+pushes the current project files to Euler and starts \texttt{submit\_one.sh} in
+a remote \texttt{tmux} session. The positional arguments are test type,
+thickness, orientation, specimen width, PiP punch identifier, mesh-refinement
+factor, and mass-scaling target:
 \lstset{language=bash,numbers=none}
 \begin{lstlisting}[frame=lines]
-# Deploy and submit all widths (defaults to TEST_TYPE and thickness from config.py):
-./deploy_all.sh
+# One scalar W100 Nakazima run:
+./deploy.sh nakazima 1.5 0 100 none 2 1e-5
 
-# Or specify test type, thickness, and orientation angle explicitly:
-./deploy_all.sh nakazima 1.0 0
-./deploy_all.sh pip 1.0 0
+# Mass-scaling sweep: repeat manually, one value at a time.
+./deploy.sh nakazima 1.5 0 100 none 2 1e-6
+./deploy.sh nakazima 1.5 0 100 none 2 5e-6
+./deploy.sh nakazima 1.5 0 100 none 2 1e-5
+./deploy.sh nakazima 1.5 0 100 none 2 5e-5
+./deploy.sh nakazima 1.5 0 100 none 2 1e-4
+
+# Mesh-refinement sweep: repeat manually, one value at a time.
+./deploy.sh nakazima 1.5 0 100 none 1 1e-5
+./deploy.sh nakazima 1.5 0 100 none 2 1e-5
+./deploy.sh nakazima 1.5 0 100 none 3 1e-5
 \end{lstlisting}
 
-Results are copied from scratch to the home directory after each job, and the FLC aggregation job runs automatically after all solver jobs complete.
+Results are written to scratch during the solver run and the compact output
+files are copied back to the Euler home directory after post-processing. The
+large ODB remains in scratch storage.
 
 \section{Cluster Configuration}
 
-Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. Each solver job requests 24 CPUs, 64\,GB RAM, and a 24-hour time limit. The Abaqus module is loaded via \texttt{module load abaqus/2023}. Post-processing scripts use \texttt{xvfb-run} for headless ODB rendering. Results are stored in \texttt{/cluster/scratch/acruzfaria/} during the run and copied to \texttt{/cluster/home/acruzfaria/} on completion.
+Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. Each solver job currently requests 24 CPUs, 4\,GB per CPU, and a 48-hour time limit. The Abaqus module is loaded via \texttt{module load abaqus/2023}. Post-processing scripts use \texttt{xvfb-run} for headless ODB rendering. Results are stored in \texttt{/cluster/scratch/acruzfaria/} during the run and copied to \texttt{/cluster/home/acruzfaria/} on completion.
+
+\chapter{User Interface}
+\label{app:interface}
+
+The framework includes a graphical interface, built with Streamlit, that acts as
+a front-end to the configuration file described in
+Chapter~\ref{chap:numerical_model}. It is a finished, working tool that makes the
+pipeline more convenient to use, and it can serve as a basis to inspire future
+development. The interface is organised into three working areas presented below,
+namely job submission, job monitoring, and results inspection, together with an
+experimental AI assistant. Each control writes the corresponding configuration
+value, so a case prepared in the interface is equivalent to one configured
+directly in the configuration file.
+
+\section{Job Submission}
+
+The job-submission view collects all parameters of a single case. The first
+block (Figure~\ref{fig:gui_submit_params}) exposes the test configuration: the
+test type, specimen width, sheet thickness, orientation angle, punch diameter,
+mesh factor, through-thickness seeds, mass-scaling target, punch speed, punch
+travel, velocity profile, friction, and the symmetry option.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_submit_params.png}
+    \caption{Job submission: the case-parameter block of the Submit Job view.}
+    \label{fig:gui_submit_params}
+\end{figure}
+
+A collapsible advanced mesh-settings panel (Figure~\ref{fig:gui_mesh_settings})
+exposes the partitioned mesh-zone layout together with the per-section target
+sizes and partition controls described in Chapter~\ref{chap:numerical_model}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.68\linewidth]{img/gui_mesh_settings.png}
+    \caption{Job submission: the advanced mesh-settings panel, exposing the
+mesh-zone layout and the per-section seeding controls.}
+    \label{fig:gui_mesh_settings}
+\end{figure}
+
+A computational-settings block (Figure~\ref{fig:gui_computational}) estimates the
+resources required for the selected case and proposes a CPU count and wall-time,
+which the user can accept or override before submission.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{img/gui_computational.png}
+    \caption{Job submission: the computational-settings block, which estimates
+and suggests the cluster resources for the selected case.}
+    \label{fig:gui_computational}
+\end{figure}
+
+\section{Job Monitoring}
+
+The job-monitoring view (Figure~\ref{fig:gui_job_status}) queries the Euler queue
+and lists the user's jobs with their state, elapsed time, time limit, and node
+allocation. The state column is colour-coded, with distinct colours for running,
+pending, completed, and failed jobs, and a progress estimate is shown for each
+running solver job.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_job_status.png}
+    \caption{Job monitoring: the Euler queue with the colour-coded job-state
+column (green for running jobs) and the per-job progress estimate.}
+    \label{fig:gui_job_status}
+\end{figure}
+
+\section{Results}
+
+The results view (Figure~\ref{fig:gui_results}) synchronises the processed
+outputs from the cluster and presents them in three modes, namely a single-job
+inspector, an FLC aggregation, and a sensitivity-study comparison. Jobs are
+sorted and selected from a list before their force-displacement curves, strain
+paths, forming-limit points, and diagnostic media are displayed.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results.png}
+    \caption{Results inspection: the Results Viewer, showing the cluster
+synchronisation, the single-job, FLC, and sensitivity view modes, and the job
+selector.}
+    \label{fig:gui_results}
+\end{figure}

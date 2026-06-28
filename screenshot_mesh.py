@@ -2,7 +2,7 @@
 """
 screenshot_mesh.py  —  Render PNG screenshots of the specimen mesh from a .cae.
 
-Run via submit_one.sh / submit_all.sh immediately after the build step:
+Run via submit_one.sh immediately after the build step:
     OUTPUT_DIR=<path>  JOB_NAME=<name>  xvfb-run -a abaqus cae noGUI=screenshot_mesh.py
 
 Output (per job):

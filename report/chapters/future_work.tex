@@ -3,7 +3,7 @@
 The following directions are identified for future investigation, ordered by priority:
 
 \begin{enumerate}
-  \item \textbf{Complete and extend the mesh-size study.} The framework now supports automated mesh-size modification, which addresses the corresponding Task~III requirement. The next step is to complete the full convergence table for all relevant thicknesses and punch configurations, not only the representative W200 reference case, and to document the selected production mesh density.
+  \item \textbf{Complete and extend the mesh-size study.} The framework now supports automated mesh-size modification, which addresses the corresponding Task~III requirement. The next step is to complete the full convergence table for all relevant thicknesses and punch configurations, not only the current W100 scalar reference case, and to document the selected production mesh density.
 
   \item \textbf{Full Task~I numerical campaign.} Complete the simulation campaigns for all three test configurations (Nakazima, Marciniak, PiP) across the specimen geometries, sheet thicknesses, punch radii, and orientation angles used experimentally. This will allow quantification of thickness, size, punch-radius, and anisotropy effects on the numerical FLC, directly supporting Task~I.
 
@@ -18,4 +18,6 @@ The following directions are identified for future investigation, ordered by pri
   \item \textbf{HC material constant calibration.} The 46 VUMAT constants used in this work were taken from a reference calibration. A calibration against dedicated characterisation tests (uniaxial tension, notched tension, shear) for the specific sheet batch used in Task~I would improve predictive accuracy.
 
   \item \textbf{Friction sensitivity.} The Coulomb friction coefficients are set to fixed values in \texttt{config.py}. A parametric study varying the punch--blank and die--blank coefficients would quantify their influence on the FLC and on the prevalence of base fracture vs.\ dome fracture.
+
+  \item \textbf{Develop the user interface further.} The current Streamlit interface (Appendix~\ref{app:interface}) runs as a web application and is convenient for configuring and launching individual cases. Building on this tool, a natural next step is to migrate it to a standalone local application, which would remove the web-server dependency, improve responsiveness for larger result sets, and integrate more directly with the local project and cluster workflow.
 \end{enumerate}

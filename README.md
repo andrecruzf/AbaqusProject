@@ -134,8 +134,7 @@ Or copy the project folder to your machine if you received it as an archive.
 
 ### 2. Edit deploy variables
 
-Open any deploy script (`deploy.sh`, `deploy_all.sh`, `deploy_study.sh`) and
-update the three variables at the top:
+Open `deploy.sh` and update the three variables at the top:
 
 ```bash
 EULER_USER="your_eth_username"          # ← change this
@@ -143,7 +142,7 @@ EULER_HOST="euler.ethz.ch"              # leave as-is
 EULER_DIR="/cluster/home/your_eth_username/AbaqusProject"  # ← change this
 ```
 
-The same three variables appear in all deploy scripts — edit all of them.
+Use the same values in any local helper script that connects to Euler.
 
 ---
 
@@ -233,7 +232,7 @@ Positional arguments (all optional — fall back to `config.py` defaults):
 | 7 | mass scaling dt (s) | `config.MASS_SCALING_DT` |
 | 8 | punch speed (mm/s) | `config.PUNCH_SPEED` |
 | 9 | punch radius (mm) | `config.PUNCH_RADIUS` |
-| 10 | study subdir (for study mode) | `""` |
+| 10 | output subdir (optional grouping) | `""` |
 
 What it does:
 1. Reads `config.py` for all parameters
@@ -243,50 +242,6 @@ What it does:
 5. Submits solver job via `sbatch run_cluster.sh` → returns `JOB_ID`
 6. Submits plot job via `sbatch run_plots.sh flc --dependency=afterok:JOB_ID`
 7. Deletes the `.inp` file (150–190 MB, regenerable) after submission
-
-### Full FLC sweep — `deploy_all.sh`
-
-Pushes all source files to Euler, then launches `submit_all.sh` in a
-**tmux session** (`deploy`) on the login node. The local terminal is freed
-immediately — all building and job submission happens remotely.
-
-```bash
-# Use defaults from config.py
-./deploy_all.sh
-
-# Override test type, thickness, orientation (most common)
-./deploy_all.sh nakazima 1.5 0
-
-# Full explicit override including mesh/scaling/speed
-./deploy_all.sh nakazima 1.5 0 none 2 1e-5 5.0 50
-
-# Specific widths only (after all 8 parameter positions)
-./deploy_all.sh nakazima 1.5 0 none 2 1e-5 5.0 50 20 80 200
-```
-
-Positional arguments (all optional):
-
-| Position | Parameter | Default |
-|----------|-----------|---------|
-| 1 | test type | `config.TEST_TYPE` |
-| 2 | thickness (mm) | `config.BLANK_THICKNESS` |
-| 3 | orientation (deg) | `config.MATERIAL_ORIENTATION_ANGLE` |
-| 4 | PIP punch2 ID (`none` if unused) | `config.PIP_PUNCH2_ID` |
-| 5 | mesh refinement factor | `config.MESH_REFINEMENT_FACTOR` |
-| 6 | mass scaling dt (s) | `config.MASS_SCALING_DT` |
-| 7 | punch speed (mm/s) | `config.PUNCH_SPEED` |
-| 8 | punch radius (mm) | `config.PUNCH_RADIUS` |
-| 9+ | widths | 20 50 80 90 100 120 200 |
-
-`submit_all.sh` runs on Euler and:
-1. Loads the `abaqus/2023` module
-2. For each width: builds the model, renders mesh screenshots, submits the solver job via `sbatch`
-3. Deletes the `.inp` file after each job is submitted
-4. After all solver jobs are queued: submits the FLC aggregation job with `afterok` dependency
-
-All output is captured to `$EULER_DIR/submit_all.log`.
-
----
 
 ## Rendering EQPS animations — `deploy_movie.sh`
 
@@ -321,48 +276,6 @@ Two animations are produced:
 
 ---
 
-## Parameter study — `deploy_study.sh`
-
-Runs a fully factorial mass-scaling × mesh-refinement sweep on a single
-representative specimen (default: W200).
-
-```bash
-# Use defaults from config.py (thickness + orientation)
-./deploy_study.sh
-
-# Override thickness and orientation
-./deploy_study.sh 1.5 0
-```
-
-The study grid is defined at the top of `deploy_study.sh`:
-
-```bash
-MR_VALUES=(1 2 4)
-MS_VALUES=(1e-7 1e-6 1e-5 1e-4)
-```
-
-Each (MR, MS) combination is built and submitted independently via **direct
-blocking SSH calls** to `submit_one.sh` on Euler — one SSH call per job, each
-blocking until the build completes and the SLURM job ID is returned. After all
-jobs are queued, a `plot_study.py` aggregation job is submitted with `afterok`
-dependency; it writes a heatmap PDF (`study_results.pdf`) to the study
-directory.
-
-Additional env-var overrides:
-
-```bash
-# Change punch speed (affects runtime and KE/IE ratio)
-PUNCH_SPEED=2.0 ./deploy_study.sh 1.5 0
-
-# Use a different mesh backend
-MESH_BACKEND=bm ./deploy_study.sh 1.5 0
-
-# Change number of through-thickness seeds (default 10)
-N_THICKNESS_SEEDS=6 ./deploy_study.sh 1.5 0
-```
-
----
-
 ## Monitoring jobs
 
 ### Streamlit app — `app.py`
@@ -388,13 +301,6 @@ fetched silently every 60 s; click **🔄** to force-refresh immediately.
 ```bash
 # Check your queue
 ssh YOUR_ETH_USERNAME@euler.ethz.ch 'squeue --me'
-
-# Attach to the running deploy_all tmux session (live output)
-ssh YOUR_ETH_USERNAME@euler.ethz.ch
-tmux attach -t deploy
-
-# Tail the submission log without keeping SSH open
-ssh YOUR_ETH_USERNAME@euler.ethz.ch 'tail -f /cluster/home/$USER/AbaqusProject/submit_all.log'
 
 # Check progress from a running .sta file (Abaqus status)
 ssh YOUR_ETH_USERNAME@euler.ethz.ch \
@@ -467,9 +373,8 @@ that window closes.
 
 **Note on disk quota:** The Euler home has a ~43 GB soft quota. The pipeline
 auto-deletes `.inp` files after submission, but large `strain_dome.csv` files
-(100 MB – 2 GB each) can accumulate. For sensitivity study directories these
-can be deleted after the study is complete — the key results are in
-`forming_limits.csv` and `study_results.pdf`.
+(100 MB – 2 GB each) can accumulate. These can be deleted after you have
+retrieved the key post-processing outputs such as `forming_limits.csv`.
 
 ---
 
@@ -514,21 +419,16 @@ AbaqusProject/
 ├── screenshot_mesh.py         ← Abaqus Python: renders mesh PNGs after build
 ├── plot_results.py            ← Python+matplotlib: per-specimen PDF
 ├── plot_flc.py                ← Python+matplotlib: FLC aggregation PDF
-├── plot_study.py              ← Python+matplotlib: MS×MR study heatmap PDF
 │
 ├── app.py                     ← Streamlit pipeline manager (submit / monitor / results / AI)
 │
 ├── deploy.sh                  ← single-specimen deploy (push + build + submit)
-├── deploy_all.sh              ← full-width FLC sweep deploy (launches submit_all.sh via tmux)
-├── deploy_study.sh            ← mass scaling × mesh refinement study (blocking SSH loop)
 ├── deploy_movie.sh            ← EQPS animation render deploy
 │
-├── submit_all.sh              ← runs ON Euler: builds all widths + submits solver + FLC jobs
 ├── submit_one.sh              ← runs ON Euler: build + submit for a single specimen
-├── submit_study.sh            ← runs ON Euler: MS×MR study (legacy — superseded by deploy_study.sh)
 │
 ├── run_cluster.sh             ← SLURM: solver + postproc + movie
-├── run_plots.sh               ← SLURM: plotting — flc | results | study (replaces run_flc/run_plot/run_plot_study)
+├── run_plots.sh               ← SLURM: plotting — flc | results
 ├── run_postproc.sh            ← SLURM: postproc-only re-run
 ├── run_movie.sh               ← SLURM: movie render job
 │
@@ -558,7 +458,6 @@ AbaqusProject/
 | `cov_data.csv` | Pham-Sigvant CoV time history: `time_s`, `cov`, `eps1_dot_mean` |
 | `postproc_plots.pdf` | Per-specimen diagnostic plots (8 pages) |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths |
-| `study_results.pdf` | MS×MR sensitivity heatmap (wall time, KE/IE ratio, Δε₁) |
 | `<job>_mesh.png` | ISO view of the specimen mesh — generated at build time |
 | `<job>_mesh_top.png` | Face-on (+Z) view of the specimen mesh |
 | `<job>_movie.webm` | EQPS field animation — isometric full view with translucent tooling |

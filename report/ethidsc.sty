@@ -48,7 +48,7 @@
 \RequirePackage{multirow}
 \RequirePackage{rotating}
 \RequirePackage{mcode}
-\RequirePackage{units}
+\@ifpackageloaded{siunitx}{}{\RequirePackage{units}}
 \RequirePackage{booktabs}
 \RequirePackage[dvipdfm]{geometry}
 \RequirePackage{url}

@@ -1,44 +1,135 @@
-\chapter{FLC Identification Framework}\label{chap:identification_framework}
+\chapter{FLC Identification Framework}
+\label{chap:identification_framework}
 
-\section{Role in the Project}
+\section{Motivation and Scope}
 
-Task~II develops the data evaluation layer of the project. Its purpose is to
-identify forming-limit points from experimental DIC data and from numerical
-strain histories in a modular, robust, and user-friendly way. This is necessary
-because FLC values can vary strongly with the selected detection criterion,
-noise treatment, frame selection, and crack-section definition.
+The identification of forming-limit points is a key step in the construction
+of forming limit curves. After a forming test, the measured strain field must
+be evaluated in order to determine the strain state at the onset of localized
+necking. Since different identification criteria can lead to different limit
+strains, it is useful to compare them within the same post-processing workflow.
 
-\section{Criterion Families}
+In this project, the starting point was an existing graphical user interface
+developed in the laboratory for the post-processing of DIC measurements. This
+tool already included data import, visualization, plotting routines, and the
+DIN/ISO~12004-2 and Volk–Hora identification methods. The contribution of the
+present work was therefore to study an additional criterion based on the work
+of Min, Stoughton, Carsley, and Lin, and to prepare a draft methodology for its
+future integration into the existing framework.
 
-The framework is structured around several criterion families rather than a
-single fixed method:
-\begin{itemize}
-  \item the ISO~12004-2 position-dependent method;
-  \item time-dependent criteria such as Volk-Hora and Merklein;
-  \item the Pham-Sigvant coefficient-of-variation approach;
-  \item Stoughton-type curvature and instability criteria.
-\end{itemize}
+\section{Existing Identification Criteria}
 
-Keeping these methods in one framework allows direct comparison of the
-criterion-dependent FLC values for the same test. This is especially important
-for materials where the ISO evaluation can become unstable, for example when
-dynamic strain ageing produces non-smooth strain localisation.
+The existing framework contains two forming-limit identification methods. The
+DIN/ISO~12004-2 method evaluates the strain distribution along a section
+crossing the localization or crack region and determines the limit strain from
+a spatial fit. The Volk–Hora criterion uses the temporal evolution of the
+strain field to detect the onset of instability.
+Both methods are available within the same GUI environment, which allows them
+to be applied to the same DIC dataset.
 
-\section{Data Interface}
+\section{Draft of the Min–Stoughton Criterion}
+\label{sec:minstoughton_draft}
 
-The identification framework consumes strain-field or strain-history data and
-returns forming-limit points in a common schema. The numerical post-processing
-pipeline therefore exports \texttt{strain\_path.csv} and
-\texttt{forming\_limits.csv} with fixed column names, while the experimental
-workflow provides equivalent DIC-derived strain histories. This shared interface
-allows the same identification logic to be applied to both Task~I experiments
-and Task~III simulations.
+The Min–Stoughton criterion was studied as a possible extension of the
+existing FLC identification framework. The physical principle of the criterion,
+namely the detection of localized necking from the evolution of the surface
+curvature, is described in Section~\ref{sec:minstoughton_method}. The present
+section concerns its translation into a working post-processing procedure for
+the laboratory DIC data.
 
-\section{Connection to the Numerical Model}
+For Marciniak tests, this curvature is fitted on a small narrow surface patch
+around the neck band, rather than on one manually selected line. This makes the
+criterion less dependent on the exact line chosen by the operator. For
+Nakazima tests, the same idea is applied after a geometric transformation,
+because the sheet wraps around a hemispherical punch. The measured surface is
+expressed relative to the punch geometry, so that the local curvature increase
+caused by necking can be separated from the global curvature imposed by the
+punch.
 
-The numerical model does not replace the experimental identification framework.
-Instead, it supplies controlled reference data where geometry, mesh size,
-material orientation, punch motion, and failure frame can be inspected directly.
-This makes the simulations useful for testing whether a criterion responds to
-physical strain localisation or to artefacts introduced by sampling, smoothing,
-or endpoint selection.
+Within this project the Min–Stoughton method was therefore treated as a
+methodology and data-integration task rather than as a finalized GUI feature.
+The required VIC3D quantities are the measured surface positions and
+displacements $(X,Y,Z,U,V,W)$, the strain fields $(\varepsilon_1,
+\varepsilon_2)$, the crack or localization location used to place the point
+matrix, and metadata such as punch diameter and sheet thickness. A provisional
+standalone workflow was created to test these data links and to explore the
+Nakazima transformation, but the detected onset remained sensitive to the
+matrix dimensions, reference-frame choice, smoothing, and persistence
+definition. The final integration therefore still requires a validated
+parameter choice and a consistent treatment of decimated VIC3D frame sequences.
+
+\subsection{Standalone Nakazima Workflow Used for Assessment}
+\label{sec:minstoughton_workflow_assessment}
+
+The standalone Nakazima implementation was used as an assessment workflow for
+the present report. It does not replace the existing DIN/ISO and Volk--Hora GUI
+tools, but it connects the mathematical method of
+Section~\ref{sec:minstoughton_method} to the available laboratory DIC exports.
+The workflow imports the VIC3D reference coordinates, displacement fields, and
+principal strains, reconstructs the deformed surface coordinates, and reads the
+fixed specimen metadata needed for the Nakazima transformation.
+
+The user-drawn crack line is used to orient the point matrix. Its centre $O$ is
+then selected from the local strain field as the maximum of the smoothed major
+strain in a band around that line, so the matrix is not blindly centred on the
+crack-line midpoint. The requested physical matrix dimensions $W_X$ and $W_Y$
+are converted into the point counts $N_X$ and $N_Y$ using the measured DIC grid
+spacing according to Eq.~\eqref{eq:ms_matrix_counts}. The same DIC point IDs are
+then followed through the recorded frames.
+
+For the Nakazima branch, the implementation follows the coordinate definitions
+of Eqs.~\eqref{eq:ms_punch_centre}--\eqref{eq:ms_rout}. The coordinate $D$ is
+computed as the cumulative three-dimensional distance along the ordered
+deformed DIC points of each matrix column, and $R_\mathrm{out}$ is computed from
+the measured deformed point to the reconstructed punch centre. No ideal
+spherical projection is applied, so the measured dimple remains present in the
+radial perturbation. The reference subtraction, SAC addition, circle fitting,
+curvature prediction, and onset criterion then follow
+Eqs.~\eqref{eq:ms_reference_subtraction}--\eqref{eq:ms_delta}.
+
+The reference frame $M$ is handled as a time-based choice rather than a silent
+frame-count fraction, because the VIC3D sequences used here have different
+frame rates before and near fracture. The selected reference frame ID and time
+are stored with the output so that the subtraction state is traceable.
+
+The implementation therefore relies on a small set of constants that originate
+from four distinct sources. A first group is fixed by the method of Min et
+al.~\cite{Min2017}. A second group is read from the specimen metadata. A third
+group is derived from the measured DIC grid for each specimen. The remaining
+constants are the analysis parameters chosen by the user and examined in the
+sensitivity study. These constants and their origin are summarised in
+Table~\ref{tab:ms_constants}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Constants required by the Min--Stoughton workflow and their origin.}
+    \label{tab:ms_constants}
+    \begin{tabular}{l p{0.40\linewidth} p{0.30\linewidth}}
+        \hline
+        Symbol & Meaning & Origin \\
+        \hline
+        \multicolumn{3}{l}{\textit{Fixed by the method}}\\
+        $n$ & Number of consecutive frames required for onset & Min et al.~\cite{Min2017}, $n=8$ \\
+        $\alpha$ & Threshold multiplier, $\Delta=\alpha\,\mathrm{SAC}$ & Paper default $\alpha=1/10$ \\
+        \hline
+        \multicolumn{3}{l}{\textit{Read from specimen metadata}}\\
+        $r_N$ & Punch radius, used to reconstruct the punch centre & \texttt{sample\_ID.xml} / VIC3D project \\
+        $t_0$ & Initial sheet thickness & \texttt{sample\_ID.xml} / VIC3D project \\
+        \hline
+        \multicolumn{3}{l}{\textit{Derived from the DIC measurement}}\\
+        $d_X,\,d_Y$ & DIC grid spacing across and along the band & Median spacing of adjacent DIC points \\
+        $N_X,\,N_Y$ & Matrix point counts & Computed from Eq.~\eqref{eq:ms_matrix_counts} \\
+        $O$ & Neck centre that anchors the matrix & Local maximum of smoothed $\varepsilon_1$ near the crack line \\
+        \hline
+        \multicolumn{3}{l}{\textit{User-selected analysis parameters}}\\
+        $W_X,\,W_Y$ & Physical matrix width and length & Chosen, studied in Section~\ref{sec:results_task2} \\
+        $\mathrm{SAC}$ & Superimposed artificial curvature & Chosen value, e.g. $5\times10^{-4}\,\mathrm{mm}^{-1}$ \\
+        $M$ & Reference frame for background subtraction & Time-based choice, e.g. $M=0.8$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+This section defines how the criterion is assembled. The numerical sensitivity
+of the current implementation, and its comparison with the existing DIN/ISO and
+Volk--Hora outputs, are reported separately in Section~\ref{sec:results_task2}.

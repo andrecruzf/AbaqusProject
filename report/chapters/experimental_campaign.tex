@@ -11,14 +11,14 @@ All experiments were conducted using the high-throughput forming test bench avai
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{report/img/TestBench.jpg}
+    \includegraphics[width=0.8\textwidth]{img/TestBench.jpg}
     \caption{High-throughput forming test bench used for the experimental campaign.}
     \label{fig:test_bench}
 \end{figure}
 
 \section{Material}
 
-All specimens were cut from AA5754 aluminium alloy sheets supplied by Constellium. Four sheet thicknesses were delivered, each identified by an internal CM3 code composed of the delivery date and a letter suffix encoding the thickness. Table~\ref{tab:material_delivery} summarises the delivered batches.
+All specimens were cut from AA5754 aluminium alloy sheets supplied by Constellium. Four sheet thicknesses were delivered, each identified by an internal code composed of the delivery date and a letter suffix encoding the thickness. Table~\ref{tab:material_delivery} summarises the delivered batches.
 
 \begin{table}[htbp]
 \centering
@@ -36,11 +36,15 @@ CM3 Code & Thickness [mm] & Sheet Size [mm] & Sheets \\
 \end{tabular}
 \end{table}
 
-The CM3 naming convention follows the format \texttt{YYYY\_MM\_DD\_X}, where the date denotes the delivery date and the letter suffix (A--D) encodes the sheet thickness in ascending order. The sheet dimensions are given with respect to the rolling direction (RD) and transverse direction (TD) of the material, which is relevant for the orientation of the specimens during testing.
+The naming convention follows the format \texttt{YYYY\_MM\_DD\_X}, where the date denotes the delivery date and the letter suffix (A--D) encodes the sheet thickness in ascending order. The sheet dimensions are given with respect to the rolling direction (RD) and transverse direction (TD) of the material, which is relevant for the orientation of the specimens during testing.
 
 \section{Specimen Geometries and Test Configurations}
 
 The experimental campaign employs Nakazima tests with hemispherical punches. By varying the specimen width, strain paths ranging from uniaxial tension to equi-biaxial stretching are generated, enabling the construction of complete Forming Limit Diagrams. Seven standard specimen widths are used: W20, W50, W80, W90, W100, W120, and W200. Narrow specimens promote uniaxial deformation, whereas wider specimens progressively shift the strain state towards biaxial stretching.
+
+The experimental results reported in this work therefore focus on the Nakazima
+subset of the broader project, while Marciniak and Punch-in-Punch configurations
+are retained as numerical framework capabilities and future extension cases.
 
 \section{Experimental Matrix}
 
@@ -72,4 +76,4 @@ Each set consists of seven specimens (W20, W50, W80, W90, W100, W120, W200), cov
 
 \section{Data Acquisition}
 
-Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:flc_identification}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram.
+Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:identification_framework}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram. The experimental forming limits obtained from this campaign are reported in Section~\ref{sec:results_task1}.

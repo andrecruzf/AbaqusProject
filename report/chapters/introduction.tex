@@ -20,18 +20,69 @@ This work is part of the project \textit{Towards Robust Forming Limit Curve Iden
 
 \section{Objectives}
 
-The objective of this report is to document the complete project structure and
-to develop the numerical part in sufficient detail for direct integration with
-the experimental and identification work packages. The specific goals are:
+The objectives of this semester project follow the three tasks defined in the
+project outline: the generation and analysis of forming-limit experiments, the
+extension of the FLC identification framework, and the development of an
+automated numerical simulation framework. In the present report, these
+objectives are addressed through the AA5754 Nakazima campaign, the
+Min--Stoughton criterion study, and the Abaqus/Explicit pipeline developed for
+the broader Nakazima, Marciniak, and Punch-in-Punch scope.
+
+The specific objectives are:
 
 \begin{enumerate}
-  \item Define the experimental campaign parameters and robustness requirements for Nakazima, Marciniak, and Punch-in-Punch testing.
-  \item Describe the FLC identification framework and the role of ISO, Volk-Hora, Merklein, Pham-Sigvant, and Stoughton-type criteria.
-  \item Parameterise Nakazima, Marciniak, and Punch-in-Punch simulations in Abaqus/Explicit for the relevant specimen widths, sheet thicknesses, punch radii, forming travels, and material orientations.
-  \item Automate the numerical workflow from model building to solver submission, post-processing, and result synchronisation on the ETH Euler HPC cluster.
-  \item Maintain comparable element sizes across specimen and punch configurations, and export force--displacement curves, energy histories, strain paths, forming-limit points, and visual diagnostics in a format shared with the identification framework.
+  \item Perform and analyse the Nakazima experimental campaign by crossing the
+  available sheet thicknesses with the hemispherical punch diameters. The
+  analysis focuses on the influence of sheet thickness, punch diameter,
+  specimen width, and material orientation on the experimentally determined
+  forming-limit curves.
+  \item Evaluate the resulting DIC strain data with the existing FLC
+  identification workflow and assess the sensitivity of the ISO~12004-2
+  evaluation to non-standard punch diameters and fitting-window choices.
+  \item Investigate the implementation of the Min--Stoughton curvature criterion
+  as an extension of the identification framework, including the geometric
+  interpretation, required VIC3D data fields, and remaining integration
+  challenges.
+  \item Develop a parameterised Abaqus/Explicit framework that can generate,
+  submit, and post-process Nakazima, Marciniak, and Punch-in-Punch simulations
+  from a common configuration interface.
+  \item Implement mesh-size controls that preserve comparable element sizes
+  across specimen and punch configurations, and define the mesh-refinement and
+  mass-scaling studies required before quantitative production simulations are
+  evaluated.
 \end{enumerate}
 
 \section{Report Structure}
 
-Chapter~\ref{chap:theory} introduces the theoretical background, including the FLC concept, the test methods, the Hosford-Coulomb failure criterion, and selected FLC identification criteria. Chapter~\ref{chap:experimental_campaign} describes the experimental campaign and robustness requirements of Task~I. Chapter~\ref{chap:identification_framework} summarises the Task~II identification framework and its data interface. Chapter~\ref{chap:numerical_model} describes the FE model, mesh-size control, simulation pipeline, and post-processing methodology of Task~III. Chapter~\ref{chap:results} presents framework verification, sensitivity studies, and representative simulation outputs. Chapter~\ref{chap:conclusion} summarises the findings, while Chapter~\ref{chap:future_work} outlines recommended future work.
+Chapter~\ref{chap:theory} introduces the theoretical background needed for the
+three project tasks. It summarises sheet-metal formability, forming-limit
+diagrams, the Nakazima, Marciniak, and Punch-in-Punch test concepts, and the
+forming-limit identification methods considered in this work.
+
+Chapter~\ref{chap:experimental_campaign} describes the AA5754 experimental
+campaign, including the material batches, specimen widths, punch diameters,
+sheet thicknesses, orientation cases, and DIC data acquisition. The reported
+experimental results focus on the Nakazima subset of the broader campaign.
+
+Chapter~\ref{chap:identification_framework} presents the existing FLC
+identification workflow and the investigated Min--Stoughton extension. The
+chapter clarifies which criteria were already available, what was studied for
+the curvature-based method, and which integration issues remain open.
+
+Chapter~\ref{chap:numerical_model} describes the automated Abaqus/Explicit
+framework developed for Task~III. It covers the common configuration interface,
+model generation for the three forming setups, mesh-size control, Euler cluster
+execution, quasi-static solution strategy, and post-processing outputs.
+
+Chapter~\ref{chap:results} reports the available results. The first part
+analyses the experimental influence of material orientation, punch diameter,
+sheet thickness, and ISO~12004-2 window choice. The second part documents the
+current numerical framework status and defines the mass-scaling and
+mesh-refinement studies required before production simulations are interpreted
+quantitatively.
+
+Chapter~\ref{chap:conclusion} summarises the main findings, and
+Chapter~\ref{chap:future_work} lists the work required to complete the
+experimental evaluation, Min--Stoughton integration, and numerical validation.
+Appendix~\ref{app:pipeline} documents the simulation pipeline, configurable
+parameters, output files, and cluster execution details.

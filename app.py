@@ -58,7 +58,7 @@ EULER_HOST  = "euler.ethz.ch"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 WIDTH_OPTIONS = [20, 50, 80, 90, 100, 120, 200]
-MS_OPTIONS = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+MS_OPTIONS = [1e-3, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 1e-7]
 PIP_OPTIONS   = ["PUNCH_2", "PUNCH_21", "PUNCH_23", "PUNCH_24", "PUNCH_25"]
 VH_ALPHA = 0.55
 VH_FRACTURE_RADIUS_MM = max(0.0, float(os.environ.get("POSTPROC_VH_FRACTURE_RADIUS_MM", "3.0")))
@@ -874,7 +874,8 @@ def make_job_name(test_type, specimen_width, blank_thickness, angle,
                   mass_scaling_dt=1e-5, pip_punch2_id=None,
                   punch_speed=5.0, punch_displacement=35.0,
                   bm_mesh_manual=False, bm_mesh_tag="",
-                  punch_velocity_profile="smoothstep"):
+                  punch_velocity_profile="smoothstep",
+                  fr_punch=0.0):
 
     _t   = str(blank_thickness).replace(".", "p")
     _ang = str(int(angle))
@@ -908,6 +909,10 @@ def make_job_name(test_type, specimen_width, blank_thickness, angle,
 
     _vp = "_vconst" if str(punch_velocity_profile).lower() == "constant" else ""
 
+    _fr = ""
+    if abs(fr_punch) > 1e-9:
+        _fr = "_fr" + f"{fr_punch:.4g}".replace(".", "p")
+
     if test_type == "nakazima":
         prefix = f"Naka{int(round(punch_diameter))}"
     elif test_type == "marciniak":
@@ -915,7 +920,7 @@ def make_job_name(test_type, specimen_width, blank_thickness, angle,
     else:
         prefix = "Pip"
 
-    return f"{prefix}_W{specimen_width}_t{_t}_ang{_ang}{_pip}{_ms}{_mr}{_ts}{_ps}{_pd}{_bm}{_vp}"
+    return f"{prefix}_W{specimen_width}_t{_t}_ang{_ang}{_pip}{_ms}{_mr}{_ts}{_ps}{_pd}{_bm}{_vp}{_fr}"
 
 
 def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
@@ -923,7 +928,8 @@ def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
                          mass_scaling_dt=1e-5, pip_punch2_id=None,
                          punch_speed=5.0, punch_displacement=35.0,
                          bm_mesh_manual=False, bm_mesh_tag="",
-                         punch_velocity_profile="smoothstep"):
+                         punch_velocity_profile="smoothstep",
+                         fr_punch=0.0):
     job_name = make_job_name(
         test_type=test_type,
         specimen_width=0,
@@ -939,6 +945,7 @@ def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
         bm_mesh_manual=bm_mesh_manual,
         bm_mesh_tag=bm_mesh_tag,
         punch_velocity_profile=punch_velocity_profile,
+        fr_punch=fr_punch,
     )
     return "FLC_" + re.sub(r"_W\d+(?=_t)", "", job_name, count=1)
 
@@ -964,6 +971,7 @@ def build_env(cfg, include_width=True):
         "PUNCH_SPEED": f"{cfg['punch_speed']:.6g}",
         "PUNCH_DISPLACEMENT": f"{cfg['punch_displacement']:.6g}",
         "PUNCH_VELOCITY_PROFILE": str(cfg.get("punch_velocity_profile", "smoothstep")),
+        "FR_PUNCH": f"{cfg.get('fr_punch', 0.0):.6g}",
     }
 
     if cfg.get("bm_mesh_manual"):
@@ -1244,8 +1252,8 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
     Strategy: run_cluster.sh prints "  SCRATCH  : <path>" early in the SLURM
     stdout log.  We find the log on HOME (fast, bounded filesystem) using the
     known filename pattern {JOB_NAME}_{JOB_ID}.out, extract the scratch path,
-    then tail the .sta file in that directory.  Works for all submission modes
-    (submit_one flat, submit_all FLC, submit_study) without any path inference.
+    then tail the .sta file in that directory.  Works for flat and grouped
+    submit_one layouts without any path inference.
     """
     home       = f"/cluster/home/{user}/AbaqusProject"
     job_names  = [jn for _, jn in job_rows]
@@ -1296,7 +1304,6 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
 # Defaults
 # ─────────────────────────────────────────────────────────────────────────────
 defaults = {
-    "mode": "Single",
     "test_type": "nakazima",
     "width": 100,
     "thickness": 1.5,
@@ -1329,12 +1336,12 @@ defaults = {
     "punch_speed": 5.0,
     "punch_displacement": 35.0,
     "punch_velocity_profile": "smoothstep",
+    "fr_punch": 0.0,
     "pip_id": "PUNCH_21",
 }
 
 DEFAULT_KEYS = tuple(defaults.keys())
 USER_DEFAULT_KEYS = (
-    "mode",
     "test_type",
     "width",
     "thickness",
@@ -1347,6 +1354,7 @@ USER_DEFAULT_KEYS = (
     "punch_speed",
     "punch_displacement",
     "punch_velocity_profile",
+    "fr_punch",
     "pip_id",
 )
 
@@ -1364,8 +1372,6 @@ def _load_user_job_defaults():
 
 def _sanitize_job_defaults(values):
     cleaned = dict(values)
-    if cleaned.get("mode") not in ("Single", "All widths"):
-        cleaned.pop("mode", None)
     if cleaned.get("test_type") not in ("nakazima", "marciniak", "pip"):
         cleaned.pop("test_type", None)
     if cleaned.get("width") not in WIDTH_OPTIONS:
@@ -1386,9 +1392,13 @@ def _save_user_job_defaults(values):
 
 defaults.update(_sanitize_job_defaults(_load_user_job_defaults()))
 
+# Seed defaults, then re-assert every value on every run. Streamlit garbage-
+# collects the session_state entry of any keyed widget that is not rendered on a
+# given run (e.g. the Submit Job inputs while you are on another page). Without
+# this re-assertion, returning to the page recreates the bare number_inputs with
+# their implicit default of 0, silently zeroing punch_diam, thickness, etc.
 for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+    st.session_state[k] = st.session_state.get(k, v)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1410,19 +1420,13 @@ if page == "Submit Job":
 
     st.subheader("Submit Job")
 
-    mode = st.segmented_control("Mode", ["Single", "All widths"], key="mode")
-
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
         test_type = st.selectbox("Test Type", ["nakazima", "marciniak", "pip"], key="test_type")
 
     with c2:
-        if mode == "All widths":
-            st.text_input("Width", value="—", disabled=True)
-            width = WIDTH_OPTIONS[0]
-        else:
-            width = st.selectbox("Width", WIDTH_OPTIONS, key="width")
+        width = st.selectbox("Width", WIDTH_OPTIONS, key="width")
 
     with c3:
         thickness = st.number_input("Thickness", key="thickness")
@@ -1483,6 +1487,22 @@ if page == "Submit Job":
         ),
     )
 
+    fr_punch = st.number_input(
+        "Punch Friction μ",
+        min_value=0.0,
+        max_value=0.50,
+        step=0.01,
+        format="%.3f",
+        key="fr_punch",
+        disabled=(test_type == "pip"),
+        help=(
+            "Coulomb friction coefficient between punch and blank. "
+            "Default 0.0 (frictionless). Typical experimental values with "
+            "PTFE+Lanolin lubrication are 0.03–0.10. Non-zero values add a "
+            "'_frXpXX' suffix to the job name."
+        ),
+    )
+
     enable_symmetries = st.checkbox(
         "Enable Symmetries",
         key="enable_symmetries",
@@ -1503,7 +1523,7 @@ if page == "Submit Job":
             disabled=not bm_mesh_manual,
             help="Optional suffix for manual mesh comparison jobs.",
         )
-        bm_general_disabled = (not bm_mesh_manual) or (mode == "Single" and int(width) == 200)
+        bm_general_disabled = (not bm_mesh_manual) or (int(width) == 200)
         st.caption("Partition geometry for W20-W120")
         pcols = st.columns(4)
         with pcols[0]:
@@ -1669,6 +1689,7 @@ if page == "Submit Job":
         punch_speed=punch_speed,
         punch_displacement=punch_displacement,
         punch_velocity_profile=punch_velocity_profile,
+        fr_punch=fr_punch,
         pip_id=pip_id,
         enable_symmetries=enable_symmetries,
         bm_mesh_manual=bm_mesh_manual,
@@ -1693,12 +1714,8 @@ if page == "Submit Job":
         bm_mesh_w200_section4=bm_mesh_w200_section4,
     )
 
-    if mode == "Single":
-        estimate_rows, estimate_total = _bm_mesh_estimates(base_cfg, [base_cfg["width"]])
-        resource_basis = estimate_rows[0]["solid"]
-    else:
-        estimate_rows, estimate_total = _bm_mesh_estimates(base_cfg, WIDTH_OPTIONS)
-        resource_basis = max(row["solid"] for row in estimate_rows)
+    estimate_rows, estimate_total = _bm_mesh_estimates(base_cfg, [base_cfg["width"]])
+    resource_basis = estimate_rows[0]["solid"]
     resource_hint = _bm_suggest_resources(resource_basis)
 
     st.subheader("Computational settings")
@@ -1769,117 +1786,68 @@ if page == "Submit Job":
     st.markdown("---")
 
     # ── Job preview ──────────────────────────────────────────────────────────
-    if mode == "Single":
+    job_name = make_job_name(
+        test_type=cfg["test_type"],
+        specimen_width=cfg["width"],
+        blank_thickness=cfg["thickness"],
+        angle=cfg["angle"],
+        punch_diameter=cfg["punch_diam"],
+        mesh_factor=cfg["mesh_factor"],
+        thickness_seeds=cfg["thickness_seeds"],
+        mass_scaling_dt=cfg["mass_scaling"],
+        pip_punch2_id=cfg["pip_id"],
+        punch_speed=cfg["punch_speed"],
+        punch_displacement=cfg["punch_displacement"],
+        bm_mesh_manual=cfg["bm_mesh_manual"],
+        bm_mesh_tag=cfg["bm_mesh_tag"],
+        punch_velocity_profile=cfg["punch_velocity_profile"],
+        fr_punch=cfg["fr_punch"],
+    )
 
-        job_name = make_job_name(
-            test_type=cfg["test_type"],
-            specimen_width=cfg["width"],
-            blank_thickness=cfg["thickness"],
-            angle=cfg["angle"],
-            punch_diameter=cfg["punch_diam"],
-            mesh_factor=cfg["mesh_factor"],
-            thickness_seeds=cfg["thickness_seeds"],
-            mass_scaling_dt=cfg["mass_scaling"],
-            pip_punch2_id=cfg["pip_id"],
-            punch_speed=cfg["punch_speed"],
-            punch_displacement=cfg["punch_displacement"],
-            bm_mesh_manual=cfg["bm_mesh_manual"],
-            bm_mesh_tag=cfg["bm_mesh_tag"],
-            punch_velocity_profile=cfg["punch_velocity_profile"],
-        )
+    study_root = make_study_root_name(
+        test_type=cfg["test_type"],
+        blank_thickness=cfg["thickness"],
+        angle=cfg["angle"],
+        punch_diameter=cfg["punch_diam"],
+        mesh_factor=cfg["mesh_factor"],
+        thickness_seeds=cfg["thickness_seeds"],
+        mass_scaling_dt=cfg["mass_scaling"],
+        pip_punch2_id=cfg["pip_id"],
+        punch_speed=cfg["punch_speed"],
+        punch_displacement=cfg["punch_displacement"],
+        bm_mesh_manual=cfg["bm_mesh_manual"],
+        bm_mesh_tag=cfg["bm_mesh_tag"],
+        punch_velocity_profile=cfg["punch_velocity_profile"],
+        fr_punch=cfg["fr_punch"],
+    )
 
-        study_root = make_study_root_name(
-            test_type=cfg["test_type"],
-            blank_thickness=cfg["thickness"],
-            angle=cfg["angle"],
-            punch_diameter=cfg["punch_diam"],
-            mesh_factor=cfg["mesh_factor"],
-            thickness_seeds=cfg["thickness_seeds"],
-            mass_scaling_dt=cfg["mass_scaling"],
-            pip_punch2_id=cfg["pip_id"],
-            punch_speed=cfg["punch_speed"],
-            punch_displacement=cfg["punch_displacement"],
-            bm_mesh_manual=cfg["bm_mesh_manual"],
-            bm_mesh_tag=cfg["bm_mesh_tag"],
-            punch_velocity_profile=cfg["punch_velocity_profile"],
-        )
+    st.code(job_name)
+    st.caption(f"Study root: {study_root}")
+    estimate_rows, estimate_total = _bm_mesh_estimates(cfg, [cfg["width"]])
+    est = estimate_rows[0]
+    st.metric("Estimated mesh cells", f"{estimate_total:,}")
+    sym_desc = "quarter-model" if cfg.get("enable_symmetries", True) else "full-model (no symmetry)"
+    st.caption(
+        f"Approximate C3D8R elements for {sym_desc} "
+        f"({est['in_plane']:,} in-plane x {int(cfg['thickness_seeds'])} thickness seeds)."
+    )
 
-        st.code(job_name)
-        st.caption(f"Study root: {study_root}")
-        estimate_rows, estimate_total = _bm_mesh_estimates(cfg, [cfg["width"]])
-        est = estimate_rows[0]
-        st.metric("Estimated mesh cells", f"{estimate_total:,}")
-        sym_desc = "quarter-model" if cfg.get("enable_symmetries", True) else "full-model (no symmetry)"
-        st.caption(
-            f"Approximate C3D8R elements for {sym_desc} "
-            f"({est['in_plane']:,} in-plane x {int(cfg['thickness_seeds'])} thickness seeds)."
-        )
-
-        cmd = [
-            "bash", "deploy.sh",
-            cfg["test_type"],
-            str(cfg["thickness"]),
-            str(cfg["angle"]),
-            str(cfg["width"]),
-            cfg["pip_id"] or "none",
-            f"{cfg['mesh_factor']:.6g}",
-            f"{cfg['mass_scaling']:.2e}",
-            f"{cfg['punch_speed']:.6g}",
-        ]
-        if cfg["punch_diam"] is not None:
-            cmd.append(f"{(cfg['punch_diam'] / 2.0):.6g}")
-        else:
-            cmd.append("none")
-        cmd.append(study_root)
-
+    cmd = [
+        "bash", "deploy.sh",
+        cfg["test_type"],
+        str(cfg["thickness"]),
+        str(cfg["angle"]),
+        str(cfg["width"]),
+        cfg["pip_id"] or "none",
+        f"{cfg['mesh_factor']:.6g}",
+        f"{cfg['mass_scaling']:.2e}",
+        f"{cfg['punch_speed']:.6g}",
+    ]
+    if cfg["punch_diam"] is not None:
+        cmd.append(f"{(cfg['punch_diam'] / 2.0):.6g}")
     else:
-        names = [
-            make_job_name(
-                test_type=test_type,
-                specimen_width=w,
-                blank_thickness=thickness,
-                angle=angle,
-                punch_diameter=punch_diam,
-                mesh_factor=mesh_factor,
-                thickness_seeds=thickness_seeds,
-                mass_scaling_dt=mass_scaling,
-                pip_punch2_id=pip_id,
-                punch_speed=punch_speed,
-                punch_displacement=punch_displacement,
-                bm_mesh_manual=cfg["bm_mesh_manual"],
-                bm_mesh_tag=cfg["bm_mesh_tag"],
-            )
-            for w in WIDTH_OPTIONS
-        ]
-
-        estimate_rows, _ = _bm_mesh_estimates(cfg, WIDTH_OPTIONS)
-        max_cells = max(r["solid"] for r in estimate_rows)
-        st.metric("Max mesh cells per job", f"{max_cells:,}")
-        st.caption(f"{len(names)} independent jobs will be submitted.")
-
-        with st.expander("Preview job names"):
-            for n in names:
-                st.code(n)
-
-        with st.expander("Preview mesh estimates"):
-            for row in estimate_rows:
-                st.write(
-                    f"W{row['width']}: {row['solid']:,} cells "
-                    f"({row['in_plane']:,} in-plane x {int(cfg['thickness_seeds'])})"
-                )
-
-        cmd = [
-            "bash", "deploy_all.sh",
-            cfg["test_type"],
-            str(cfg["thickness"]),
-            str(cfg["angle"]),
-            cfg["pip_id"] or "none",
-            f"{cfg['mesh_factor']:.6g}",
-            f"{cfg['mass_scaling']:.2e}",
-            f"{cfg['punch_speed']:.6g}",
-        ]
-        if cfg["punch_diam"] is not None:
-            cmd.append(f"{(cfg['punch_diam'] / 2.0):.6g}")
+        cmd.append("none")
+    cmd.append(study_root)
 
     # ── Submit ───────────────────────────────────────────────────────────────
     submit_col, default_col, _ = st.columns([1.0, 1.25, 4.0])
@@ -1887,7 +1855,6 @@ if page == "Submit Job":
         if st.button("Set current as default", key="set_job_defaults"):
             default_payload = {k: st.session_state.get(k, defaults.get(k)) for k in DEFAULT_KEYS}
             default_payload.update(
-                mode=mode,
                 test_type=test_type,
                 width=st.session_state.get("width", width),
                 thickness=float(thickness),
@@ -1898,6 +1865,7 @@ if page == "Submit Job":
                 mass_scaling=float(mass_scaling),
                 punch_speed=float(st.session_state.get("punch_speed", punch_speed)),
                 punch_displacement=float(st.session_state.get("punch_displacement", punch_displacement)),
+                fr_punch=float(st.session_state.get("fr_punch", 0.0)),
                 pip_id=st.session_state.get("pip_id", defaults["pip_id"]),
                 enable_symmetries=bool(enable_symmetries),
                 bm_mesh_manual=bool(bm_mesh_manual),
@@ -1919,7 +1887,7 @@ if page == "Submit Job":
                 cmd,
                 capture_output=True,
                 text=True,
-                env=build_env(cfg, include_width=(mode == "Single")),
+                env=build_env(cfg),
             )
 
         if result.returncode == 0:
@@ -5807,7 +5775,7 @@ elif page == "AI Assistant":
 
         client = anthropic.Anthropic(api_key=api_key)
 
-        mode_desc = "batch (all widths)" if mode == "All widths" else "single job"
+        mode_desc = "single job"
 
         response = client.messages.create(
             model="claude-sonnet-4-6",

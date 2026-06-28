@@ -34,6 +34,15 @@ In the Nakazima test, a hemispherical punch is driven into a clamped sheet speci
 
 The Marciniak test employs a flat-bottomed cylindrical punch together with a carrier blank positioned between the punch and the specimen. This arrangement prevents direct contact between the punch and the investigated sheet and promotes failure in a region of more homogeneous deformation. As a result, the Marciniak configuration generally produces more linear strain paths than the Nakazima test and is often considered more suitable for fundamental investigations of forming limits~\cite{ISO120042, Min2017}.
 
+This geometrical difference is important for curvature-based necking criteria.
+In a Marciniak test, the analysed region remains close to flat, so the local
+out-of-plane displacement can be evaluated directly after subtracting a
+reference profile. In a Nakazima test, the sheet wraps around the hemispherical
+punch, and the local dimple associated with necking is superimposed on the
+global dome curvature. The Nakazima extension of Min et al.~\cite{Min2017}
+therefore requires a punch-centred coordinate transformation before the local
+curvature can be interpreted.
+
 While ISO~12004-2 specifies a reference punch diameter of \SI{100}{mm} for both testing methods, the present work additionally investigates the influence of punch geometry by considering hemispherical punch diameters of \SI{40}{mm}, \SI{60}{mm}, \SI{80}{mm}, and \SI{100}{mm} in the Nakazima configuration. This enables a systematic assessment of the influence of punch size on the measured forming limits and contributes to the broader investigation of size effects in sheet metal forming.
 
 
@@ -48,14 +57,16 @@ The process consists of two steps. In Step~1, both punches advance together, pre
 Determining the onset of localised necking from full-field strain data is non-trivial, as the transition from diffuse to localised necking is gradual and its detection depends on the chosen criterion. Several methods have been proposed in the literature, which can be broadly classified into position-dependent and time-dependent approaches. Position-dependent methods evaluate the spatial strain distribution at a single time instant, whereas time-dependent methods track the temporal evolution of the strain field and detect necking from changes in the strain rate. The following subsections describe the methods considered in this work.
 
 \subsection{Intersection Line Method (DIN EN ISO 12004-2)}
+\label{sec:din_method}
 
 The intersection line method specified in ISO~12004-2~\cite{ISO120042} is a position-dependent approach that evaluates the spatial strain distribution on the last DIC frame recorded before fracture. Five parallel cross-sections (intersection lines) are constructed perpendicular to the crack, spaced 2\,mm apart, each extending 20\,mm on both sides of the fracture line. The orientation of the intersection lines depends on the minor strain at the crack position: for $\varepsilon_2 < 0$ (left side of the FLD), the lines run parallel to the specimen edges, whereas for $\varepsilon_2 > 0$, they are oriented perpendicular to the crack line.
 
 Along each intersection line, the crack position is first determined by fitting a bell-shaped curve to the major strain profile $\varepsilon_1$ within a 4\,mm window around the strain maximum. The peak of this fit defines the precise crack location. Two fitting regions are then defined on either side of the crack. The interior boundary of each region is placed at 3\,mm from the crack, and the exterior boundary is set by the fitting window width:
 \begin{equation}
     \omega = 10 \left[1 + \frac{\bar{\varepsilon}_2}{\bar{\varepsilon}_1}\right],
+    \label{eq:din_window}
 \end{equation}
-where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal strains at the interior boundaries of both sides. An inverse parabola is fitted over each region, and the value of the fit evaluated at the crack position yields the major necking strain $\varepsilon_{1,\text{neck}}$. The minor necking strain is obtained from the thickness strain:
+where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal strains at the interior boundaries of both sides. The intersection-line spacing (2\,mm) and the constant factor of $10$ in Eq.~\eqref{eq:din_window} are calibrated for the standard Nakazima geometry with a $\varnothing$100\,mm hemispherical punch. An inverse parabola is fitted over each region, and the value of the fit evaluated at the crack position yields the major necking strain $\varepsilon_{1,\text{neck}}$. The minor necking strain is obtained from the thickness strain:
 \begin{equation}
     \varepsilon_3 = -(\varepsilon_1 + \varepsilon_2), \qquad
     \varepsilon_{2,\text{neck}} = -(\varepsilon_{3,\text{neck}} + \varepsilon_{1,\text{neck}}).
@@ -64,30 +75,80 @@ where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal 
 The method is straightforward and widely used, but relies on a single time frame and is sensitive to the selected cross-section and the regularity of the strain field near the crack.
 
 \subsection{Volk \& Hora Time-Dependent Method}
+\label{sec:vh_method}
 
-In contrast to the intersection line method, the approach proposed by Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies necking onset from the evolution of the thickness strain rate. First, the thickness strain rate is computed from the in-plane DIC strains using incompressibility:
+In contrast to the intersection-line method, the approach proposed by
+Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies
+the onset of localized necking from the evolution of the thickness strain rate.
+First, the thickness strain rate is computed from the in-plane DIC strains
+using plastic incompressibility:
 \begin{equation}
-    \dot{\varepsilon}_3 = -\left(\dot{\varepsilon}_1 + \dot{\varepsilon}_2\right).
+\dot{\varepsilon}_3 =
+-\left(\dot{\varepsilon}_1 + \dot{\varepsilon}_2\right).
 \end{equation}
-For discrete time steps, the central difference formula is preferred for its higher accuracy. If the frame rate changes during the experiment, the effective time step is defined as $\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values are linearly interpolated to ensure a uniform differencing stencil. The thinning rate is then $\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
+For discrete time steps, the central difference formula is preferred because
+of its higher accuracy. If the frame rate changes during the experiment, the
+effective time step is defined as
+$\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values
+are linearly interpolated to ensure a uniform differencing stencil. The
+thinning rate is then defined as
+$\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
 
-A necking zone is identified using a threshold criterion on the thinning rate. On the last frame before fracture (frame $b-1$), the DIC facets are sorted by their thinning rate in ascending order. The representative maximum thinning rate $\bar{\dot{\varepsilon}}_{\max}$ is defined as the mean of the five highest values:
+A necking zone is identified from the thinning-rate field following the
+procedure of Volk and Hora~\cite{VolkHora2011}. On the last frame before
+fracture, denoted by $b-1$, the DIC facets are sorted by their thinning rate in
+ascending order. The representative maximum thinning rate is defined as the
+mean of the five highest values:
 \begin{equation}
-    \bar{\dot{\varepsilon}}_{\max} = \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
+\bar{\dot{\varepsilon}}_{\max}
+= \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
 \end{equation}
-where $g$ is the total number of facets (sorted by thinning rate), $b$ the total number of frames, and the subscript $b-1$ indicates that the thinning rate is evaluated at the last frame before fracture. The necking zone $N$ is then defined as all facets whose thinning rate at frame $b-1$ exceeds a fraction $\alpha$ of this representative maximum:
+where $g$ is the total number of facets and the subscript $b-1$ indicates that
+the thinning rate is evaluated at the last frame before fracture. The necking
+zone $N$ is then defined as all facets whose thinning rate exceeds a fraction
+$\alpha$ of this representative maximum:
 \begin{equation}
-    N = \left\{ \text{facets with } \dot{\varepsilon}_{b-1,i} \geq \alpha \cdot \bar{\dot{\varepsilon}}_{\max} \right\},
+N =
+\left\{
+i \;\middle|\;
+\dot{\varepsilon}_{b-1,i}
+\geq \alpha \, \bar{\dot{\varepsilon}}_{\max}
+\right\},
 \end{equation}
-where $\alpha$ is chosen to ensure a sufficient number of facets in the necking zone (typically $\alpha = 0.55$ for a grid size of 1\,mm).
+where $\alpha$ is selected such that a sufficient number of facets is included
+in the necking zone. For a grid size of approximately \SI{1}{\milli\meter}, a
+typical value is $\alpha = 0.55$.
 
-The mean thinning rate in the necking zone is then plotted against time. Two linear fits are applied: one to the stable (pre-necking) region and one to the unstable (post-necking) region. The transition between the two regimes, determined by minimising the combined fitting error, defines the last stable frame. The limit strains $\varepsilon_{1,\text{lim}}$ and $\varepsilon_{2,\text{lim}}$ are computed as the mean principal strains in the necking zone at this last stable frame:
+The mean thinning rate inside the necking zone is then plotted as a function of
+time. Two linear fits are applied: one to the stable pre-necking regime and one
+to the unstable post-necking regime. The transition frame is determined by
+minimising the combined fitting error of both linear regressions. This frame is
+interpreted as the last stable frame before localized necking. The limit strains
+are finally computed as the mean principal strains in the necking zone at this
+frame:
 \begin{equation}
-    \varepsilon_{1,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{1,\text{stab},i}, \qquad
-    \varepsilon_{2,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{2,\text{stab},i},
+\varepsilon_{1,\text{lim}}
+= \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{1,\text{stab},i},
+\qquad
+\varepsilon_{2,\text{lim}}
+= \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{2,\text{stab},i},
 \end{equation}
-where $n$ is the number of points in the necking zone.
+where $n$ is the number of facets in the necking zone.
 
+Figure~\ref{fig:vh_example} shows an example of the resulting Volk–Hora
+evaluation plot obtained with the implemented post-processing framework. The
+change in slope of the mean thinning-rate curve marks the transition from the
+stable to the unstable regime and is used to identify the limit frame.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{img/E0_RM00_000_W12_002_VolkHora_plot.png}
+\caption{Example Volk–Hora evaluation plot obtained for an AA5754
+specimen with W120 geometry. The transition between the stable and unstable
+thinning-rate regimes defines the last stable frame used for the extraction
+of the forming-limit strains.}
+\label{fig:vh_example}
+\end{figure}
 \subsection{Merklein Method}
 
 The Merklein method~\cite{Merklein2010} is a time-dependent approach that detects necking from the acceleration of the major strain rate at a critical point. On the last frame before fracture, the facet with the highest major strain value within the necking zone is selected. To reduce scatter, the mean major strain within a circle of 2\,mm radius around this point is tracked over time.
@@ -104,23 +165,221 @@ where $\mu$ and $\sigma$ are the mean and standard deviation of the major strain
 
 During homogeneous deformation, the mean strain rate increases steadily while the standard deviation remains approximately constant, causing the CoV to decrease. Once localisation begins, the standard deviation increases sharply, leading to a rapid rise in the CoV. The global minimum of the CoV therefore identifies the onset of necking. The limit strains are the mean principal strains in the region of interest at the frame corresponding to this minimum.
 
-\subsection{Min--Stoughton Curvature Method}
+\subsection{Min–Stoughton Curvature Method}
+\label{sec:minstoughton_method}
 
-Min et al.~\cite{Min2017} proposed a curvature-based criterion that detects the onset of localised necking from the evolution of the deformed outer-surface geometry rather than from the strain field. Originally developed for Marciniak tests, where strain paths are approximately linear, the method was extended to Nakazima tests by incorporating corrections for the non-linear strain path effects introduced by the hemispherical punch geometry and through-thickness strain gradients.
+The forming-limit curve is traditionally interpreted as a fixed material
+boundary in the $\varepsilon_1$--$\varepsilon_2$ plane. This interpretation is
+strictly valid only for proportional loading, since the strain combination at
+the onset of necking depends on the path followed to reach it. In the Nakazima
+test the contact with the hemispherical punch bends the sheet and curves the
+strain path, so a limit point extracted under the assumption of a linear path
+no longer corresponds to a unique material limit. A criterion that detects
+necking directly, from a physical signature of localization rather than from
+the position of the strain state, is therefore desirable.
 
-At each frame during the test, the deformed positions of the outer-surface points within the dome zone are transformed to polar coordinates $(D,\,R^{\mathrm{out}})$, where $D$ is the arc length measured from the dome apex along the surface and $R^{\mathrm{out}}$ is the radial distance from the instantaneous punch centre $O'$. The punch centre is corrected for sheet thinning:
-\begin{equation}
-    O' = \bigl(0,\;0,\;Z_P - R_{\mathrm{punch}} - t_P\bigr), \qquad
-    t_P = t_0\,\exp\!\bigl(-\varepsilon_1 - \varepsilon_2\bigr),
-\end{equation}
-where $Z_P$ is the vertical coordinate of the apex, $R_{\mathrm{punch}}$ the punch radius, $t_0$ the initial sheet thickness, and $t_P$ the current thickness computed from volume conservation.
+To address this need, Min et al.~\cite{Min2017} proposed an improved curvature
+method that detects the onset of localized necking from the evolution of the
+specimen surface geometry rather than from the strain state. The method was
+first developed for the Marciniak test, in which a carrier blank produces a
+nearly flat and almost proportionally loaded region, and was then extended to
+the Nakazima test, where the hemispherical punch bends the sheet and imposes a
+strong global curvature. In both configurations the criterion is spatio-temporal.
+It evaluates how a local geometrical imperfection develops in space and how its
+curvature evolves over time, which makes the detection largely independent of
+the strain path.
 
-To isolate the necking signature from the global punch curvature, a reference profile $R^{\mathrm{out}}_M$ recorded at approximately 20\,\% of the forming history is subtracted. A Superimposed Artificial Curvature (SAC) is added to stabilise the subsequent circle fit when the deviation from the reference is close to zero~\cite{Min2017}:
+The underlying idea is illustrated in Figure~\ref{fig:min_stoughton_principle}.
+During homogeneous deformation, the outer surface of the specimen remains
+smooth and its curvature evolves gradually. When localized necking starts, a
+small dimple forms in the necking region. This dimple introduces an additional
+local curvature superimposed on the global curvature of the dome. By tracking
+this local curvature over the deformation sequence, the onset of localized
+necking can be identified.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/Spatio_temp_fig.jpg}
+    \caption{Principle of the Min--Stoughton curvature method. Cross-sectional
+    views along the neck band show the evolution from (a) end of diffuse necking,
+    through (b) appearance of a local dimple, to (c) expansion of the dimple.
+    The fitted curvature $C_{AB}$ (d) remains near zero during stable deformation
+    and increases sharply once localized necking initiates. Adapted from
+    Min et al.~\cite{Min2017}.}
+    \label{fig:min_stoughton_principle}
+\end{figure}
+
+The curvature is not evaluated over the whole surface but on a small point
+matrix placed around the necking region, as shown in
+Figure~\ref{fig:ms_point_matrix}. The matrix is centred on the neck centre $O$
+and oriented along the band, with a width $W_X$ across the band and a length
+$W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points. In a discrete DIC
+implementation, the physical dimensions are converted into point counts through
+the measured grid spacings $d_X$ and $d_Y$,
 \begin{equation}
-    R'' = \bigl(R^{\mathrm{out}} - R^{\mathrm{out}}_M\bigr) + \tfrac{1}{2}\,\mathrm{SAC}\cdot D^2.
+    N_X = \left\lceil \frac{W_X}{d_X} + 1 \right\rceil, \qquad
+    N_Y = \left\lceil \frac{W_Y}{d_Y} + 1 \right\rceil .
+    \label{eq:ms_matrix_counts}
 \end{equation}
-A circle is fitted to the resulting $(D,\,R'')$ point cloud by linear least squares, yielding the curvature measure $C_{pm} = 1/\rho - \mathrm{SAC}$, where $\rho$ is the fitted circle radius. Necking onset is declared at the first frame $K$ where the condition
+The ceiling operation ensures that the requested physical dimensions are not
+undersampled by the available DIC grid.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/ms_point_matrix.pdf}
+    \caption{Min--Stoughton evaluation geometry and Nakazima punch-wrapping
+    coordinate transformation. (a) The point matrix is centred on the neck
+    centre $O$ and oriented along the crack line, with a width $W_X$ across the
+    band and a length $W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points.
+    (b) For the Nakazima test, each deformed point is described by its
+    arc-distance coordinate $D$ along a matrix column and its radial distance
+    $R_\mathrm{out}$ to the punch centre $O'$. The measured surface deviates
+    from the ideal dome where the local dimple forms. Adapted from
+    Min et al.~\cite{Min2017}.}
+    \label{fig:ms_point_matrix}
+\end{figure}
+
+To isolate the local necking contribution, the background curvature of the
+specimen is first removed from the measured surface profile by referring it to
+an earlier, still homogeneous state. Because the deformation geometry differs
+fundamentally between the two test types, the coordinate treatment is presented
+separately for each case.
+
+\paragraph{Marciniak case}
+In the Marciniak test the analysed region remains nearly flat, because the
+carrier blank prevents direct punch contact. The deformation is therefore
+characterised as in-plane, and the $(X, Y, Z)$ coordinates of the point-matrix
+nodes are extracted directly from the DIC data at each frame. The background
+shape is removed by subtracting the out-of-plane coordinate of the reference
+frame~$M$ (typically the frame at which the analysed region is still
+homogeneous, usually chosen as $M \approx \tfrac{1}{2}F$, where $F$ is the
+total number of frames):
 \begin{equation}
-    C_{pm}(k) > C_{pm,P}(k) + \mathrm{SAC}/10
+    Z'_{i,j}(k) = Z_{i,j}(k) - Z_{i,j}(M),
+    \qquad
+    i=1,\dots,N_X,\;
+    j=1,\dots,N_Y,\;
+    k=1,\dots,F.
+    \label{eq:ms_marciniak_ref}
 \end{equation}
-holds for a prescribed number of consecutive frames, with $C_{pm,P}$ obtained from a rolling linear regression over all preceding frames.
+A superimposed artificial curvature (SAC) is then added to keep the circle fit
+well conditioned while the residual curvature is still small:
+\begin{equation}
+    Z''_{i,j}(k) = Z'_{i,j}(k)
+    + \tfrac{1}{2}\,\mathrm{SAC}\,Y_{i,j}^{2}(k).
+    \label{eq:ms_marciniak_sac}
+\end{equation}
+A circle is fitted column-wise to the points $(Y_{i,j},\,Z''_{i,j})$ using the
+method of least squares. If the fitted circle for column~$c$ has radius
+$\rho_c$, the corrected column curvature is
+$C_c = 1/\rho_c - \mathrm{SAC}$,
+and the point-matrix curvature for frame~$k$ is the average over all valid
+columns (Eq.~\ref{eq:ms_cpm_corrected}).
+
+\paragraph{Nakazima case}
+In the Nakazima test the sheet wraps around the hemispherical punch, so the
+necking dimple is superimposed on a strong global dome curvature. A direct
+$Z'$-based description as in the Marciniak case would mix the two
+contributions. The measured points are therefore transformed into the
+punch-wrapping coordinates $D$ and $R_\mathrm{out}$ shown in
+Figure~\ref{fig:ms_point_matrix}. The punch centre $O'$ is reconstructed from
+the punch radius $r_N$ and the current pole thickness. With the present sign
+convention, this gives
+\begin{equation}
+    O' = \bigl(0,\,0,\,Z_P - r_N - t_P\bigr), \qquad
+    t_P = t_0 \exp\!\left[-(\varepsilon_1+\varepsilon_2)\right],
+    \label{eq:ms_punch_centre}
+\end{equation}
+where $Z_P$ is the current pole height, $t_0$ is the initial sheet thickness,
+and the pole thickness estimate follows from plastic incompressibility. Each
+deformed DIC point $\mathbf{x}_{j,c}(k)$ in column $c$ is then described by an
+arc-distance coordinate along the measured surface,
+\begin{equation}
+    D_{0,c}(k) = 0, \qquad
+    D_{j,c}(k) =
+    \sum_{m=1}^{j}
+    \left\|
+    \mathbf{x}_{m,c}(k)-\mathbf{x}_{m-1,c}(k)
+    \right\|,
+    \label{eq:ms_dic_arc}
+\end{equation}
+and by its radial distance from the punch centre,
+\begin{equation}
+    R_{\mathrm{out},j,c}(k)
+    =
+    \left\|
+    \mathbf{x}_{j,c}(k)-O'(k)
+    \right\|.
+    \label{eq:ms_rout}
+\end{equation}
+Thus $D$ is the cumulative three-dimensional distance along the ordered
+deformed DIC points of a matrix column, while $R_\mathrm{out}$ retains the
+measured radial perturbation caused by the local dimple.
+
+The reference profile at frame $M$ is subtracted from each subsequent frame,
+\begin{equation}
+    R'_{\mathrm{out},j,c}(k)
+    =
+    R_{\mathrm{out},j,c}(k) -
+    R_{\mathrm{out},j,c}(M).
+    \label{eq:ms_reference_subtraction}
+\end{equation}
+Following Min et al.~\cite{Min2017}, a superimposed artificial curvature (SAC)
+is then added to keep the circle fit well conditioned while the residual
+curvature is still small,
+\begin{equation}
+    R''_{j,c}(k)
+    =
+    R'_{\mathrm{out},j,c}(k)
+    + \frac{1}{2}\,\mathrm{SAC}\,D_{j,c}^2(k).
+    \label{eq:ms_reference_sac}
+\end{equation}
+
+A circle is fitted column-wise to the points $(D_{j,c},R''_{j,c})$. If the
+fitted circle for column $c$ has radius $\rho_c$, the corresponding corrected
+column curvature is
+\begin{equation}
+    C_c = \frac{1}{\rho_c} - \mathrm{SAC}.
+    \label{eq:ms_column_curvature}
+\end{equation}
+The point-matrix curvature for frame $k$ is the average over the fitted
+columns,
+\begin{equation}
+    C_{pm}(k) = \frac{1}{N_X}\sum_{c=1}^{N_X} C_c(k).
+    \label{eq:ms_cpm_corrected}
+\end{equation}
+If a column fit is invalid, it is excluded from this average and the number of
+valid columns must be reported.
+
+\paragraph{Onset detection}
+In both cases, a nearly flat residual profile results in a large fitted radius
+and therefore a small curvature, whereas a developing dimple produces a smaller
+radius and a larger curvature. The curvature value $C_{pm}$ is evaluated for each frame of the deformation
+sequence. During stable deformation, the curvature follows a smooth evolution.
+At the onset of localized necking, the measured curvature starts to increase
+more rapidly and departs from its previous trend. The measured curvature is
+therefore compared with a predicted value $C_{pm,P}$ obtained by a linear
+regression over previous curvature values only. Localized necking is detected
+at the first frame $k$ for which
+\begin{equation}
+    C_{pm}(k) > C_{pm,P}(k) + \Delta
+    \label{eq:ms_onset}
+\end{equation}
+is satisfied for $n$ consecutive frames. The threshold is commonly written as
+\begin{equation}
+    \Delta = \alpha\,\mathrm{SAC},
+    \label{eq:ms_delta}
+\end{equation}
+with $\alpha=1/10$ used as the nominal paper value. The tolerance $\Delta$ and
+the persistence requirement are introduced to avoid detecting isolated
+fluctuations caused by measurement noise. This comparison against a predicted
+curvature, combined with the persistence requirement, is the main refinement
+that Min et al.~\cite{Min2017} introduce over earlier curvature-based
+detection, and it is what makes the method robust enough to be applied to both
+Marciniak and Nakazima tests.
+
+Once the onset frame has been identified from the curvature evolution, the
+corresponding forming-limit strains are extracted from the DIC strain field at
+the localization centre. The curvature criterion is therefore used to determine
+the time of onset, while the limit strain values are still obtained from the
+measured strain data.

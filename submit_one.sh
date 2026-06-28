@@ -2,8 +2,7 @@
 # =============================================================
 # submit_one.sh  —  Build one model and submit solver job.
 #                   Runs ON Euler — do not run locally.
-#                   Launched by deploy.sh (single job) or
-#                   deploy_study.sh (study loop) via SSH.
+#                   Launched by deploy.sh or manually via SSH.
 #
 # Args:
 #   $1  TEST_TYPE
@@ -15,10 +14,10 @@
 #   $7  MASS_SCALING_DT         (default "none" → use config.py default)
 #   $8  STUDY_SUBDIR            (default "" → flat layout under EULER_DIR)
 #
-# When STUDY_SUBDIR is set (study mode):
+# When STUDY_SUBDIR is set (grouped-output mode):
 #   - job dir goes to EULER_DIR/STUDY_SUBDIR/JOB_NAME/
 #   - SLURM logs go to EULER_DIR/STUDY_SUBDIR/logs/
-#   - run_plots.sh flc aggregation is NOT submitted (caller handles it)
+#   - run_plots.sh flc aggregation is NOT submitted
 #   - last stdout line is "JOB_ID=<slurm_id>" for caller to capture
 #
 # When STUDY_SUBDIR is empty (normal mode):
@@ -81,6 +80,8 @@ BM_MESH_W200_SECTION4=${BM_MESH_W200_SECTION4:-}
 _t=$(python3 -c "print(str(float(${THICKNESS})).replace('.','p'))")
 _ang=$(python3 -c "print(str(int(float('${ORIENTATION}'))))")
 _punch_r=${PUNCH_RADIUS:-50}
+# Guard against a 0/blank punch radius (degenerate punch); keep in sync with config.py
+_punch_r=$(python3 -c "r=float('${_punch_r}' or 50); print(r if r>0 else 50)")
 _punch_d=$(python3 -c "import math; print(int(round(float('${_punch_r}') * 2)))")
 if   [ "$TEST_TYPE" = "nakazima"  ]; then _test_cap="Naka${_punch_d}"
 elif [ "$TEST_TYPE" = "marciniak" ]; then _test_cap="Marc${_punch_d}"
@@ -129,8 +130,12 @@ if [ "$(printf '%s' "${PUNCH_VELOCITY_PROFILE}" | tr '[:upper:]' '[:lower:]')" =
 else
     _vp_suffix=""
 fi
+_fr_suffix=$(python3 -c "
+v = float('${FR_PUNCH:-0.0}')
+print('_fr' + ('%.4g' % v).replace('.','p') if abs(v) > 1e-9 else '')
+")
 
-JOB_NAME="${_test_cap}_W${SPECIMEN_WIDTH}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}${_ts_suffix}${_ps_suffix}${_pd_suffix}${_bm_suffix}${_vp_suffix}"
+JOB_NAME="${_test_cap}_W${SPECIMEN_WIDTH}_t${_t}_ang${_ang}${_pip_suffix}${_ms_suffix}${_mr_suffix}${_ts_suffix}${_ps_suffix}${_pd_suffix}${_bm_suffix}${_vp_suffix}${_fr_suffix}"
 
 if [ -n "$STUDY_SUBDIR" ]; then
     OUTPUT_BASE="${EULER_DIR}/${STUDY_SUBDIR}"
@@ -227,7 +232,7 @@ done
 [ ${_build_ok} -eq 0 ] && { echo "  ERROR: build failed 3 times — aborting."; exit 1; }
 echo "  Build done."
 
-# Move job dir into study subdir if needed
+# Move job dir into grouped output subdir if needed.
 if [ -n "$STUDY_SUBDIR" ]; then
     mkdir -p "${OUTPUT_BASE}/logs"
     rm -rf "${OUTPUT_BASE}/${JOB_NAME}"
@@ -282,5 +287,5 @@ if [ -z "$STUDY_SUBDIR" ]; then
     echo "  Plot job    : ${PLOT_ID}  (afterok:${JOB_ID})"
 fi
 
-# In study mode, emit parseable ID on last line for deploy_study.sh to capture
+# In grouped-output mode, emit parseable ID on last line for callers to capture.
 [ -n "$STUDY_SUBDIR" ] && echo "JOB_ID=${JOB_ID}"

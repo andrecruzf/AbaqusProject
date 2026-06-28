@@ -14,20 +14,30 @@
 %             2013/03/08	(Soren Ebbesen)
 %             2014/03/13	(Soren Ebbesen)
 % ______________________________________________________________________________
-\documentclass[11pt,twoside,a4paper]{report}
+\documentclass[11pt,oneside,a4paper]{report}
 
 \usepackage[utf8]{inputenc}
 \usepackage{siunitx}
+\usepackage{subcaption}
 
 \usepackage[english,st]{ethidsc} % Special IDSC styles and commands      	
 									 % {german}/english: language of headings, etc.
 									 % {st}/bt/mt: {semester}/bachelor/master thesis
+\usepackage[hidelinks,unicode,hypertexnames=false]{hyperref}
 							
 % Page header (don't change)____________________________________________________
 \setlength{\parindent}{0em}                 % Disable parindent
 \rhead[\nouppercase{\rightmark}]{\thepage}  % Special headings
 \lhead[\thepage]{\nouppercase{\leftmark}}   % Special headings
 \cfoot{}                                    % Special headings
+
+% Vertical spacing______________________________________________________________
+% Disable flushbottom so LaTeX no longer
+% stretches inter-paragraph and around-heading glue to fill each page to the
+% bottom; this keeps paragraph spacing uniform across pages. Since parindent is
+% 0, add a small fixed parskip so paragraphs remain visually separated.
+\raggedbottom
+\setlength{\parskip}{3pt plus 1pt}
 
 
 % Title page (please fill in)___________________________________________________
