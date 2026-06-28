@@ -9,12 +9,12 @@ identification is sensitive to the test setup, specimen geometry, sheet
 thickness, material behaviour, and the data evaluation methodology. These
 sensitivities become especially relevant when FLCs are investigated with
 smaller specimen dimensions, high-throughput testing, automated specimen
-handling, and digital image correlation.
+handling, and digital image correlation (DIC).
 
 This thesis contributes to the project \textit{Towards Robust Forming Limit
-Curve Identification: Experiments and Modeling}. The report follows the full
-three-task structure of the project. Task~I defines the experimental campaign
-on the high-throughput Nakazima/Marciniak test bench, including specimen-size,
+Curve Identification: Experiments and Modeling}. The report is organised around
+the three connected project tasks. Task~I defines the experimental campaign on
+the high-throughput Nakazima/Marciniak test bench, including specimen-size,
 sheet-thickness, punch-radius, and Punch-in-Punch variations. Task~II provides
 the modular FLC identification framework used to evaluate experimental and
 numerical strain data with multiple criteria. Task~III develops the numerical
@@ -22,9 +22,9 @@ simulation framework that automates the creation, execution, and
 post-processing of the corresponding specimen and punch configurations.
 
 The implemented numerical framework generates Nakazima, Marciniak, and
-Punch-in-Punch models in Abaqus/Explicit, submits simulations to the ETH Euler
-cluster, and processes the resulting output databases without manual
-intervention. A VUMAT implementation of the Hosford-Coulomb fracture criterion
+Punch-in-Punch models in \software{Abaqus/Explicit}, submits simulations to the
+ETH Euler cluster, and processes the resulting output databases without manual
+intervention. A VUMAT implementation of the Hosford--Coulomb fracture criterion
 is used to represent failure.
 
 Special attention is given to comparability between configurations. Specimen
@@ -39,8 +39,11 @@ The post-processing pipeline extracts punch force--displacement histories,
 energy histories, forming-limit points, strain paths, and diagnostic
 visualisations. The resulting data products are structured for comparison
 between experimental and numerical test configurations and for use with the
-modular FLC identification framework, including Volk-Hora, Merklein,
-Pham-Sigvant, and Stoughton-type criteria.
+modular FLC identification framework, including Volk--Hora, Merklein,
+Pham--Sigvant, and Min--Stoughton criteria. The available results are presented
+as experimental observations, preliminary criterion assessment, and
+numerical-framework verification rather than as a completed production numerical
+FLC campaign.
 
 \cleardoublepage
 
@@ -56,7 +59,7 @@ for providing the research context, computational resources, and previous
 experimental and numerical work on which this project builds.
 
 The simulations presented in this report were carried out on the ETH Euler
-high-performance computing cluster.
+cluster.
 
 \cleardoublepage
 
@@ -78,24 +81,24 @@ high-performance computing cluster.
 
 \begin{tabbing}
  \hspace*{2.4cm} \= \kill
-ALLIE \> Internal energy history output in Abaqus \\[0.5ex]
-ALLKE \> Kinetic energy history output in Abaqus \\[0.5ex]
+ALLIE \> Internal energy history output in \software{Abaqus} \\[0.5ex]
+ALLKE \> Kinetic energy history output in \software{Abaqus} \\[0.5ex]
 BC \> Boundary condition \\[0.5ex]
-CAE \> Computer-Aided Engineering (Abaqus pre-/post-processor) \\[0.5ex]
-DIC \> Digital Image Correlation \\[0.5ex]
-EQPS \> Equivalent Plastic Strain \\[0.5ex]
-FE \> Finite Element \\[0.5ex]
-FEA \> Finite Element Analysis \\[0.5ex]
-FFLC \> Fracture Forming Limit Curve \\[0.5ex]
-FLC \> Forming Limit Curve \\[0.5ex]
-FLD \> Forming Limit Diagram \\[0.5ex]
-HC \> Hosford-Coulomb \\[0.5ex]
+CAE \> Computer-aided engineering (\software{Abaqus} pre-/post-processor) \\[0.5ex]
+DIC \> Digital image correlation \\[0.5ex]
+EQPS \> Equivalent plastic strain \\[0.5ex]
+FE \> Finite element \\[0.5ex]
+FEA \> Finite element analysis \\[0.5ex]
+FFLC \> Fracture forming limit curve \\[0.5ex]
+FLC \> Forming limit curve \\[0.5ex]
+FLD \> Forming limit diagram \\[0.5ex]
+HC \> Hosford--Coulomb \\[0.5ex]
 HPC \> High-performance computing \\[0.5ex]
 ODB \> Output database \\[0.5ex]
 PiP \> Punch-in-Punch \\[0.5ex]
 SDV \> Solution-dependent variable \\[0.5ex]
 SLURM \> Simple Linux Utility for Resource Management \\[0.5ex]
-VUMAT \> Abaqus/Explicit user material subroutine
+VUMAT \> \software{Abaqus/Explicit} user material subroutine
 \end{tabbing}
 
 \cleardoublepage
