@@ -34,6 +34,15 @@ In the Nakazima test, a hemispherical punch is driven into a clamped sheet speci
 
 The Marciniak test employs a flat-bottomed cylindrical punch together with a carrier blank positioned between the punch and the specimen. This arrangement prevents direct contact between the punch and the investigated sheet and promotes failure in a region of more homogeneous deformation. As a result, the Marciniak configuration generally produces more linear strain paths than the Nakazima test and is often considered more suitable for fundamental investigations of forming limits~\cite{ISO120042, Min2017}.
 
+This geometrical difference is important for curvature-based necking criteria.
+In a Marciniak test, the analysed region remains close to flat, so the local
+out-of-plane displacement can be evaluated directly after subtracting a
+reference profile. In a Nakazima test, the sheet wraps around the hemispherical
+punch, and the local dimple associated with necking is superimposed on the
+global dome curvature. The Nakazima extension of Min et al.~\cite{Min2017}
+therefore requires a punch-centred coordinate transformation before the local
+curvature can be interpreted.
+
 While ISO~12004-2 specifies a reference punch diameter of \SI{100}{mm} for both testing methods, the present work additionally investigates the influence of punch geometry by considering hemispherical punch diameters of \SI{40}{mm}, \SI{60}{mm}, \SI{80}{mm}, and \SI{100}{mm} in the Nakazima configuration. This enables a systematic assessment of the influence of punch size on the measured forming limits and contributes to the broader investigation of size effects in sheet metal forming.
 
 
@@ -188,6 +197,18 @@ local curvature superimposed on the global curvature of the dome. By tracking
 this local curvature over the deformation sequence, the onset of localized
 necking can be identified.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/Spatio_temp_fig.jpg}
+    \caption{Principle of the Min--Stoughton curvature method. Cross-sectional
+    views along the neck band show the evolution from (a) end of diffuse necking,
+    through (b) appearance of a local dimple, to (c) expansion of the dimple.
+    The fitted curvature $C_{AB}$ (d) remains near zero during stable deformation
+    and increases sharply once localized necking initiates. Adapted from
+    Min et al.~\cite{Min2017}.}
+    \label{fig:min_stoughton_principle}
+\end{figure}
+
 The curvature is not evaluated over the whole surface but on a small point
 matrix placed around the necking region, as shown in
 Figure~\ref{fig:ms_point_matrix}. The matrix is centred on the neck centre $O$
@@ -206,28 +227,64 @@ undersampled by the available DIC grid.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/ms_point_matrix.pdf}
-    \caption{Min--Stoughton evaluation geometry. (a) The point matrix is
-    centred on the neck centre $O$ and oriented along the crack line, with a
-    width $W_X$ across the band and a length $W_Y$ along it, sampled by $N_X$
-    columns of $N_Y$ points. (b) For the Nakazima test, each deformed point is
-    described by its arc-distance coordinate $D$ along a matrix column and its
-    radial distance $R_\mathrm{out}$ to the punch centre $O'$. The measured
-    surface deviates from the ideal dome where the local dimple forms. Adapted
-    from Min et al.~\cite{Min2017}.}
+    \caption{Min--Stoughton evaluation geometry and Nakazima punch-wrapping
+    coordinate transformation. (a) The point matrix is centred on the neck
+    centre $O$ and oriented along the crack line, with a width $W_X$ across the
+    band and a length $W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points.
+    (b) For the Nakazima test, each deformed point is described by its
+    arc-distance coordinate $D$ along a matrix column and its radial distance
+    $R_\mathrm{out}$ to the punch centre $O'$. The measured surface deviates
+    from the ideal dome where the local dimple forms. Adapted from
+    Min et al.~\cite{Min2017}.}
     \label{fig:ms_point_matrix}
 \end{figure}
 
 To isolate the local necking contribution, the background curvature of the
 specimen is first removed from the measured surface profile by referring it to
-an earlier, still homogeneous state. In the Marciniak test this background
-component is small, because the analysed region remains nearly flat, whereas in
-the Nakazima test it is dominated by the dome shape imposed by the hemispherical
-punch and must therefore be treated explicitly.
+an earlier, still homogeneous state. Because the deformation geometry differs
+fundamentally between the two test types, the coordinate treatment is presented
+separately for each case.
 
-For the Nakazima branch, the measured surface points are first written in
-punch-based coordinates. The punch centre $O'$ is reconstructed from the punch
-radius $r_N$ and the current pole thickness. With the present sign convention,
-this gives
+\paragraph{Marciniak case.}
+In the Marciniak test the analysed region remains nearly flat, because the
+carrier blank prevents direct punch contact. The deformation is therefore
+characterised as in-plane, and the $(X, Y, Z)$ coordinates of the point-matrix
+nodes are extracted directly from the DIC data at each frame. The background
+shape is removed by subtracting the out-of-plane coordinate of the reference
+frame~$M$ (typically the frame at which the analysed region is still
+homogeneous, usually chosen as $M \approx \tfrac{1}{2}F$, where $F$ is the
+total number of frames):
+\begin{equation}
+    Z'_{i,j}(k) = Z_{i,j}(k) - Z_{i,j}(M),
+    \qquad
+    i=1,\dots,N_X,\;
+    j=1,\dots,N_Y,\;
+    k=1,\dots,F.
+    \label{eq:ms_marciniak_ref}
+\end{equation}
+A superimposed artificial curvature (SAC) is then added to keep the circle fit
+well conditioned while the residual curvature is still small:
+\begin{equation}
+    Z''_{i,j}(k) = Z'_{i,j}(k)
+    + \tfrac{1}{2}\,\mathrm{SAC}\,Y_{i,j}^{2}(k).
+    \label{eq:ms_marciniak_sac}
+\end{equation}
+A circle is fitted column-wise to the points $(Y_{i,j},\,Z''_{i,j})$ using the
+method of least squares. If the fitted circle for column~$c$ has radius
+$\rho_c$, the corrected column curvature is
+$C_c = 1/\rho_c - \mathrm{SAC}$,
+and the point-matrix curvature for frame~$k$ is the average over all valid
+columns (Eq.~\ref{eq:ms_cpm_corrected}).
+
+\paragraph{Nakazima case.}
+In the Nakazima test the sheet wraps around the hemispherical punch, so the
+necking dimple is superimposed on a strong global dome curvature. A direct
+$Z'$-based description as in the Marciniak case would mix the two
+contributions. The measured points are therefore transformed into the
+punch-wrapping coordinates $D$ and $R_\mathrm{out}$ shown in
+Figure~\ref{fig:ms_point_matrix}. The punch centre $O'$ is reconstructed from
+the punch radius $r_N$ and the current pole thickness. With the present sign
+convention, this gives
 \begin{equation}
     O' = \bigl(0,\,0,\,Z_P - r_N - t_P\bigr), \qquad
     t_P = t_0 \exp\!\left[-(\varepsilon_1+\varepsilon_2)\right],
@@ -294,25 +351,10 @@ columns,
 If a column fit is invalid, it is excluded from this average and the number of
 valid columns must be reported.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{img/Spatio_temp_fig.jpg}
-    \caption{Principle of the Min--Stoughton curvature method. The global
-    curvature of the deformed specimen is removed in order to isolate the local
-    dimple associated with necking. A circle is fitted to the residual profile
-    to obtain the local curvature. Tracking this curvature over time allows the
-    onset of localized necking to be detected when the measured curvature
-    departs from its predicted smooth evolution. Adapted from
-    Min et al.~\cite{Min2017}.}
-    \label{fig:min_stoughton_principle}
-\end{figure}
-
-
-A nearly flat residual profile results in a large radius and therefore a small
-curvature, whereas a developing dimple produces a smaller radius and a larger
-curvature.
-
-The curvature value $C_{pm}$ is evaluated for each frame of the deformation
+\paragraph{Onset detection.}
+In both cases, a nearly flat residual profile results in a large fitted radius
+and therefore a small curvature, whereas a developing dimple produces a smaller
+radius and a larger curvature. The curvature value $C_{pm}$ is evaluated for each frame of the deformation
 sequence. During stable deformation, the curvature follows a smooth evolution.
 At the onset of localized necking, the measured curvature starts to increase
 more rapidly and departs from its previous trend. The measured curvature is
