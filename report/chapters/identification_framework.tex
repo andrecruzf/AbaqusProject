@@ -90,6 +90,45 @@ is satisfied for $n$ consecutive frames, with $\Delta = \alpha\,\mathrm{SAC}$.
 Here $\alpha$ is the curvature-threshold multiplier and should not be confused
 with the material orientation angle used elsewhere in the report.
 
+The procedure relies on a small set of constants that originate from four
+distinct sources. A first group is fixed by the method of Min et
+al.~\cite{Min2017}. A second group is read from the specimen metadata. A third
+group is derived from the measured DIC grid for each specimen, so that it is
+never assumed but obtained from the data. The remaining constants are the
+analysis parameters chosen by the user, which are also the quantities whose
+influence is examined in the sensitivity study. These constants and their
+origin are summarised in Table~\ref{tab:ms_constants}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Constants required by the Min--Stoughton workflow and their origin.}
+    \label{tab:ms_constants}
+    \begin{tabular}{l p{0.40\linewidth} p{0.30\linewidth}}
+        \hline
+        Symbol & Meaning & Origin \\
+        \hline
+        \multicolumn{3}{l}{\textit{Fixed by the method}}\\
+        $n$ & Number of consecutive frames required for onset & Min et al.~\cite{Min2017}, $n=8$ \\
+        $\alpha$ & Threshold multiplier, $\Delta=\alpha\,\mathrm{SAC}$ & Paper default $\alpha=1/10$ \\
+        \hline
+        \multicolumn{3}{l}{\textit{Read from specimen metadata}}\\
+        $r_N$ & Punch radius, used to reconstruct the punch centre & \texttt{sample\_ID.xml} / VIC3D project \\
+        $t_0$ & Initial sheet thickness & \texttt{sample\_ID.xml} / VIC3D project \\
+        \hline
+        \multicolumn{3}{l}{\textit{Derived from the DIC measurement}}\\
+        $d_X,\,d_Y$ & DIC grid spacing across and along the band & Median spacing of adjacent DIC points \\
+        $N_X,\,N_Y$ & Matrix point counts & $N_X=\lceil W_X/d_X+1\rceil$, $N_Y=\lceil W_Y/d_Y+1\rceil$ \\
+        $O$ & Neck centre that anchors the matrix & Local maximum of smoothed $\varepsilon_1$ near the crack line \\
+        \hline
+        \multicolumn{3}{l}{\textit{User-selected analysis parameters}}\\
+        $W_X,\,W_Y$ & Physical matrix width and length & Chosen, studied in Section~\ref{sec:results_task2} \\
+        $\mathrm{SAC}$ & Superimposed artificial curvature & Chosen value, e.g. $5\times10^{-4}\,\mathrm{mm}^{-1}$ \\
+        $M$ & Reference frame for background subtraction & Time-based choice, e.g. $M=0.8$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
 This section defines how the criterion is assembled. The numerical sensitivity
 of the current implementation, and its comparison with the existing DIN/ISO and
 Volk--Hora outputs, are reported separately in Section~\ref{sec:results_task2}.
