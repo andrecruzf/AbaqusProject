@@ -65,32 +65,81 @@ where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal 
 
 The method is straightforward and widely used, but relies on a single time frame and is sensitive to the selected cross-section and the regularity of the strain field near the crack.
 
-\subsection{Volk \& Hora Time-Dependent Method}
+\subsection{Volk & Hora Time-Dependent Method}
 \label{sec:vh_method}
 
-In contrast to the intersection line method, the approach proposed by Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies necking onset from the evolution of the thickness strain rate. First, the thickness strain rate is computed from the in-plane DIC strains using incompressibility:
+In contrast to the intersection-line method, the approach proposed by
+Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies
+the onset of localized necking from the evolution of the thickness strain rate.
+First, the thickness strain rate is computed from the in-plane DIC strains
+using plastic incompressibility:
 \begin{equation}
-    \dot{\varepsilon}_3 = -\left(\dot{\varepsilon}_1 + \dot{\varepsilon}_2\right).
+\dot{\varepsilon}_3 =
+-\left(\dot{\varepsilon}_1 + \dot{\varepsilon}2\right).
 \end{equation}
-For discrete time steps, the central difference formula is preferred for its higher accuracy. If the frame rate changes during the experiment, the effective time step is defined as $\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values are linearly interpolated to ensure a uniform differencing stencil. The thinning rate is then $\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
+For discrete time steps, the central difference formula is preferred because
+of its higher accuracy. If the frame rate changes during the experiment, the
+effective time step is defined as
+$\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values
+are linearly interpolated to ensure a uniform differencing stencil. The
+thinning rate is then defined as
+$\dot{\varepsilon}{\text{thin}} = -\dot{\varepsilon}_3$.
 
-A necking zone is identified using a threshold criterion on the thinning rate. On the last frame before fracture (frame $b-1$), the DIC facets are sorted by their thinning rate in ascending order. The representative maximum thinning rate $\bar{\dot{\varepsilon}}_{\max}$ is defined as the mean of the five highest values:
+A necking zone is identified from the thinning-rate field following the
+procedure of Volk and Hora~\cite{VolkHora2011}. On the last frame before
+fracture, denoted by $b-1$, the DIC facets are sorted by their thinning rate in
+ascending order. The representative maximum thinning rate is defined as the
+mean of the five highest values:
 \begin{equation}
-    \bar{\dot{\varepsilon}}_{\max} = \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
+\bar{\dot{\varepsilon}}{\max}
+= \frac{1}{5}\sum{i=g-4}^{g} \dot{\varepsilon}{b-1,i},
 \end{equation}
-where $g$ is the total number of facets (sorted by thinning rate), $b$ the total number of frames, and the subscript $b-1$ indicates that the thinning rate is evaluated at the last frame before fracture. The necking zone $N$ is then defined as all facets whose thinning rate at frame $b-1$ exceeds a fraction $\alpha$ of this representative maximum:
+where $g$ is the total number of facets and the subscript $b-1$ indicates that
+the thinning rate is evaluated at the last frame before fracture. The necking
+zone $N$ is then defined as all facets whose thinning rate exceeds a fraction
+$\alpha$ of this representative maximum:
 \begin{equation}
-    N = \left\{ \text{facets with } \dot{\varepsilon}_{b-1,i} \geq \alpha \cdot \bar{\dot{\varepsilon}}_{\max} \right\},
+N =
+\left{
+i ; \middle| ;
+\dot{\varepsilon}{b-1,i}
+\geq \alpha , \bar{\dot{\varepsilon}}_{\max}
+\right},
 \end{equation}
-where $\alpha$ is chosen to ensure a sufficient number of facets in the necking zone (typically $\alpha = 0.55$ for a grid size of 1\,mm).
+where $\alpha$ is selected such that a sufficient number of facets is included
+in the necking zone. For a grid size of approximately \SI{1}{\milli\meter}, a
+typical value is $\alpha = 0.55$.
 
-The mean thinning rate in the necking zone is then plotted against time. Two linear fits are applied: one to the stable (pre-necking) region and one to the unstable (post-necking) region. The transition between the two regimes, determined by minimising the combined fitting error, defines the last stable frame. The limit strains $\varepsilon_{1,\text{lim}}$ and $\varepsilon_{2,\text{lim}}$ are computed as the mean principal strains in the necking zone at this last stable frame:
+The mean thinning rate inside the necking zone is then plotted as a function of
+time. Two linear fits are applied: one to the stable pre-necking regime and one
+to the unstable post-necking regime. The transition frame is determined by
+minimising the combined fitting error of both linear regressions. This frame is
+interpreted as the last stable frame before localized necking. The limit strains
+are finally computed as the mean principal strains in the necking zone at this
+frame:
 \begin{equation}
-    \varepsilon_{1,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{1,\text{stab},i}, \qquad
-    \varepsilon_{2,\text{lim}} = \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{2,\text{stab},i},
+\varepsilon_{1,\text{lim}}
+= \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{1,\text{stab},i},
+\qquad
+\varepsilon_{2,\text{lim}}
+= \frac{1}{n}\sum_{i=1}^{n} \varepsilon_{2,\text{stab},i},
 \end{equation}
-where $n$ is the number of points in the necking zone.
+where $n$ is the number of facets in the necking zone.
 
+Figure~\ref{fig:vh_example} shows an example of the resulting Volk–Hora
+evaluation plot obtained with the implemented post-processing framework. The
+change in slope of the mean thinning-rate curve marks the transition from the
+stable to the unstable regime and is used to identify the limit frame.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{report/img/E0_RM00_000_W12_002_VolkHora_plot.png}
+\caption{Example Volk–Hora evaluation plot obtained for an AA5754
+specimen with W120 geometry. The transition between the stable and unstable
+thinning-rate regimes defines the last stable frame used for the extraction
+of the forming-limit strains.}
+\label{fig:vh_example}
+\end{figure}
 \subsection{Merklein Method}
 
 The Merklein method~\cite{Merklein2010} is a time-dependent approach that detects necking from the acceleration of the major strain rate at a critical point. On the last frame before fracture, the facet with the highest major strain value within the necking zone is selected. To reduce scatter, the mean major strain within a circle of 2\,mm radius around this point is tracked over time.
@@ -107,19 +156,70 @@ where $\mu$ and $\sigma$ are the mean and standard deviation of the major strain
 
 During homogeneous deformation, the mean strain rate increases steadily while the standard deviation remains approximately constant, causing the CoV to decrease. Once localisation begins, the standard deviation increases sharply, leading to a rapid rise in the CoV. The global minimum of the CoV therefore identifies the onset of necking. The limit strains are the mean principal strains in the region of interest at the frame corresponding to this minimum.
 
-\subsection{Min--Stoughton Curvature Method}
+\subsection{Min–Stoughton Curvature Method}
 \label{sec:minstoughton_method}
 
-The criterion proposed by Min et al.~\cite{Min2017} differs from the previous methods in that it does not evaluate the strain field at all. It is a \emph{spatio-temporal} geometric criterion, in the sense that it combines the local change of surface geometry with its evolution over time, and its detailed implementation within the present work is described in Section~\ref{sec:minstoughton_draft}. The underlying picture is intuitive. While the deformation stays homogeneous, the stretched dome keeps a smooth and gradually varying curvature. As soon as a local neck begins to form, a small dimple appears through the thickness and the outer surface gains an additional, sharper curvature concentrated in the necking band. Following this spatial curvature frame after frame therefore reveals the instant at which localisation sets in.
+The criterion proposed by Min et al.\cite{Min2017} differs from the
+DIN/ISO12004-2 and Volk–Hora methods by detecting the onset of localized
+necking from the evolution of the specimen surface geometry. The method can be
+understood as a spatio-temporal curvature criterion: it evaluates how a local
+geometrical imperfection develops in space and how this curvature evolves over
+time.
 
-To make the local change measurable, the surface around the necking region is reduced to a single curvature value per frame. The global shape of the specimen, which is dominated by the overall dome and, in the Nakazima case, by the hemispherical punch, is first removed, so that only the small deviation that grows when a neck forms remains. A circle of radius $\rho$ is fitted to this residual profile, and the curvature of the frame follows as
-\begin{equation}
-    C_{pm} = \frac{1}{\rho}.
-\end{equation}
-A nearly flat profile gives a large radius and a small curvature, whereas a developing dimple gives a small radius and a large curvature.
+The underlying idea is illustrated in Figure~\ref{fig:min_stoughton_principle}.
+During homogeneous deformation, the outer surface of the specimen remains
+smooth and its curvature evolves gradually. When localized necking starts, a
+small dimple forms in the necking region. This dimple introduces an additional
+local curvature superimposed on the global curvature of the dome. By tracking
+this local curvature over the deformation sequence, the onset of localized
+necking can be identified.
 
-Plotted against time, $C_{pm}$ follows a slow and regular trend during homogeneous deformation and then departs from it once necking starts. The measured curvature is compared with a predicted value $C_{pm,P}$ obtained by extrapolating its own past evolution. The onset of localised necking is declared at the first frame $k$ for which
+To isolate the local necking contribution, the global curvature of the specimen
+is first removed from the measured surface profile. In the Nakazima test, this
+global component is mainly associated with the dome shape imposed by the
+hemispherical punch. After this subtraction, the remaining residual profile
+contains the local geometrical deviation caused by necking. A circle is then
+fitted to the residual profile around the localization region. If the fitted
+circle has radius $\rho$, the corresponding local curvature is defined as
 \begin{equation}
-    C_{pm}(k) > C_{pm,P}(k) + \Delta
+C_{pm} = \frac{1}{\rho}.
 \end{equation}
-holds over several consecutive frames, where $\Delta$ is a small tolerance. Requiring this persistence prevents the criterion from reacting to isolated measurement noise. The limit strains are then read from the DIC strain field at the necking centre at the onset frame.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{report/img/Spatio_temp_fig.jpg}
+    \caption{Principle of the Min--Stoughton curvature method. The global
+    curvature of the deformed specimen is removed in order to isolate the local
+    dimple associated with necking. A circle is fitted to the residual profile
+    to obtain the local curvature. Tracking this curvature over time allows the
+    onset of localized necking to be detected when the measured curvature
+    departs from its predicted smooth evolution. Adapted from
+    Min et al.~\cite{Min2017}.}
+    \label{fig:min_stoughton_principle}
+\end{figure}
+
+
+A nearly flat residual profile results in a large radius and therefore a small
+curvature, whereas a developing dimple produces a smaller radius and a larger
+curvature.
+
+The curvature value $C_{pm}$ is evaluated for each frame of the deformation
+sequence. During stable deformation, the curvature follows a smooth evolution.
+At the onset of localized necking, the measured curvature starts to increase
+more rapidly and departs from its previous trend. The measured curvature is
+therefore compared with a predicted value $C_{pm,P}$ obtained by extrapolating
+the earlier curvature evolution. Localized necking is detected at the first
+frame $k$ for which
+\begin{equation}
+C_{pm}(k) > C_{pm,P}(k) + \Delta
+\end{equation}
+is satisfied over a prescribed number of consecutive frames. The tolerance
+$\Delta$ and the persistence requirement are introduced to avoid detecting
+isolated fluctuations caused by DIC noise.
+
+Once the onset frame has been identified from the curvature evolution, the
+corresponding forming-limit strains are extracted from the DIC strain field at
+the localization centre. The curvature criterion is therefore used to determine
+the time of onset, while the limit strain values are still obtained from the
+measured strain data.
+
