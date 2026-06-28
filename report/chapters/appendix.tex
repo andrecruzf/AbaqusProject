@@ -198,24 +198,80 @@ The framework includes a graphical interface, built with Streamlit, that acts as
 a front-end to the configuration file described in
 Chapter~\ref{chap:numerical_model}. It is a finished, working tool that makes the
 pipeline more convenient to use, and it can serve as a basis to inspire future
-development.
+development. The interface is organised into three working areas presented below,
+namely job submission, job monitoring, and results inspection, together with an
+experimental AI assistant. Each control writes the corresponding configuration
+value, so a case prepared in the interface is equivalent to one configured
+directly in the configuration file.
 
-Figure~\ref{fig:app_interface} shows the main view. The interface is organised
-into four areas: \emph{Submit Job}, which exposes the case parameters (test type,
-specimen width, sheet thickness, orientation, punch diameter, mesh factor and
-thickness seeds, mass scaling, punch speed, punch travel, velocity profile, and
-friction) together with the computational resources and the advanced mesh
-settings; \emph{Job Status}, for monitoring submitted cluster jobs;
-\emph{Results}, for inspecting the post-processed outputs; and an experimental
-\emph{AI Assistant}. Each control writes the corresponding configuration value,
-so a case prepared in the interface is equivalent to one configured directly in
-the configuration file.
+\section{Job Submission}
+
+The job-submission view collects all parameters of a single case. The first
+block (Figure~\ref{fig:gui_submit_params}) exposes the test configuration: the
+test type, specimen width, sheet thickness, orientation angle, punch diameter,
+mesh factor, through-thickness seeds, mass-scaling target, punch speed, punch
+travel, velocity profile, friction, and the symmetry option.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{img/app_interface.png}
-    \caption{Main view of the Streamlit interface (Submit Job tab),
-exposing the simulation parameters and computational settings that are otherwise
-set in the configuration file.}
-    \label{fig:app_interface}
+    \includegraphics[width=0.95\linewidth]{img/gui_submit_params.png}
+    \caption{Job submission: the case-parameter block of the Submit Job view.}
+    \label{fig:gui_submit_params}
+\end{figure}
+
+A collapsible advanced mesh-settings panel (Figure~\ref{fig:gui_mesh_settings})
+exposes the partitioned mesh-zone layout together with the per-section target
+sizes and partition controls described in Chapter~\ref{chap:numerical_model}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.68\linewidth]{img/gui_mesh_settings.png}
+    \caption{Job submission: the advanced mesh-settings panel, exposing the
+mesh-zone layout and the per-section seeding controls.}
+    \label{fig:gui_mesh_settings}
+\end{figure}
+
+A computational-settings block (Figure~\ref{fig:gui_computational}) estimates the
+resources required for the selected case and proposes a CPU count and wall-time,
+which the user can accept or override before submission.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{img/gui_computational.png}
+    \caption{Job submission: the computational-settings block, which estimates
+and suggests the cluster resources for the selected case.}
+    \label{fig:gui_computational}
+\end{figure}
+
+\section{Job Monitoring}
+
+The job-monitoring view (Figure~\ref{fig:gui_job_status}) queries the Euler queue
+and lists the user's jobs with their state, elapsed time, time limit, and node
+allocation. The state column is colour-coded, with distinct colours for running,
+pending, completed, and failed jobs, and a progress estimate is shown for each
+running solver job.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_job_status.png}
+    \caption{Job monitoring: the Euler queue with the colour-coded job-state
+column (green for running jobs) and the per-job progress estimate.}
+    \label{fig:gui_job_status}
+\end{figure}
+
+\section{Results}
+
+The results view (Figure~\ref{fig:gui_results}) synchronises the processed
+outputs from the cluster and presents them in three modes, namely a single-job
+inspector, an FLC aggregation, and a sensitivity-study comparison. Jobs are
+sorted and selected from a list before their force-displacement curves, strain
+paths, forming-limit points, and diagnostic media are displayed.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results.png}
+    \caption{Results inspection: the Results Viewer, showing the cluster
+synchronisation, the single-job, FLC, and sensitivity view modes, and the job
+selector.}
+    \label{fig:gui_results}
 \end{figure}
