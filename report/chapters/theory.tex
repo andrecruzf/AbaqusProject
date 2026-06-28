@@ -188,6 +188,31 @@ local curvature superimposed on the global curvature of the dome. By tracking
 this local curvature over the deformation sequence, the onset of localized
 necking can be identified.
 
+The curvature is not evaluated over the whole surface but on a small point
+matrix placed around the necking region, as shown in
+Figure~\ref{fig:ms_point_matrix}. The matrix is centred on the neck centre $O$
+and oriented along the band, with a width $W_X$ across the band and a length
+$W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points. For the Nakazima test,
+where the sheet wraps around the punch, each surface point is expressed in
+punch-based coordinates: an arc-distance coordinate $D$ measured along a matrix
+column and a radial coordinate $R_\mathrm{out}$ giving the distance from the
+point to the punch centre $O'$. These coordinates separate the local necking
+signal from the global curvature imposed by the punch.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/ms_point_matrix.pdf}
+    \caption{Min--Stoughton evaluation geometry. (a) The point matrix is
+    centred on the neck centre $O$ and oriented along the crack line, with a
+    width $W_X$ across the band and a length $W_Y$ along it, sampled by $N_X$
+    columns of $N_Y$ points. (b) For the Nakazima test, each deformed point is
+    described by its arc-distance coordinate $D$ along a matrix column and its
+    radial distance $R_\mathrm{out}$ to the punch centre $O'$. The measured
+    surface deviates from the ideal dome where the local dimple forms. Adapted
+    from Min et al.~\cite{Min2017}.}
+    \label{fig:ms_point_matrix}
+\end{figure}
+
 To isolate the local necking contribution, the background curvature of the
 specimen is first removed from the measured surface profile by referring it to
 an earlier, still homogeneous state. In the Marciniak test this background
