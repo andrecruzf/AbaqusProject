@@ -169,12 +169,16 @@ no longer corresponds to a unique material limit. A criterion that detects
 necking directly, from a physical signature of localization rather than from
 the position of the strain state, is therefore desirable.
 
-The criterion proposed by Min et al.~\cite{Min2017} addresses this need by
-detecting the onset of localized necking from the evolution of the specimen
-surface geometry, independently of the strain path. The method can be
-understood as a spatio-temporal curvature criterion: it evaluates how a local
-geometrical imperfection develops in space and how this curvature evolves over
-time.
+To address this need, Min et al.~\cite{Min2017} proposed an improved curvature
+method that detects the onset of localized necking from the evolution of the
+specimen surface geometry rather than from the strain state. The method was
+first developed for the Marciniak test, in which a carrier blank produces a
+nearly flat and almost proportionally loaded region, and was then extended to
+the Nakazima test, where the hemispherical punch bends the sheet and imposes a
+strong global curvature. In both configurations the criterion is spatio-temporal.
+It evaluates how a local geometrical imperfection develops in space and how its
+curvature evolves over time, which makes the detection largely independent of
+the strain path.
 
 The underlying idea is illustrated in Figure~\ref{fig:min_stoughton_principle}.
 During homogeneous deformation, the outer surface of the specimen remains
@@ -184,13 +188,16 @@ local curvature superimposed on the global curvature of the dome. By tracking
 this local curvature over the deformation sequence, the onset of localized
 necking can be identified.
 
-To isolate the local necking contribution, the global curvature of the specimen
-is first removed from the measured surface profile. In the Nakazima test, this
-global component is mainly associated with the dome shape imposed by the
-hemispherical punch. After this subtraction, the remaining residual profile
-contains the local geometrical deviation caused by necking. A circle is then
-fitted to the residual profile around the localization region. If the fitted
-circle has radius $\rho$, the corresponding local curvature is defined as
+To isolate the local necking contribution, the background curvature of the
+specimen is first removed from the measured surface profile by referring it to
+an earlier, still homogeneous state. In the Marciniak test this background
+component is small, because the analysed region remains nearly flat, whereas in
+the Nakazima test it is dominated by the dome shape imposed by the hemispherical
+punch and must therefore be treated explicitly. After this subtraction, the
+remaining residual profile contains the local geometrical deviation caused by
+necking. A circle is then fitted to the residual profile around the
+localization region. If the fitted circle has radius $\rho$, the corresponding
+local curvature is defined as
 \begin{equation}
 C_{pm} = \frac{1}{\rho}.
 \end{equation}
@@ -225,7 +232,11 @@ C_{pm}(k) > C_{pm,P}(k) + \Delta
 \end{equation}
 is satisfied over a prescribed number of consecutive frames. The tolerance
 $\Delta$ and the persistence requirement are introduced to avoid detecting
-isolated fluctuations caused by DIC noise.
+isolated fluctuations caused by measurement noise. This comparison against a
+predicted curvature, combined with the persistence requirement, is the main
+refinement that Min et al.~\cite{Min2017} introduce over earlier curvature-based
+detection, and it is what makes the method robust enough to be applied to both
+Marciniak and Nakazima tests.
 
 Once the onset frame has been identified from the curvature evolution, the
 corresponding forming-limit strains are extracted from the DIC strain field at
