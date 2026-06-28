@@ -31,24 +31,11 @@ to be applied to the same DIC dataset.
 \label{sec:minstoughton_draft}
 
 The Min–Stoughton criterion was studied as a possible extension of the
-existing FLC identification framework. The method of Min, Stoughton, Carsley
-and Lin~\cite{Min2017} is a geometric, spatio-temporal curvature
-criterion. Instead of evaluating only the final strain profile, it follows how
-the measured three-dimensional specimen surface bends during the test. The
-geometric idea is simple: before localized necking, the surface curvature
-evolves smoothly; when a local through-thickness dimple starts to form, the
-surface bends more sharply and the fitted curvature rises faster than expected.
-
-The method therefore compares two curvature histories. The first one is the
-tracked curvature, obtained from the current DIC surface around the necking
-region. It represents what the specimen is actually doing. The second one is a
-predicted curvature, obtained by extrapolating the previous smooth evolution of
-the same surface. It represents what the curvature should have been if the
-deformation had continued without localization. As long as deformation remains
-stable, the tracked curvature follows the prediction. When the tracked
-curvature persistently exceeds the predicted value, the surface is bending more
-than the previous deformation history can explain, which is interpreted as the
-onset of localized necking.
+existing FLC identification framework. The physical principle of the criterion,
+namely the detection of localized necking from the evolution of the surface
+curvature, is described in Section~\ref{sec:minstoughton_method}. The present
+section concerns its translation into a working post-processing procedure for
+the laboratory DIC data.
 
 For Marciniak tests, this curvature is fitted on a small narrow surface patch
 around the neck band, rather than on one manually selected line. This makes the

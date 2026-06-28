@@ -159,9 +159,19 @@ During homogeneous deformation, the mean strain rate increases steadily while th
 \subsection{Min–Stoughton Curvature Method}
 \label{sec:minstoughton_method}
 
-The criterion proposed by Min et al.\cite{Min2017} differs from the
-DIN/ISO12004-2 and Volk–Hora methods by detecting the onset of localized
-necking from the evolution of the specimen surface geometry. The method can be
+The forming-limit curve is traditionally interpreted as a fixed material
+boundary in the $\varepsilon_1$--$\varepsilon_2$ plane. This interpretation is
+strictly valid only for proportional loading, since the strain combination at
+the onset of necking depends on the path followed to reach it. In the Nakazima
+test the contact with the hemispherical punch bends the sheet and curves the
+strain path, so a limit point extracted under the assumption of a linear path
+no longer corresponds to a unique material limit. A criterion that detects
+necking directly, from a physical signature of localization rather than from
+the position of the strain state, is therefore desirable.
+
+The criterion proposed by Min et al.~\cite{Min2017} addresses this need by
+detecting the onset of localized necking from the evolution of the specimen
+surface geometry, independently of the strain path. The method can be
 understood as a spatio-temporal curvature criterion: it evaluates how a local
 geometrical imperfection develops in space and how this curvature evolves over
 time.
@@ -187,7 +197,7 @@ C_{pm} = \frac{1}{\rho}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{report/img/Spatio_temp_fig.jpg}
+    \includegraphics[width=\textwidth]{img/Spatio_temp_fig.jpg}
     \caption{Principle of the Min--Stoughton curvature method. The global
     curvature of the deformed specimen is removed in order to isolate the local
     dimple associated with necking. A circle is fitted to the residual profile
