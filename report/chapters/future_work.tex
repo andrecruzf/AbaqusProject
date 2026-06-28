@@ -1,23 +1,65 @@
 \chapter{Future Work}\label{chap:future_work}
 
-The following directions are identified for future investigation, ordered by priority:
+The following directions are identified for future investigation, ordered by
+priority:
 
 \begin{enumerate}
-  \item \textbf{Complete and extend the mesh-size study.} The framework now supports automated mesh-size modification, which addresses the corresponding Task~III requirement. The next step is to complete the full convergence table for all relevant thicknesses and punch configurations, not only the current W100 scalar reference case, and to document the selected production mesh density.
+  \item \textbf{Complete and extend the mesh-size study.} The framework now
+  supports automated mesh-size modification, which addresses the corresponding
+  Task~III requirement. The next step is to complete the full convergence table
+  for all relevant thicknesses and punch configurations, not only the current
+  W100 scalar reference case, and to document the selected production mesh
+  density.
 
-  \item \textbf{Full Task~I numerical campaign.} Complete the simulation campaigns for all three test configurations (Nakazima, Marciniak, PiP) across the specimen geometries, sheet thicknesses, punch radii, and orientation angles used experimentally. This will allow quantification of thickness, size, punch-radius, and anisotropy effects on the numerical FLC, directly supporting Task~I.
+  \item \textbf{Complete the numerical campaign.} Run the simulations for all
+  three test configurations (Nakazima, Marciniak, PiP) across the specimen
+  geometries, sheet thicknesses, punch radii, and orientation angles used
+  experimentally. This would allow thickness, size, punch-radius, and
+  anisotropy effects to be quantified numerically and compared with Task~I.
 
-  \item \textbf{Comparison between test configurations.} A direct comparison of the FLCs produced by Nakazima, Marciniak, and PiP simulations will quantify the effect of strain path linearity on the extracted limit strains. The PiP configuration is expected to produce more linear paths in the biaxial regime.
+  \item \textbf{Compare test configurations.} A direct comparison of the FLCs
+  produced by Nakazima, Marciniak, and PiP simulations should be used to
+  quantify the effect of strain-path linearity on the extracted limit strains.
+  In particular, the PiP configuration should be assessed as a candidate for
+  more linear paths in the biaxial regime.
 
-  \item \textbf{Strain path analysis and endpoint robustness.} Extract and visualise the full strain path trajectory $(\varepsilon_2(t), \varepsilon_1(t))$ at the critical element to verify the assumed strain state and assess non-linearity induced by punch contact and bending. The force-drop fracture-frame detector should be cross-checked against STATUS deletion and visual movie inspection for borderline cases.
+  \item \textbf{Analyse strain paths and endpoint robustness.} Extract and
+  visualise the full strain-path trajectory
+  $(\varepsilon_2(t), \varepsilon_1(t))$ at the critical element to verify the
+  assumed strain state and assess non-linearity induced by punch contact and
+  bending. The force-drop fracture-frame detector should be cross-checked
+  against STATUS deletion and visual movie inspection for borderline cases.
 
-  \item \textbf{Integration with Task~II identification criteria.} The numerical strain field data (from \texttt{strain\_path.csv}) can be fed into the FLC identification framework of Task~II (Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, Pham-Sigvant~\cite{Pham2023}, Min-Stoughton~\cite{Min2017}) to compare criterion-dependent FLC values on numerically generated data where the ground truth is known.
+  \item \textbf{Integrate Task~II identification criteria.} The numerical
+  strain-field data from \texttt{strain\_path.csv} can be fed into the FLC
+  identification framework of Task~II (Volk--Hora~\cite{VolkHora2011},
+  Merklein~\cite{Merklein2010}, Pham--Sigvant~\cite{Pham2023}, and
+  Min--Stoughton~\cite{Min2017}). This would allow criterion-dependent FLC
+  values to be compared on simulated data for which the damage state and
+  fracture location are known.
 
-  \item \textbf{Validation against experimental results.} Once the experimental FLC from the high-throughput Nakazima/Marciniak test bench (Task~I) is available, the numerical FLC can be compared directly to assess the accuracy of the Hosford-Coulomb material model and the pipeline as a whole. The same comparison can be used to identify whether the automated specimen loading system introduces systematic effects that should be represented numerically.
+  \item \textbf{Validate against experimental results.} Once the experimental
+  FLC from the high-throughput Nakazima/Marciniak test bench is available, the
+  numerical FLC can be compared directly to assess the accuracy of the
+  Hosford--Coulomb material model and the pipeline as a whole. The same
+  comparison can be used to identify whether the automated specimen loading
+  system introduces systematic effects that should be represented numerically.
 
-  \item \textbf{HC material constant calibration.} The 46 VUMAT constants used in this work were taken from a reference calibration. A calibration against dedicated characterisation tests (uniaxial tension, notched tension, shear) for the specific sheet batch used in Task~I would improve predictive accuracy.
+  \item \textbf{Calibrate HC material constants.} The 46 VUMAT constants used
+  in this work were taken from a reference calibration. A calibration against
+  dedicated characterisation tests (uniaxial tension, notched tension, shear)
+  for the specific sheet batch used in Task~I would improve predictive
+  accuracy.
 
-  \item \textbf{Friction sensitivity.} The Coulomb friction coefficients are set to fixed values in \texttt{config.py}. A parametric study varying the punch--blank and die--blank coefficients would quantify their influence on the FLC and on the prevalence of base fracture vs.\ dome fracture.
+  \item \textbf{Assess friction sensitivity.} The Coulomb friction coefficients
+  are set to fixed values in \texttt{config.py}. A parametric study varying the
+  punch--blank and die--blank coefficients would quantify their influence on
+  the FLC and on the prevalence of base fracture versus dome fracture.
 
-  \item \textbf{Develop the user interface further.} The current Streamlit interface (Appendix~\ref{app:interface}) runs as a web application and is convenient for configuring and launching individual cases. Building on this tool, a natural next step is to migrate it to a standalone local application, which would remove the web-server dependency, improve responsiveness for larger result sets, and integrate more directly with the local project and cluster workflow.
+  \item \textbf{Develop the user interface.} The current \software{Streamlit}
+  interface (Appendix~\ref{app:interface}) runs as a web application and is
+  convenient for configuring and launching individual cases. A standalone local
+  application would remove the web-server dependency, improve responsiveness for
+  larger result sets, and integrate more directly with the local project and
+  cluster workflow.
 \end{enumerate}

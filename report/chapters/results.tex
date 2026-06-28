@@ -12,9 +12,29 @@ identified forming limits.
 \subsection{Influence of Material Orientation}
 \label{sec:orientation_influence}
 
-A dedicated subset of the campaign was used to isolate the influence of material orientation on the experimentally determined forming limits. For every sheet thickness (A--D), the \SI{100}{\milli\meter} hemispherical punch was tested with the specimen long axis aligned both with the rolling direction (RD, configuration \texttt{E0\_RM00\_000}) and with the transverse direction (TD, configuration \texttt{E0\_RM00\_090}). The configuration label encodes the punch and orientation: the trailing \texttt{000} and \texttt{090} denote the in-plane angle $\alpha$ between the specimen long axis and the rolling direction, so that \texttt{E0\_RM00\_000} corresponds to RD ($\alpha = \SI{0}{\degree}$) and \texttt{E0\_RM00\_090} to TD ($\alpha = \SI{90}{\degree}$). All other parameters (punch diameter, specimen widths, and test bench settings) are held identical between the two orientations, so that any difference in the resulting forming limits can be attributed to anisotropy alone.
+A dedicated subset of the campaign was used to isolate the influence of
+material orientation on the experimentally determined forming limits. For every
+sheet thickness (A--D), the \SI{100}{\milli\meter} hemispherical punch was
+tested with the specimen long axis aligned with the rolling direction (RD,
+configuration \texttt{E0\_RM00\_000}) and with the transverse direction (TD,
+configuration \texttt{E0\_RM00\_090}). The relevant suffixes \texttt{000} and
+\texttt{090} denote the in-plane angle $\alpha$ between the specimen long axis
+and RD, so that \texttt{E0\_RM00\_000} corresponds to $\alpha=\SI{0}{\degree}$
+and \texttt{E0\_RM00\_090} to $\alpha=\SI{90}{\degree}$. The punch diameter,
+specimen widths, and test-bench settings were kept identical between the two
+orientations, so that differences in the resulting forming limits can be
+interpreted primarily as orientation effects.
 
-For each orientation and thickness, two complete campaigns of seven specimen widths were performed, and the forming-limit points reported here are the mean over the two campaigns. Averaging over two independent sets reduces the influence of anomalies that a single set may carry, such as local material defects, specimen handling or operator errors, or other test-specific outliers, so that the reported curve reflects the representative material response rather than the particular condition of one set. The limit points themselves were determined from the DIC strain fields using the section-line (DIN) method of DIN EN ISO 12004-2~\cite{ISO120042}, in which strain profiles are evaluated along section lines placed across the necking zone and the limit strains are recovered from an inverse best-fit of these profiles. The same evaluation pipeline used throughout this work was applied, enforcing both the robustness and accuracy selection criteria. Figure~\ref{fig:rd_vs_td} overlays the resulting RD and TD forming limit curves for the four thicknesses.
+For each orientation and thickness, two complete campaigns of seven specimen
+widths were performed, and the forming-limit points reported here are the mean
+over the two campaigns. Averaging over two independent sets reduces the
+influence of test-specific scatter, so that the reported curve is less dependent
+on the condition of one individual set. The limit points were determined from
+the DIC strain fields using the ISO~12004-2 intersection-line method
+described in Section~\ref{sec:din_method}. The same evaluation pipeline was
+applied throughout this study, including the robustness and accuracy selection
+criteria. Figure~\ref{fig:rd_vs_td} overlays the resulting RD and TD forming
+limit curves for the four thicknesses.
 
 \begin{figure}[htb]
     \centering
@@ -47,20 +67,58 @@ For each orientation and thickness, two complete campaigns of seven specimen wid
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_d}
     \end{subfigure}
-    \caption{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. The laboratory suffix encodes the in-plane angle of the specimen long axis relative to RD: \texttt{000} for \SI{0}{\degree} and \texttt{090} for \SI{90}{\degree}. Each curve is the mean of two complete campaigns, with limit points evaluated using the DIN section-line method (DIN EN ISO 12004-2) under the robustness and accuracy criteria.}
+    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. The laboratory suffix encodes the in-plane angle of the specimen long axis relative to RD: \texttt{000} for \SI{0}{\degree} and \texttt{090} for \SI{90}{\degree}. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method under the robustness and accuracy criteria.}
     \label{fig:rd_vs_td}
 \end{figure}
 
-Across all four thicknesses the RD and TD forming limit curves are essentially coincident. The two orientations follow the same trajectory from the uniaxial branch through the plane-strain minimum and into the biaxial branch, and the residual differences between them remain within the scatter of the underlying campaigns. The separation between the RD and TD curves is consistently smaller than the spread observed between the two repeated campaigns of a single orientation, so it cannot be distinguished from experimental repeatability. No systematic trend with thickness is observed: the orientations do not diverge more strongly for the thinner sheets (A, B) than for the thicker ones (C, D).
+Across all four thicknesses, the RD and TD forming limit curves are nearly
+coincident. The two orientations follow the same trajectory from the uniaxial
+branch through the plane-strain minimum and into the biaxial branch, and the
+residual differences between them remain within the scatter of the underlying
+campaigns. The separation between the RD and TD curves is consistently smaller
+than the spread observed between the two repeated campaigns of a single
+orientation, so it cannot be distinguished from experimental repeatability. No
+systematic trend with thickness is observed: the orientations do not diverge
+more strongly for the thinner sheets (A, B) than for the thicker ones (C, D).
 
-These results indicate that, for the AA5754 sheet material and thickness range investigated here, in-plane material orientation has no measurable influence on the forming limits. This justifies restricting the remaining punch-diameter campaigns to the rolling direction and supports the use of an in-plane isotropic description of the forming limits in the numerical model developed in Chapter~\ref{chap:numerical_model}.
+These results indicate that, for the AA5754 sheet material and thickness range
+investigated here, in-plane material orientation has no measurable influence on
+the forming limits within the repeatability of the campaign. This justifies
+restricting the remaining punch-diameter tests to the rolling direction and
+supports using one orientation-independent experimental FLC reference for this
+dataset.
 
 \subsection{Punch Diameter, Sheet Thickness, and the Evaluation Window}
 \label{sec:punch_thickness}
 
-The second experimental study varies the punch diameter ($\varnothing$40, 60, 80, and 100\,mm) across the four sheet thicknesses (A--D) to expose the coupling between punch geometry and sheet thickness. Physically, a smaller punch superimposes more bending on the membrane stretch and produces a steeper through-thickness strain gradient, which stabilises the deformation against localised necking. The magnitude of this effect scales with the ratio $t/R$ of sheet thickness to punch radius. Two trends are therefore expected: the forming limit curve should rise as the punch diameter decreases, and the spread between punch diameters should widen with increasing thickness, since $t/R$ grows fastest for the smallest punch on the thickest sheet.
+The second experimental study varies the punch diameter
+($\varnothing$\SI{40}{\milli\meter}, $\varnothing$\SI{60}{\milli\meter},
+$\varnothing$\SI{80}{\milli\meter}, and
+$\varnothing$\SI{100}{\milli\meter}) across the four sheet thicknesses (A--D)
+to expose the coupling between punch geometry and sheet thickness. Physically,
+a smaller punch superimposes more bending on the membrane stretch and produces
+a steeper through-thickness strain gradient, which stabilises the deformation
+against localised necking. The magnitude of this effect scales with the ratio
+$t/R$ of sheet thickness to punch radius. Two trends are therefore expected:
+the forming limit curve should rise as the punch diameter decreases, and the
+spread between punch diameters should widen with increasing thickness, since
+$t/R$ grows fastest for the smallest punch on the thickest sheet.
 
-Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the standard ISO~12004-2 evaluation, that is, the intersection-line method of Section~\ref{sec:din_method} using the window width of Eq.~\eqref{eq:din_window} with its calibration constant of $10$. For the 100, 80, and 60\,mm punches the expected ordering is recovered, but the 40\,mm punch does not follow it: its limit curve lies far above the others, by a margin that grows with thickness and that is too large to be attributed to the $t/R$ curvature effect alone. Because all curves in a given diagram originate from the same material and thickness, this incoherence points to the evaluation rather than to the material response. The standard window is calibrated for the $\varnothing$100\,mm Nakazima geometry, whereas the 40\,mm punch produces a much narrower neck, so a window sized for the standard punch no longer matches the strain field to which it is applied.
+Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the
+standard ISO~12004-2 evaluation, that is, the intersection-line method of
+Section~\ref{sec:din_method} using the window width of
+Eq.~\eqref{eq:din_window} with its calibration constant of $10$. For the
+\SI{100}{\milli\meter}, \SI{80}{\milli\meter}, and \SI{60}{\milli\meter}
+punches the expected ordering is recovered, but the \SI{40}{\milli\meter} punch
+does not follow it. Its limit curve lies far above the others, by a margin that
+grows with thickness and is too large to be attributed to the $t/R$ curvature
+effect alone. Because all curves in a given diagram originate from the same
+material and thickness, this discrepancy points to the evaluation rather than
+to the material response. The standard window is calibrated for the
+$\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
+\SI{40}{\milli\meter} punch produces a much narrower neck, so a window sized
+for the standard punch no longer matches the strain field to which it is
+applied.
 
 \begin{figure}[H]
     \centering
@@ -93,7 +151,7 @@ Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the stand
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_norm_d}
     \end{subfigure}
-    \caption{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/40, \texttt{016}/60, \texttt{018}/80, and \texttt{000}/100\,mm. The 40\,mm punch (green) departs from the expected ordering by an implausibly large margin that grows with thickness.}
+    \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}. The \SI{40}{\milli\meter} punch (green) departs from the expected ordering by a margin inconsistent with the expected curvature trend.}
     \label{fig:flc_norm}
 \end{figure}
 
@@ -128,11 +186,29 @@ Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the stand
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_wvar_d}
     \end{subfigure}
-    \caption{Forming limit curves re-evaluated with the smaller fixed window constants 10, 9, 8, and 7 from the preliminary window study, for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. Reducing the constant shifts the extracted curves relative to the standard constant-10 evaluation, confirming the sensitivity of the limit to the window factor, but the fixed values introduce no geometric length-scale relation.}
+    \caption[Forming limit curves re-evaluated with smaller fixed window constants]{Forming limit curves re-evaluated with the smaller fixed window constants 10, 9, 8, and 7 from the preliminary window study, for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. Reducing the constant shifts the extracted curves relative to the standard constant-10 evaluation, confirming the sensitivity of the limit to the window factor, but the fixed values introduce no geometric length-scale relation.}
     \label{fig:flc_wvar}
 \end{figure}
 
-The intersection-line method exposes two fixed length-scale parameters: the spacing between intersection lines ($2$\,mm) and the constant factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These correspond to two physically distinct scales. The fitting window is governed by the extent of the strained dome, which scales with the punch diameter $D$, whereas the excluded near-crack zone is governed by the neck width, which scales with the sheet thickness $t$. The fixed constant captures neither. Alternative fixed window constants, including the 10, 9, 8, and 7\,mm variants inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift the extracted curves but do not introduce a geometric length-scale relation. A minimal, norm-consistent generalisation therefore replaces the constant with $D/10$, so that the window width becomes $\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to the standard value for the $\varnothing$100\,mm punch ($100/10 = 10$). Figure~\ref{fig:flc_pscaled} shows the limit curves re-evaluated with this punch-scaled window. Scaling the window with the punch diameter markedly shifts the extracted 40\,mm limit, which confirms that its position under the standard evaluation is governed largely by the window choice rather than by the material.
+The intersection-line method contains two fixed length-scale parameters: the
+spacing between intersection lines, \SI{2}{\milli\meter}, and the constant
+factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These
+correspond to two physically distinct scales. The fitting window is governed by
+the extent of the strained dome, which scales with the punch diameter $D$,
+whereas the excluded near-crack zone is governed by the neck width, which
+scales with the sheet thickness $t$. The fixed constant captures neither.
+Alternative fixed window constants, including the 10, 9, 8, and 7 variants
+inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift
+the extracted curves but do not introduce a geometric length-scale relation.
+A minimal, standard-consistent generalisation therefore replaces the constant
+with $D/10$, so that the window width becomes
+$\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to
+the standard value for the $\varnothing$\SI{100}{\milli\meter} punch
+($100/10=10$). Figure~\ref{fig:flc_pscaled} shows the limit curves
+re-evaluated with this punch-scaled window. Scaling the window with the punch
+diameter markedly shifts the extracted \SI{40}{\milli\meter} limit, which
+confirms that its position under the standard evaluation is governed largely by
+the window choice rather than by the material.
 
 \begin{figure}[H]
     \centering
@@ -165,11 +241,22 @@ The intersection-line method exposes two fixed length-scale parameters: the spac
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_pscaled_d}
     \end{subfigure}
-    \caption{Forming limit curves re-evaluated with a punch-scaled window ($\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$), for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. The constant of the standard window (Eq.~\eqref{eq:din_window}) is replaced by $D/10$, recovering the norm for the $\varnothing$100\,mm punch while giving the smaller punches a geometrically scaled fitting window.}
+    \caption[Forming limit curves re-evaluated with a punch-scaled window]{Forming limit curves re-evaluated with a punch-scaled window ($\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$), for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. The constant of the standard window (Eq.~\eqref{eq:din_window}) is replaced by $D/10$, recovering the standard value for the $\varnothing$\SI{100}{\milli\meter} punch while giving the smaller punches a geometrically scaled fitting window.}
     \label{fig:flc_pscaled}
 \end{figure}
 
-These observations indicate that the ISO~12004-2 evaluation, calibrated for a single standardised punch, cannot be transferred unchanged to a campaign that varies the punch diameter: the extracted 40\,mm limit reflects the fixed window as much as the material response. The window width and, by the same argument, the intersection-line spacing should be made tunable and geometry-aware, scaling with the punch diameter and the sheet thickness respectively. The $D/10$ rule is a first, deliberately simple candidate. A defensible parameter choice additionally requires verifying that the extracted limit is insensitive to the window in the neighbourhood of the selected value (a convergence criterion), and cross-validating against the window-independent criteria of Sections~\ref{sec:vh_method} and~\ref{sec:minstoughton_method} (Volk \& Hora and Min--Stoughton). This validation is left to future work.
+These observations indicate that the ISO~12004-2 evaluation, calibrated for a
+single standardised punch, cannot be transferred unchanged to a campaign that
+varies the punch diameter: the extracted \SI{40}{\milli\meter} limit reflects
+the fixed window as much as the material response. The window width and, by the
+same argument, the intersection-line spacing should be made tunable and
+geometry-aware, scaling with the punch diameter and the sheet thickness,
+respectively. The $D/10$ rule is a first, deliberately simple candidate. A
+defensible parameter choice additionally requires verifying that the extracted
+limit is insensitive to the window in the neighbourhood of the selected value
+and cross-validating against the criteria of Sections~\ref{sec:vh_method}
+and~\ref{sec:minstoughton_method} (Volk--Hora and Min--Stoughton). This
+validation is left to future work.
 
 \section{Task II: Min--Stoughton Curvature Criterion}
 \label{sec:results_task2}
@@ -180,31 +267,32 @@ experimental DIC samples from material class A with the \SI{100}{\milli\meter}
 punch: the narrow \texttt{W020} specimen and the wide \texttt{W200} specimen.
 The purpose of this analysis is not yet to define a final Min--Stoughton
 parameter set, but to check whether the curvature-based onset occurs in the
-same range as the existing DIN/ISO and Volk--Hora outputs and to quantify the
+same range as the existing ISO~12004-2 and Volk--Hora outputs and to quantify the
 sensitivity to the matrix length $W_Y$.
 
-The sweep used $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=5\times10^{-4}$,
-$n=8$, and a time-based reference choice $M=0.8$. The threshold multiplier was
-set to $\alpha=0.1$, so that $\Delta=\alpha\,\mathrm{SAC}=5\times10^{-5}$.
+The sweep used $W_X=\SI{2}{\milli\meter}$,
+$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and a time-based reference
+choice $M=0.8$. The threshold multiplier was set to $\alpha=0.1$, so that
+$\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
 
 \begin{table}[H]
     \centering
     \small
     \begin{tabular}{c c c c c c c}
-        \hline
-        $W_Y$ [mm] & Matrix & Coverage & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \hline
+        \toprule
+        $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
         10 & $9\times37$  & 0.988 & 368 & 25.150 & 0.2270 & -0.0655 \\
         15 & $9\times55$  & 0.879 & 415 & 26.326 & 0.3043 & -0.0897 \\
         20 & $9\times72$  & 0.796 & 393 & 25.775 & 0.2325 & -0.0670 \\
         25 & $9\times90$  & 0.719 & 393 & 25.775 & 0.2325 & -0.0670 \\
         30 & $9\times108$ & 0.599 & 393 & 25.775 & 0.2325 & -0.0670 \\
-        \hline
+        \bottomrule
     \end{tabular}
     \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
-    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=5\times10^{-4}$, $n=8$, $M=0.8$,
-    and $\alpha=0.1$. Coverage is the fraction of requested paper-grid matrix
-    points found in the valid DIC field.}
+    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
+    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
+    paper-grid matrix points found in the valid DIC field.}
     \label{tab:minstoughton_w020_wy_sweep}
 \end{table}
 
@@ -212,55 +300,56 @@ set to $\alpha=0.1$, so that $\Delta=\alpha\,\mathrm{SAC}=5\times10^{-5}$.
     \centering
     \small
     \begin{tabular}{c c c c c c c}
-        \hline
-        $W_Y$ [mm] & Matrix & Coverage & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \hline
+        \toprule
+        $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
         10 & $8\times37$  & 1.000 & 489 & 39.601 & 0.2924 & 0.2623 \\
         15 & $8\times54$  & 1.000 & 554 & 42.476 & 0.3816 & 0.3179 \\
         20 & $8\times72$  & 1.000 & 489 & 39.601 & 0.2923 & 0.2623 \\
         25 & $8\times90$  & 1.000 & 494 & 40.101 & 0.3050 & 0.2717 \\
         30 & $8\times107$ & 1.000 & 499 & 40.601 & 0.3186 & 0.2813 \\
-        \hline
+        \bottomrule
     \end{tabular}
     \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
     the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
     \label{tab:minstoughton_w200_wy_sweep}
 \end{table}
 
-The corresponding comparison with the existing experimental DIN/ISO and
+The corresponding comparison with the existing experimental ISO~12004-2 and
 Volk--Hora outputs is summarised in Table~\ref{tab:minstoughton_vh_din_compare}.
 For both specimens, the setting $W_Y=\SI{15}{\milli\meter}$ gives the closest
-agreement with the DIN/ISO average necking result. For \texttt{W020}, the
-Min--Stoughton onset occurs three frames before the DIN/ISO average result and
+agreement with the ISO~12004-2 average necking result. For \texttt{W020}, the
+Min--Stoughton onset occurs three frames before the ISO~12004-2 average result and
 one frame after the Volk--Hora result. For \texttt{W200}, the Min--Stoughton
-onset occurs five frames after the DIN/ISO average result, while Volk--Hora
+onset occurs five frames after the ISO~12004-2 average result, while Volk--Hora
 detects necking later and at a higher strain.
 
 \begin{table}[H]
     \centering
     \small
     \begin{tabular}{l l c c c c c}
-        \hline
-        Specimen & Method & $W_Y$ [mm] & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \hline
+        \toprule
+        Specimen & Method & $W_Y$ (\si{\milli\meter}) & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
         \texttt{W020} & Min--Stoughton & 15 & 415 & 26.326 & 0.3043 & -0.0897 \\
-        \texttt{W020} & DIN/ISO avg.   & -- & 418 & 26.400 & 0.3025 & -0.0888 \\
+        \texttt{W020} & ISO avg.       & -- & 418 & 26.400 & 0.3025 & -0.0888 \\
         \texttt{W020} & Volk--Hora     & -- & 414 & 26.300 & 0.2678 & -0.0796 \\
-        \hline
+        \midrule
         \texttt{W200} & Min--Stoughton & 15 & 554 & 42.476 & 0.3816 & 0.3179 \\
-        \texttt{W200} & DIN/ISO avg.   & -- & 549 & 42.351 & 0.3765 & 0.3155 \\
+        \texttt{W200} & ISO avg.       & -- & 549 & 42.351 & 0.3765 & 0.3155 \\
         \texttt{W200} & Volk--Hora     & -- & 591 & 43.401 & 0.4124 & 0.3496 \\
-        \hline
+        \bottomrule
     \end{tabular}
-    \caption{Preliminary comparison between the Min--Stoughton result at
-    $W_Y=\SI{15}{\milli\meter}$ and the existing DIN/ISO and Volk--Hora
-    necking outputs for the same experimental DIC samples.}
+    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
+    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
+    necking outputs for the same experimental DIC samples. The table label
+    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
     \label{tab:minstoughton_vh_din_compare}
 \end{table}
 
 This agreement should be interpreted as a sensitivity observation rather than
 as a final calibration of $W_Y$. The $W_Y=\SI{15}{\milli\meter}$ setting
-reproduces the DIN/ISO necking time closely for the two samples considered, but
+reproduces the ISO~12004-2 necking time closely for the two samples considered, but
 larger matrix lengths lead to earlier and lower Min--Stoughton onsets,
 especially for the biaxial \texttt{W200} specimen. In addition, the
 \texttt{W020} matrix coverage decreases as $W_Y$ increases, because the
@@ -270,59 +359,60 @@ be brought into the range of the established criteria, but that the matrix
 dimensions and reference-frame treatment must be reported explicitly and
 validated on a larger set before a production FLC is assembled.
 
-\section{Task III: Numerical Simulation Results}
+\section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
 
-This section reports the verification of the numerical framework and the
-representative forming results obtained with it. For each selected
-configuration, the pipeline creates the Abaqus model, submits the solver job on
-the Euler cluster, runs the ODB-based post-processing, and synchronises a
-structured set of result artefacts. The same interface is used for the Nakazima,
+This section reports the verification status of the numerical framework rather
+than a completed numerical FLC campaign. For each selected configuration, the
+pipeline creates the \software{Abaqus} model, submits the solver job on the
+Euler cluster, runs the ODB-based post-processing, and synchronises a structured
+set of result artefacts. The same interface is used for the Nakazima,
 Marciniak, and Punch-in-Punch configurations, so that specimen width, sheet
 thickness, punch radius, punch travel, material orientation, mass scaling, and
-mesh refinement can be varied without changing the post-processing schema. Every
-simulation produces the same data products (\texttt{punch\_fd.csv},
-\texttt{energy\_data.csv}, \texttt{strain\_path.csv},
-\texttt{forming\_limits.csv}, diagnostic figures, and movies), so that the
-numerical results can be compared directly with the Task~I experiments and
-passed to the Task~II identification framework. The structure and capabilities
-of the framework itself were described in Chapter~\ref{chap:numerical_model} and
-are not repeated here.
+mesh refinement can be varied without changing the post-processing schema. Each
+completed simulation is written to the same set of data products
+(\texttt{punch\_fd.csv}, \texttt{energy\_data.csv},
+\texttt{strain\_path.csv}, \texttt{forming\_limits.csv}, diagnostic figures,
+and movies). This common structure is the basis for later comparison with the
+Task~I experiments and for transfer to the Task~II identification framework.
+The architecture itself was described in Chapter~\ref{chap:numerical_model} and
+is not repeated here.
 
-\subsection{Reported Simulation Configurations}
+\subsection{Configuration Traceability}
 
-Since the numerical framework is highly parameterised, each result is reported
-together with the configuration that generated it. The full inventory of
-adjustable settings is given in Appendix~\ref{app:configuration_parameters}; the
-present chapter only repeats the concrete values needed to interpret a specific
-comparison. This keeps Chapter~\ref{chap:numerical_model} focused on the
-modelling framework while preserving traceability for the simulations being
-compared.
+Since the numerical framework is highly parameterised, each future numerical
+result must be reported together with the configuration that generated it. The
+full inventory of adjustable settings is given in
+Appendix~\ref{app:configuration_parameters}. For a completed sensitivity or FLC
+comparison, the reported configuration should include at least the specimen
+geometry, sheet thickness, punch diameter, material orientation, punch-motion
+profile, mesh-refinement factor, mass-scaling target, and selected
+post-processing options. This preserves traceability without repeating the full
+framework description in the results chapter.
 
 \subsection{Quasi-Static Validation}
 \label{sec:quasi_static_validation}
 
-The simulations were carried out using Abaqus/Explicit and must therefore be
-checked for quasi-static behaviour. For this purpose, the ratio between kinetic
-energy and internal energy, $\mathrm{ALLKE}/\mathrm{ALLIE}$, was monitored
-throughout the forming step. A ratio below 5\% was used as the acceptance
-criterion.
+The simulations are carried out using \software{Abaqus/Explicit} and must
+therefore be checked for quasi-static behaviour. For this purpose, the ratio
+between kinetic energy and internal energy,
+$\mathrm{ALLKE}/\mathrm{ALLIE}$, is monitored throughout the forming step. A
+ratio below \SI{5}{\percent} is used as the acceptance criterion for the
+planned sensitivity sweeps.
 
 The way the punch motion is ramped over time also influences the inertial
-response, and two velocity profiles were compared for this purpose. In the
+response, and two velocity profiles were implemented for comparison. In the
 smooth-step profile the punch velocity rises gradually from zero to a peak at
 mid-stroke and returns to zero, whereas in the constant-velocity profile the
 punch advances at a steady speed with only short smooth ramps at the start and
 end of the stroke. The choice between them is a trade-off. The smooth-step
-profile is the softer option from a computational point of view: its gradual
-acceleration and deceleration limit the inertial disturbance and keep the energy
-ratio low, which makes it more forgiving for the explicit solution. The
-constant-velocity profile is closer to reality, since it reproduces the steady
-advance of the physical test bench and maintains a uniform strain rate during
-forming, at the cost of relying on the end ramps to avoid an inertial spike at
+profile is numerically conservative because its gradual acceleration and
+deceleration reduce inertial disturbances. The constant-velocity profile is
+closer to the physical test bench because it reproduces steady punch advance
+during forming, but it relies on the end ramps to avoid an inertial spike at
 first punch contact. In both cases a gradual onset is essential, as an
-instantaneous velocity step at first contact would spike the kinetic energy and
-break the quasi-static assumption.
+instantaneous velocity step at first contact would increase the kinetic energy
+and violate the quasi-static assumption.
 
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
@@ -331,7 +421,7 @@ The current sensitivity study is designed to determine suitable numerical
 parameters for the production simulations. The punch velocity is held fixed at
 \SI{5}{\milli\meter\per\second}, as established alongside the quasi-static
 solution strategy in Chapter~\ref{chap:numerical_model}, so that one degree of
-freedom is locked and the two remaining numerical controls can be studied
+freedom is fixed and the two remaining numerical controls can be studied
 separately: the mass-scaling target time increment and the mesh-refinement
 level. The runs use the Nakazima W100 specimen with the \SI{100}{\milli\meter}
 punch as the scalar reference case.
@@ -342,7 +432,7 @@ punch as the scalar reference case.
 The mass-scaling sweep varies the target time increment while keeping the mesh
 refinement factor fixed at $f_\mathrm{MR}=2$. The planned target increments are
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
-$1\times10^{-4}$\,s. The comparison is based on the
+$1\times10^{-4}$\,\si{\second}. The comparison is based on the
 $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio and on the extracted forming-limit point.
 Increasing the target time increment reduces the computational cost, but also
 increases the risk of inertial effects. The final value will therefore be
@@ -353,12 +443,13 @@ energy criterion without changing the failure strain appreciably.
 \label{sec:mesh_refinement_analysis}
 
 The mesh-refinement sweep varies the global mesh-refinement factor while keeping
-the mass-scaling target fixed at $\Delta t_\mathrm{MS}=1\times10^{-5}$\,s. The
+the mass-scaling target fixed at
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The
 planned refinement factors are $1$, $2$, and $3$. The meshes are generated
 automatically by sweeping the global refinement factor of
 Section~\ref{sec:mesh_generation}, which scales all section sizes together while
 leaving the sectioning unchanged (Figure~\ref{fig:mesh_mr_sweep}). Since strain
-localization is mesh-sensitive, the production mesh will be selected as the
+localisation is mesh-sensitive, the production mesh will be selected as the
 coarsest discretisation for which the extracted forming-limit point has
 converged, that is, the largest element size beyond which further refinement no
 longer changes the failure strain appreciably.
@@ -367,55 +458,25 @@ longer changes the failure strain appreciably.
 \label{sec:selection_numerical_parameters}
 
 The final production settings will be selected by combining the mass-scaling
-and mesh-refinement sweeps. The target is the cheapest configuration that
-satisfies both the quasi-static energy criterion and the strain-convergence
-criterion.
+and mesh-refinement sweeps. The target is the least computationally expensive
+configuration that satisfies both the quasi-static energy criterion and the
+strain-convergence criterion.
 
-\subsection{Representative Forming Results}
-\label{sec:representative_forming_results}
+\subsection{Current Numerical Output Status}
+\label{sec:numerical_output_status}
 
-After the scalar sensitivity study is complete, representative simulations will
-be run with the selected numerical settings for the investigated forming
-configurations. The reported quantities will be the strain paths, localization
-behaviour, and extracted forming-limit points. Preliminary simulations generated
-during framework verification are treated as pipeline checks rather than final
-production FLC results.
+At the present report stage, the numerical runs are used to verify the pipeline
+rather than to construct final numerical forming-limit curves. The verified
+outputs are the automated model generation, cluster submission,
+post-processing file structure, energy-history extraction, force--displacement
+export, strain-path export, and diagnostic visualisation output. These checks
+show that the framework can generate the data required for a numerical FLC
+campaign, but they do not yet establish a validated numerical forming limit for
+the Nakazima, Marciniak, or Punch-in-Punch configurations.
 
-\subsubsection{Nakazima Configuration}
-\label{sec:nakazima_results}
-
-The Nakazima simulations provide the main reference case. The different
-specimen widths cover strain states from uniaxial tension to biaxial stretching,
-and the extracted limit strains are reported as principal-strain points at the
-onset of failure for each specimen width.
-
-\subsubsection{Marciniak Configuration}
-\label{sec:marciniak_results}
-
-The Marciniak simulations are reported using the same output quantities as the
-Nakazima simulations. This allows the influence of the test configuration on
-the strain path and forming-limit point to be compared directly.
-
-\subsubsection{Punch-in-Punch Configuration}
-\label{sec:pip_results}
-
-The Punch-in-Punch simulations are used to assess the effect of the two-step
-loading path on strain localization and forming-limit prediction. The resulting
-strain paths and failure strains are compared with the Nakazima and Marciniak
-configurations.
-
-\subsection{Comparison of Numerical FLCs}
-\label{sec:numerical_flc_comparison}
-
-The forming-limit points extracted from the different configurations are
-combined in principal strain space. This comparison shows whether the numerical
-framework captures consistent trends across specimen widths and forming
-setups.
-
-\subsection{Strain Localization and Failure Behaviour}
-\label{sec:strain_localisation_failure}
-
-Representative contour plots of equivalent plastic strain or major strain are
-used to verify the localization pattern before failure. These plots provide a
-qualitative check that the extracted forming-limit points correspond to a
-physically meaningful localization mode.
+A final numerical results section would require three additional items: a
+completed mass-scaling sweep satisfying the quasi-static energy criterion, a
+completed mesh-refinement sweep demonstrating convergence of the extracted
+failure strain, and production simulations across the relevant specimen widths.
+Only after these steps can the numerical forming-limit points be compared
+directly with the experimental FLCs from Task~I.
