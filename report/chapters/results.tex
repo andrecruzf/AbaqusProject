@@ -171,6 +171,108 @@ The intersection-line method exposes two fixed length-scale parameters: the spac
 
 These observations indicate that the ISO~12004-2 evaluation, calibrated for a single standardised punch, cannot be transferred unchanged to a campaign that varies the punch diameter: the extracted 40\,mm limit reflects the fixed window as much as the material response. The window width and, by the same argument, the intersection-line spacing should be made tunable and geometry-aware, scaling with the punch diameter and the sheet thickness respectively. The $D/10$ rule is a first, deliberately simple candidate. A defensible parameter choice additionally requires verifying that the extracted limit is insensitive to the window in the neighbourhood of the selected value (a convergence criterion), and cross-validating against the window-independent criteria of Sections~\ref{sec:vh_method} and~\ref{sec:minstoughton_method} (Volk \& Hora and Min--Stoughton). This validation is left to future work.
 
+\section{Task II: Min--Stoughton Curvature Criterion}
+\label{sec:results_task2}
+
+The standalone Min--Stoughton Nakazima workflow described in
+Section~\ref{sec:minstoughton_workflow_assessment} was applied to two
+experimental DIC samples from material class A with the \SI{100}{\milli\meter}
+punch: the narrow \texttt{W020} specimen and the wide \texttt{W200} specimen.
+The purpose of this analysis is not yet to define a final Min--Stoughton
+parameter set, but to check whether the curvature-based onset occurs in the
+same range as the existing DIN/ISO and Volk--Hora outputs and to quantify the
+sensitivity to the matrix length $W_Y$.
+
+The sweep used $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=5\times10^{-4}$,
+$n=8$, and a time-based reference choice $M=0.8$. The threshold was set with
+$\alpha=0.1$, so that $\Delta=\alpha\,\mathrm{SAC}=5\times10^{-5}$. In this
+section $\alpha$ denotes the Min--Stoughton threshold multiplier, not the
+material orientation angle. The Nakazima coordinate $D$ was computed as the
+cumulative DIC surface arc length along each deformed matrix column.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{c c c c c c c}
+        \hline
+        $W_Y$ [mm] & Matrix & Coverage & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \hline
+        10 & $9\times37$  & 0.988 & 368 & 25.150 & 0.2270 & -0.0655 \\
+        15 & $9\times55$  & 0.879 & 415 & 26.326 & 0.3043 & -0.0897 \\
+        20 & $9\times72$  & 0.796 & 393 & 25.775 & 0.2325 & -0.0670 \\
+        25 & $9\times90$  & 0.719 & 393 & 25.775 & 0.2325 & -0.0670 \\
+        30 & $9\times108$ & 0.599 & 393 & 25.775 & 0.2325 & -0.0670 \\
+        \hline
+    \end{tabular}
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
+    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=5\times10^{-4}$, $n=8$, $M=0.8$,
+    and $\alpha=0.1$. Coverage is the fraction of requested paper-grid matrix
+    points found in the valid DIC field.}
+    \label{tab:minstoughton_w020_wy_sweep}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{c c c c c c c}
+        \hline
+        $W_Y$ [mm] & Matrix & Coverage & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \hline
+        10 & $8\times37$  & 1.000 & 489 & 39.601 & 0.2924 & 0.2623 \\
+        15 & $8\times54$  & 1.000 & 554 & 42.476 & 0.3816 & 0.3179 \\
+        20 & $8\times72$  & 1.000 & 489 & 39.601 & 0.2923 & 0.2623 \\
+        25 & $8\times90$  & 1.000 & 494 & 40.101 & 0.3050 & 0.2717 \\
+        30 & $8\times107$ & 1.000 & 499 & 40.601 & 0.3186 & 0.2813 \\
+        \hline
+    \end{tabular}
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
+    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
+    \label{tab:minstoughton_w200_wy_sweep}
+\end{table}
+
+The corresponding comparison with the existing experimental DIN/ISO and
+Volk--Hora outputs is summarised in Table~\ref{tab:minstoughton_vh_din_compare}.
+For both specimens, the setting $W_Y=\SI{15}{\milli\meter}$ gives the closest
+agreement with the DIN/ISO average necking result. For \texttt{W020}, the
+Min--Stoughton onset occurs three frames before the DIN/ISO average result and
+one frame after the Volk--Hora result. For \texttt{W200}, the Min--Stoughton
+onset occurs five frames after the DIN/ISO average result, while Volk--Hora
+detects necking later and at a higher strain.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l l c c c c c}
+        \hline
+        Specimen & Method & $W_Y$ [mm] & Frame & Time [s] & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \hline
+        \texttt{W020} & Min--Stoughton & 15 & 415 & 26.326 & 0.3043 & -0.0897 \\
+        \texttt{W020} & DIN/ISO avg.   & -- & 418 & 26.400 & 0.3025 & -0.0888 \\
+        \texttt{W020} & Volk--Hora     & -- & 414 & 26.300 & 0.2678 & -0.0796 \\
+        \hline
+        \texttt{W200} & Min--Stoughton & 15 & 554 & 42.476 & 0.3816 & 0.3179 \\
+        \texttt{W200} & DIN/ISO avg.   & -- & 549 & 42.351 & 0.3765 & 0.3155 \\
+        \texttt{W200} & Volk--Hora     & -- & 591 & 43.401 & 0.4124 & 0.3496 \\
+        \hline
+    \end{tabular}
+    \caption{Preliminary comparison between the Min--Stoughton result at
+    $W_Y=\SI{15}{\milli\meter}$ and the existing DIN/ISO and Volk--Hora
+    necking outputs for the same experimental DIC samples.}
+    \label{tab:minstoughton_vh_din_compare}
+\end{table}
+
+This agreement should be interpreted as a sensitivity observation rather than
+as a final calibration of $W_Y$. The $W_Y=\SI{15}{\milli\meter}$ setting
+reproduces the DIN/ISO necking time closely for the two samples considered, but
+larger matrix lengths lead to earlier and lower Min--Stoughton onsets,
+especially for the biaxial \texttt{W200} specimen. In addition, the
+\texttt{W020} matrix coverage decreases as $W_Y$ increases, because the
+requested matrix extends beyond the valid DIC field for the narrow specimen.
+The result therefore shows that the curvature criterion is operational and can
+be brought into the range of the established criteria, but that the matrix
+dimensions and reference-frame treatment must be reported explicitly and
+validated on a larger set before a production FLC is assembled.
+
 \section{Task III: Numerical Simulation Results}
 \label{sec:numerical_results}
 
