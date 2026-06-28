@@ -3,11 +3,23 @@
 
 \section{Overview}
 
-The experimental campaign constitutes the foundation of the present work and aims to generate a comprehensive dataset for the investigation of forming limit curves (FLCs). Particular emphasis is placed on assessing the influence of specimen geometry, sheet thickness, punch geometry, material orientation, and loading path on the experimentally determined forming limits. The resulting dataset serves both for the evaluation of forming limit identification methodologies and for the validation of the numerical simulation framework developed within this project.
+The experimental campaign constitutes the foundation of the present work and
+aims to generate a comprehensive dataset for the investigation of forming limit
+curves (FLCs). Particular emphasis is placed on assessing the influence of
+specimen geometry, sheet thickness, punch geometry, material orientation, and
+loading path on the experimentally determined forming limits. The resulting
+dataset serves both for the evaluation of forming-limit identification methods
+and for the validation of the numerical simulation framework developed within
+this project.
 
 \section{Experimental Setup}
 
-All experiments were conducted using the high-throughput forming test bench available at the Institute of Virtual Manufacturing (IVP). The system combines automated specimen handling with Digital Image Correlation (DIC) measurements, enabling the efficient acquisition of strain-field data for a large number of test configurations.
+All experiments were conducted using the high-throughput forming test bench
+available at the Institute of Virtual Manufacturing (IVP). The system combines
+automated specimen handling with DIC measurements, enabling the efficient
+acquisition of strain-field data for a large number of test configurations.
+Figure~\ref{fig:test_bench} shows the test bench used for the experimental
+campaign.
 
 \begin{figure}[H]
     \centering
@@ -18,29 +30,42 @@ All experiments were conducted using the high-throughput forming test bench avai
 
 \section{Material}
 
-All specimens were cut from AA5754 aluminium alloy sheets supplied by Constellium. Four sheet thicknesses were delivered, each identified by an internal code composed of the delivery date and a letter suffix encoding the thickness. Table~\ref{tab:material_delivery} summarises the delivered batches.
+All specimens were cut from AA5754 aluminium alloy sheets supplied by
+Constellium. Four sheet thicknesses were delivered, each identified by an
+internal code composed of the delivery date and a letter suffix encoding the
+thickness. The sheet dimensions are given with respect to the rolling direction
+(RD) and transverse direction (TD) of the material, which are relevant for the
+specimen orientation during testing. Table~\ref{tab:material_delivery}
+summarises the delivered batches.
 
 \begin{table}[htbp]
 \centering
 \caption{Overview of the delivered AA5754 sheet material.}
 \label{tab:material_delivery}
 \begin{tabular}{lllr}
-\hline
-CM3 Code & Thickness [mm] & Sheet Size [mm] & Sheets \\
-\hline
-2026\_04\_13\_A & 1.2 & 1400 (TD) $\times$ 555 (RD) & 10 \\
-2026\_04\_13\_B & 1.5 & 1400 (TD) $\times$ 555 (RD) & 9 \\
-2026\_04\_13\_C & 2.0 & 1400 (TD) $\times$ 505 (RD) & 10 \\
-2026\_04\_13\_D & 3.0 & 1400 (TD) $\times$ 505 (RD) & 10 \\
-\hline
+\toprule
+CM3 code & Thickness (\si{\milli\meter}) & Sheet size (TD $\times$ RD, \si{\milli\meter}) & Sheets \\
+\midrule
+2026\_04\_13\_A & 1.2 & $1400 \times 555$ & 10 \\
+2026\_04\_13\_B & 1.5 & $1400 \times 555$ & 9 \\
+2026\_04\_13\_C & 2.0 & $1400 \times 505$ & 10 \\
+2026\_04\_13\_D & 3.0 & $1400 \times 505$ & 10 \\
+\bottomrule
 \end{tabular}
 \end{table}
 
-The naming convention follows the format \texttt{YYYY\_MM\_DD\_X}, where the date denotes the delivery date and the letter suffix (A--D) encodes the sheet thickness in ascending order. The sheet dimensions are given with respect to the rolling direction (RD) and transverse direction (TD) of the material, which is relevant for the orientation of the specimens during testing.
+The naming convention follows the format \texttt{YYYY\_MM\_DD\_X}, where the
+date denotes the delivery date and the letter suffix (A--D) encodes the sheet
+thickness in ascending order.
 
 \section{Specimen Geometries and Test Configurations}
 
-The experimental campaign employs Nakazima tests with hemispherical punches. By varying the specimen width, strain paths ranging from uniaxial tension to equi-biaxial stretching are generated, enabling the construction of complete Forming Limit Diagrams. Seven standard specimen widths are used: W20, W50, W80, W90, W100, W120, and W200. Narrow specimens promote uniaxial deformation, whereas wider specimens progressively shift the strain state towards biaxial stretching.
+The experimental campaign employs Nakazima tests with hemispherical punches. By
+varying the specimen width, strain paths ranging from uniaxial tension to
+equi-biaxial stretching are generated, enabling the construction of complete
+FLDs. Seven standard specimen widths are used: W20, W50, W80, W90, W100, W120,
+and W200. Narrow specimens promote uniaxial deformation, whereas wider specimens
+progressively shift the strain state towards biaxial stretching.
 
 The experimental results reported in this work therefore focus on the Nakazima
 subset of the broader project, while Marciniak and Punch-in-Punch configurations
@@ -48,16 +73,22 @@ are retained as numerical framework capabilities and future extension cases.
 
 \section{Experimental Matrix}
 
-For each of the four material thicknesses (A--D), two complete sets of seven specimens were tested with each of the four punch diameters (40, 60, 80, and 100\,mm) in the rolling direction (RD). Additionally, two sets with 100 \, mm punch in the transverse direction (TD) were tested to assess the influence of material anisotropy. Table~\ref{tab:experimental_matrix} summarises the test programme.
+For each of the four material thicknesses (A--D), two complete sets of seven
+specimens were tested with each of the four punch diameters
+(\SI{40}{\milli\meter}, \SI{60}{\milli\meter}, \SI{80}{\milli\meter}, and
+\SI{100}{\milli\meter}) in the RD. Additionally, two sets with the
+\SI{100}{\milli\meter} punch were tested in the TD to assess the influence of
+material anisotropy. Table~\ref{tab:experimental_matrix} summarises the test
+programme.
 
 \begin{table}[htbp]
 \centering
 \caption{Overview of the experimental test programme.}
 \label{tab:experimental_matrix}
 \begin{tabular}{llllrr}
-\hline
-Material & Thickness [mm] & Punch $\varnothing$ [mm] & Direction & Sets & Tests \\
-\hline
+\toprule
+Material & Thickness (\si{\milli\meter}) & Punch diameter (\si{\milli\meter}) & Orientation & Sets & Tests \\
+\midrule
 A & 1.2 & 40, 60, 80, 100 & RD & $2 \times 4$ & 56 \\
 A & 1.2 & 100 & TD & 2 & 14 \\
 B & 1.5 & 40, 60, 80, 100 & RD & $2 \times 4$ & 56 \\
@@ -66,14 +97,25 @@ C & 2.0 & 40, 60, 80, 100 & RD & $2 \times 4$ & 56 \\
 C & 2.0 & 100 & TD & 2 & 14 \\
 D & 3.0 & 40, 60, 80, 100 & RD & $2 \times 4$ & 56 \\
 D & 3.0 & 100 & TD & 2 & 14 \\
-\hline
+\midrule
 \multicolumn{4}{l}{\textbf{Total}} & \textbf{40} & \textbf{280} \\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}
 
-Each set consists of seven specimens (W20, W50, W80, W90, W100, W120, W200), covering the full range of strain states from uniaxial tension to equi-biaxial stretching. Two repetitions per configuration are performed to assess experimental repeatability.
+Each set consists of seven specimens (W20, W50, W80, W90, W100, W120, W200),
+covering the full range of strain states from uniaxial tension to
+equi-biaxial stretching. Two repetitions per configuration are performed to
+assess experimental repeatability.
 
 \section{Data Acquisition}
 
-Digital Image Correlation (DIC) was used to measure the full-field strain evolution throughout each test. The recorded strain histories constitute the primary input for the forming limit identification procedures presented in Chapter~\ref{chap:identification_framework}. To facilitate comparison with numerical simulations, both experimental and numerical datasets are organized around the same physical quantities, including major and minor strain histories, force--displacement responses, fracture location, and forming-limit points within the Forming Limit Diagram. The experimental forming limits obtained from this campaign are reported in Section~\ref{sec:results_task1}.
+DIC was used to measure the full-field strain evolution throughout each test.
+The recorded strain histories constitute the primary input for the
+forming-limit identification procedures presented in
+Chapter~\ref{chap:identification_framework}. To facilitate comparison with
+numerical simulations, both experimental and numerical datasets are organised
+around the same physical quantities, including major and minor strain histories,
+force--displacement responses, fracture location, and forming-limit points
+within the FLD. The experimental forming limits obtained from this campaign are
+reported in Section~\ref{sec:results_task1}.

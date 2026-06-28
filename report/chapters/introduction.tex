@@ -14,7 +14,7 @@ This work is part of the project \textit{Towards Robust Forming Limit Curve Iden
 
 \begin{description}
   \item[Task I] A large-scale experimental study on several engineering materials using a high-throughput Nakazima/Marciniak test bench. The campaign investigates size effects on FLCs across specimen geometries, sheet thicknesses, punch radii, and a novel Punch-in-Punch setup, while also assessing the robustness of the automated specimen loading system.
-  \item[Task II] Development of a modular, robust, and user-friendly FLC identification framework in Matlab/Python. The framework integrates and improves established criteria such as Volk-Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, and Pham-Sigvant~\cite{Pham2023}, addresses unstable ISO~12004 evaluations for materials affected by dynamic strain ageing, and includes a Stoughton-type criterion~\cite{Min2017}.
+  \item[Task II] Development of a modular, robust, and user-friendly FLC identification framework in \software{MATLAB}/\software{Python}. The framework integrates and improves established criteria such as Volk--Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, and Pham--Sigvant~\cite{Pham2023}, addresses unstable ISO~12004-2 evaluations for materials affected by dynamic strain ageing, and includes a Min--Stoughton-type criterion~\cite{Min2017}.
   \item[Task III] Development of a numerical simulation framework that fully automates model creation, execution, and post-processing for all specimen and punch configurations relevant to Task~I. A central requirement is maintaining identical element size across configurations and enabling an automated mesh-size study.
 \end{description}
 
@@ -25,7 +25,7 @@ project outline: the generation and analysis of forming-limit experiments, the
 extension of the FLC identification framework, and the development of an
 automated numerical simulation framework. In the present report, these
 objectives are addressed through the AA5754 Nakazima campaign, the
-Min--Stoughton criterion study, and the Abaqus/Explicit pipeline developed for
+Min--Stoughton criterion study, and the \software{Abaqus/Explicit} pipeline developed for
 the broader Nakazima, Marciniak, and Punch-in-Punch scope.
 
 The specific objectives are:
@@ -36,14 +36,14 @@ The specific objectives are:
   analysis focuses on the influence of sheet thickness, punch diameter,
   specimen width, and material orientation on the experimentally determined
   forming-limit curves.
-  \item Evaluate the resulting DIC strain data with the existing FLC
+  \item Evaluate the resulting digital image correlation (DIC) strain data with the existing FLC
   identification workflow and assess the sensitivity of the ISO~12004-2
   evaluation to non-standard punch diameters and fitting-window choices.
   \item Investigate the implementation of the Min--Stoughton curvature criterion
   as an extension of the identification framework, including the geometric
-  interpretation, required VIC3D data fields, and remaining integration
+  interpretation, required \software{VIC-3D} data fields, and remaining integration
   challenges.
-  \item Develop a parameterised Abaqus/Explicit framework that can generate,
+  \item Develop a parameterised \software{Abaqus/Explicit} framework that can generate,
   submit, and post-process Nakazima, Marciniak, and Punch-in-Punch simulations
   from a common configuration interface.
   \item Implement mesh-size controls that preserve comparable element sizes
@@ -69,14 +69,15 @@ identification workflow and the investigated Min--Stoughton extension. The
 chapter clarifies which criteria were already available, what was studied for
 the curvature-based method, and which integration issues remain open.
 
-Chapter~\ref{chap:numerical_model} describes the automated Abaqus/Explicit
+Chapter~\ref{chap:numerical_model} describes the automated \software{Abaqus/Explicit}
 framework developed for Task~III. It covers the common configuration interface,
 model generation for the three forming setups, mesh-size control, Euler cluster
 execution, quasi-static solution strategy, and post-processing outputs.
 
 Chapter~\ref{chap:results} reports the available results. The first part
 analyses the experimental influence of material orientation, punch diameter,
-sheet thickness, and ISO~12004-2 window choice. The second part documents the
+sheet thickness, and ISO~12004-2 window choice. The second part reports the
+preliminary Min--Stoughton sensitivity study. The third part documents the
 current numerical framework status and defines the mass-scaling and
 mesh-refinement studies required before production simulations are interpreted
 quantitatively.
