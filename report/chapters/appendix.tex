@@ -2,12 +2,13 @@
 
 \section{Pipeline Architecture}
 
-Figure~\ref{fig:architecture} shows the full pipeline architecture, from local configuration to HPC output.
+Figure~\ref{fig:architecture} shows the full pipeline architecture, from local
+configuration to HPC output.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\textwidth]{img/architecture.png}
-  \caption{Automated simulation pipeline architecture. Local machine (blue) pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the Abaqus/Explicit solver and post-processing under SLURM. Optional plotting jobs can be submitted with a SLURM \texttt{afterok} dependency after the solver has completed.}
+  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. Local machine (blue) pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed.}
   \label{fig:architecture}
 \end{figure}
 
@@ -18,19 +19,19 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
 \begin{tabbing}
  \hspace*{4.5cm} \= \kill
  \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
- \texttt{app.py}                \> Streamlit interface for inspecting results and preparing scalar runs \\[0.5ex]
+ \texttt{app.py}                \> \software{Streamlit} interface for inspecting results and preparing scalar runs \\[0.5ex]
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
  \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job} \\[0.5ex]
- \texttt{VUMAT\_explicit.f}     \> Hosford-Coulomb VUMAT subroutine (Fortran 77) \\[0.5ex]
+ \texttt{VUMAT\_explicit.f}     \> Hosford--Coulomb VUMAT subroutine (\software{Fortran} 77) \\[0.5ex]
  \texttt{geometries/}           \> Reference blank geometry files (W20--W200) \\[0.5ex]
  \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
  \texttt{submit\_one.sh}        \> Builds and submits one selected simulation case on Euler \\[0.5ex]
- \texttt{run\_cluster.sh}       \> SLURM job script: solver, ODB post-processing, plots, and copy-back \\[0.5ex]
+ \texttt{run\_cluster.sh}       \> \software{SLURM} job script: solver, ODB post-processing, plots, and copy-back \\[0.5ex]
  \texttt{postproc.py}           \> Extracts strain path and energy ratio from ODB \\[0.5ex]
  \texttt{postproc\_movie.py}    \> Renders SDV1 (EQPS) animation to \texttt{.webm} \\[0.5ex]
  \texttt{plot\_results.py}      \> Creates per-specimen diagnostic plots \\[0.5ex]
  \texttt{plot\_flc.py}          \> Aggregates selected \texttt{strain\_path.csv} files and plots FLC \\[0.5ex]
- \texttt{run\_plots.sh}         \> Optional SLURM plotting and FLC aggregation job
+ \texttt{run\_plots.sh}         \> Optional \software{SLURM} plotting and FLC aggregation job
 \end{tabbing}
 
 \section{Configurable Simulation Parameters}
@@ -45,7 +46,10 @@ focused on the general framework.
 \begin{center}
 \caption{Main user-tunable parameter groups in the numerical framework.}
 \label{tab:framework_parameters}
-\begin{tabular}{@{}lll@{}}\toprule[1.5pt]
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}
+>{\raggedright\arraybackslash}p{0.34\linewidth}
+>{\raggedright\arraybackslash}p{0.33\linewidth}@{}}
+\toprule[1.5pt]
 Parameter group & Examples & Purpose \\ \midrule
 Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup \\
 Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
@@ -63,8 +67,8 @@ For the current scalar sensitivity study, mass scaling and mesh refinement are
 not treated as a fully factorial grid. Instead, two independent sweeps are run
 on the same Nakazima W100 reference case with a \SI{100}{\milli\meter} punch
 and a fixed punch speed of \SI{5}{\milli\meter\per\second}. This keeps the
-number of Abaqus token-consuming jobs manageable and separates inertial effects
-from spatial-discretisation effects.
+number of \software{Abaqus} token-consuming jobs manageable and separates
+inertial effects from spatial-discretisation effects.
 
 \begin{table}[ht]
 \begin{center}
@@ -74,7 +78,7 @@ the mass-scaling target time increment is varied.}
 \label{tab:mass_scaling_sweep}
 \begin{tabular}{@{}lccccc@{}}\toprule[1.5pt]
 Run & MS1 & MS2 & MS3 & MS4 & MS5 \\ \midrule
-$\Delta t_\mathrm{MS}$ [s] &
+$\Delta t_\mathrm{MS}$ (\si{\second}) &
 $1\times10^{-6}$ &
 $5\times10^{-6}$ &
 $1\times10^{-5}$ &
@@ -90,13 +94,13 @@ $f_\mathrm{MR}$ & 2 & 2 & 2 & 2 & 2 \\
 \begin{center}
 \caption{Mesh-refinement sweep for the scalar Nakazima W100 study. The
 mass-scaling target is kept fixed at the reference value
-$\Delta t_\mathrm{MS}=1\times10^{-5}$\,s while the global mesh-refinement factor
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ while the global mesh-refinement factor
 is varied.}
 \label{tab:mesh_refinement_sweep}
 \begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
 Run & MR1 & MR2 & MR3 \\ \midrule
 $f_\mathrm{MR}$ & 1 & 2 & 3 \\
-$\Delta t_\mathrm{MS}$ [s] &
+$\Delta t_\mathrm{MS}$ (\si{\second}) &
 $1\times10^{-5}$ &
 $1\times10^{-5}$ &
 $1\times10^{-5}$ \\
@@ -158,7 +162,7 @@ which are identical in schema across all test configurations:
 
 \section{Running a Simulation Campaign}
 
-Because Abaqus token availability limits the number of simultaneous solver
+Because \software{Abaqus} token availability limits the number of simultaneous solver
 jobs, the current workflow submits scalar simulations sequentially. A single
 case is launched from the local machine with \texttt{deploy.sh}; the script
 pushes the current project files to Euler and starts \texttt{submit\_one.sh} in
@@ -189,20 +193,30 @@ large ODB remains in scratch storage.
 
 \section{Cluster Configuration}
 
-Simulations run on the ETH Euler cluster (\texttt{acruzfaria@euler.ethz.ch}) using SLURM. Each solver job currently requests 24 CPUs, 4\,GB per CPU, and a 48-hour time limit. The Abaqus module is loaded via \texttt{module load abaqus/2023}. Post-processing scripts use \texttt{xvfb-run} for headless ODB rendering. Results are stored in \texttt{/cluster/scratch/acruzfaria/} during the run and copied to \texttt{/cluster/home/acruzfaria/} on completion.
+Simulations run on the ETH Euler cluster
+(\texttt{acruzfaria@euler.ethz.ch}) using \software{SLURM}. Each solver job
+currently requests 24 CPUs, \SI{4}{\giga\byte} per CPU, and a
+\SI{48}{\hour} time limit. The \software{Abaqus} module is loaded via
+\texttt{module load abaqus/2023}. Post-processing scripts use
+\texttt{xvfb-run} for headless ODB rendering. Results are stored in scratch
+during the run and copied to the Euler home directory on completion:
+\begin{itemize}
+  \item Scratch directory: \path{/cluster/scratch/acruzfaria/}
+  \item Home directory: \path{/cluster/home/acruzfaria/}
+\end{itemize}
 
 \chapter{User Interface}
 \label{app:interface}
 
-The framework includes a graphical interface, built with Streamlit, that acts as
-a front-end to the configuration file described in
-Chapter~\ref{chap:numerical_model}. It is a finished, working tool that makes the
-pipeline more convenient to use, and it can serve as a basis to inspire future
-development. The interface is organised into three working areas presented below,
-namely job submission, job monitoring, and results inspection, together with an
-experimental AI assistant. Each control writes the corresponding configuration
-value, so a case prepared in the interface is equivalent to one configured
-directly in the configuration file.
+The framework includes a graphical interface, built with \software{Streamlit},
+that acts as a front-end to the configuration file described in
+Chapter~\ref{chap:numerical_model}. It is an operational prototype that makes
+the pipeline more convenient to use and provides a basis for future
+development. The interface is organised into three working areas presented
+below, namely job submission, job monitoring, and results inspection, together
+with an experimental AI assistant. Each control writes the corresponding
+configuration value, so a case prepared in the interface is equivalent to one
+configured directly in the configuration file.
 
 \section{Job Submission}
 
@@ -264,7 +278,7 @@ column (green for running jobs) and the per-job progress estimate.}
 The results view (Figure~\ref{fig:gui_results}) synchronises the processed
 outputs from the cluster and presents them in three modes, namely a single-job
 inspector, an FLC aggregation, and a sensitivity-study comparison. Jobs are
-sorted and selected from a list before their force-displacement curves, strain
+sorted and selected from a list before their force--displacement curves, strain
 paths, forming-limit points, and diagnostic media are displayed.
 
 \begin{figure}[H]
