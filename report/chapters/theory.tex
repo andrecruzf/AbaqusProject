@@ -65,7 +65,7 @@ where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal 
 
 The method is straightforward and widely used, but relies on a single time frame and is sensitive to the selected cross-section and the regularity of the strain field near the crack.
 
-\subsection{Volk & Hora Time-Dependent Method}
+\subsection{Volk \& Hora Time-Dependent Method}
 \label{sec:vh_method}
 
 In contrast to the intersection-line method, the approach proposed by
@@ -75,7 +75,7 @@ First, the thickness strain rate is computed from the in-plane DIC strains
 using plastic incompressibility:
 \begin{equation}
 \dot{\varepsilon}_3 =
--\left(\dot{\varepsilon}_1 + \dot{\varepsilon}2\right).
+-\left(\dot{\varepsilon}_1 + \dot{\varepsilon}_2\right).
 \end{equation}
 For discrete time steps, the central difference formula is preferred because
 of its higher accuracy. If the frame rate changes during the experiment, the
@@ -83,7 +83,7 @@ effective time step is defined as
 $\Delta t_n = \min(\Delta t_n^{-}, \Delta t_n^{+})$, and virtual strain values
 are linearly interpolated to ensure a uniform differencing stencil. The
 thinning rate is then defined as
-$\dot{\varepsilon}{\text{thin}} = -\dot{\varepsilon}_3$.
+$\dot{\varepsilon}_{\text{thin}} = -\dot{\varepsilon}_3$.
 
 A necking zone is identified from the thinning-rate field following the
 procedure of Volk and Hora~\cite{VolkHora2011}. On the last frame before
@@ -91,8 +91,8 @@ fracture, denoted by $b-1$, the DIC facets are sorted by their thinning rate in
 ascending order. The representative maximum thinning rate is defined as the
 mean of the five highest values:
 \begin{equation}
-\bar{\dot{\varepsilon}}{\max}
-= \frac{1}{5}\sum{i=g-4}^{g} \dot{\varepsilon}{b-1,i},
+\bar{\dot{\varepsilon}}_{\max}
+= \frac{1}{5}\sum_{i=g-4}^{g} \dot{\varepsilon}_{b-1,i},
 \end{equation}
 where $g$ is the total number of facets and the subscript $b-1$ indicates that
 the thinning rate is evaluated at the last frame before fracture. The necking
@@ -100,11 +100,11 @@ zone $N$ is then defined as all facets whose thinning rate exceeds a fraction
 $\alpha$ of this representative maximum:
 \begin{equation}
 N =
-\left{
-i ; \middle| ;
-\dot{\varepsilon}{b-1,i}
-\geq \alpha , \bar{\dot{\varepsilon}}_{\max}
-\right},
+\left\{
+i \;\middle|\;
+\dot{\varepsilon}_{b-1,i}
+\geq \alpha \, \bar{\dot{\varepsilon}}_{\max}
+\right\},
 \end{equation}
 where $\alpha$ is selected such that a sufficient number of facets is included
 in the necking zone. For a grid size of approximately \SI{1}{\milli\meter}, a
@@ -133,7 +133,7 @@ stable to the unstable regime and is used to identify the limit frame.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{report/img/E0_RM00_000_W12_002_VolkHora_plot.png}
+\includegraphics[width=0.85\linewidth]{img/E0_RM00_000_W12_002_VolkHora_plot.png}
 \caption{Example Volk–Hora evaluation plot obtained for an AA5754
 specimen with W120 geometry. The transition between the stable and unstable
 thinning-rate regimes defines the last stable frame used for the extraction
@@ -192,12 +192,16 @@ The curvature is not evaluated over the whole surface but on a small point
 matrix placed around the necking region, as shown in
 Figure~\ref{fig:ms_point_matrix}. The matrix is centred on the neck centre $O$
 and oriented along the band, with a width $W_X$ across the band and a length
-$W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points. For the Nakazima test,
-where the sheet wraps around the punch, each surface point is expressed in
-punch-based coordinates: an arc-distance coordinate $D$ measured along a matrix
-column and a radial coordinate $R_\mathrm{out}$ giving the distance from the
-point to the punch centre $O'$. These coordinates separate the local necking
-signal from the global curvature imposed by the punch.
+$W_Y$ along it, sampled by $N_X$ columns of $N_Y$ points. In a discrete DIC
+implementation, the physical dimensions are converted into point counts through
+the measured grid spacings $d_X$ and $d_Y$,
+\begin{equation}
+    N_X = \left\lceil \frac{W_X}{d_X} + 1 \right\rceil, \qquad
+    N_Y = \left\lceil \frac{W_Y}{d_Y} + 1 \right\rceil .
+    \label{eq:ms_matrix_counts}
+\end{equation}
+The ceiling operation ensures that the requested physical dimensions are not
+undersampled by the available DIC grid.
 
 \begin{figure}[H]
     \centering
@@ -218,14 +222,77 @@ specimen is first removed from the measured surface profile by referring it to
 an earlier, still homogeneous state. In the Marciniak test this background
 component is small, because the analysed region remains nearly flat, whereas in
 the Nakazima test it is dominated by the dome shape imposed by the hemispherical
-punch and must therefore be treated explicitly. After this subtraction, the
-remaining residual profile contains the local geometrical deviation caused by
-necking. A circle is then fitted to the residual profile around the
-localization region. If the fitted circle has radius $\rho$, the corresponding
-local curvature is defined as
+punch and must therefore be treated explicitly.
+
+For the Nakazima branch, the measured surface points are first written in
+punch-based coordinates. The punch centre $O'$ is reconstructed from the punch
+radius $r_N$ and the current pole thickness. With the present sign convention,
+this gives
 \begin{equation}
-C_{pm} = \frac{1}{\rho}.
+    O' = \bigl(0,\,0,\,Z_P - r_N - t_P\bigr), \qquad
+    t_P = t_0 \exp\!\left[-(\varepsilon_1+\varepsilon_2)\right],
+    \label{eq:ms_punch_centre}
 \end{equation}
+where $Z_P$ is the current pole height, $t_0$ is the initial sheet thickness,
+and the pole thickness estimate follows from plastic incompressibility. Each
+deformed DIC point $\mathbf{x}_{j,c}(k)$ in column $c$ is then described by an
+arc-distance coordinate along the measured surface,
+\begin{equation}
+    D_{0,c}(k) = 0, \qquad
+    D_{j,c}(k) =
+    \sum_{m=1}^{j}
+    \left\|
+    \mathbf{x}_{m,c}(k)-\mathbf{x}_{m-1,c}(k)
+    \right\|,
+    \label{eq:ms_dic_arc}
+\end{equation}
+and by its radial distance from the punch centre,
+\begin{equation}
+    R_{\mathrm{out},j,c}(k)
+    =
+    \left\|
+    \mathbf{x}_{j,c}(k)-O'(k)
+    \right\|.
+    \label{eq:ms_rout}
+\end{equation}
+Thus $D$ is the cumulative three-dimensional distance along the ordered
+deformed DIC points of a matrix column, while $R_\mathrm{out}$ retains the
+measured radial perturbation caused by the local dimple.
+
+The reference profile at frame $M$ is subtracted from each subsequent frame,
+\begin{equation}
+    R'_{\mathrm{out},j,c}(k)
+    =
+    R_{\mathrm{out},j,c}(k) -
+    R_{\mathrm{out},j,c}(M).
+    \label{eq:ms_reference_subtraction}
+\end{equation}
+Following Min et al.~\cite{Min2017}, a superimposed artificial curvature (SAC)
+is then added to keep the circle fit well conditioned while the residual
+curvature is still small,
+\begin{equation}
+    R''_{j,c}(k)
+    =
+    R'_{\mathrm{out},j,c}(k)
+    + \frac{1}{2}\,\mathrm{SAC}\,D_{j,c}^2(k).
+    \label{eq:ms_reference_sac}
+\end{equation}
+
+A circle is fitted column-wise to the points $(D_{j,c},R''_{j,c})$. If the
+fitted circle for column $c$ has radius $\rho_c$, the corresponding corrected
+column curvature is
+\begin{equation}
+    C_c = \frac{1}{\rho_c} - \mathrm{SAC}.
+    \label{eq:ms_column_curvature}
+\end{equation}
+The point-matrix curvature for frame $k$ is the average over the fitted
+columns,
+\begin{equation}
+    C_{pm}(k) = \frac{1}{N_X}\sum_{c=1}^{N_X} C_c(k).
+    \label{eq:ms_cpm_corrected}
+\end{equation}
+If a column fit is invalid, it is excluded from this average and the number of
+valid columns must be reported.
 
 \begin{figure}[H]
     \centering
@@ -249,17 +316,23 @@ The curvature value $C_{pm}$ is evaluated for each frame of the deformation
 sequence. During stable deformation, the curvature follows a smooth evolution.
 At the onset of localized necking, the measured curvature starts to increase
 more rapidly and departs from its previous trend. The measured curvature is
-therefore compared with a predicted value $C_{pm,P}$ obtained by extrapolating
-the earlier curvature evolution. Localized necking is detected at the first
-frame $k$ for which
+therefore compared with a predicted value $C_{pm,P}$ obtained by a linear
+regression over previous curvature values only. Localized necking is detected
+at the first frame $k$ for which
 \begin{equation}
-C_{pm}(k) > C_{pm,P}(k) + \Delta
+    C_{pm}(k) > C_{pm,P}(k) + \Delta
+    \label{eq:ms_onset}
 \end{equation}
-is satisfied over a prescribed number of consecutive frames. The tolerance
-$\Delta$ and the persistence requirement are introduced to avoid detecting
-isolated fluctuations caused by measurement noise. This comparison against a
-predicted curvature, combined with the persistence requirement, is the main
-refinement that Min et al.~\cite{Min2017} introduce over earlier curvature-based
+is satisfied for $n$ consecutive frames. The threshold is commonly written as
+\begin{equation}
+    \Delta = \alpha\,\mathrm{SAC},
+    \label{eq:ms_delta}
+\end{equation}
+with $\alpha=1/10$ used as the nominal paper value. The tolerance $\Delta$ and
+the persistence requirement are introduced to avoid detecting isolated
+fluctuations caused by measurement noise. This comparison against a predicted
+curvature, combined with the persistence requirement, is the main refinement
+that Min et al.~\cite{Min2017} introduce over earlier curvature-based
 detection, and it is what makes the method robust enough to be applied to both
 Marciniak and Nakazima tests.
 
@@ -268,4 +341,3 @@ corresponding forming-limit strains are extracted from the DIC strain field at
 the localization centre. The curvature criterion is therefore used to determine
 the time of onset, while the limit strain values are still obtained from the
 measured strain data.
-

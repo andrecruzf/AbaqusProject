@@ -63,77 +63,42 @@ parameter choice and a consistent treatment of decimated VIC3D frame sequences.
 
 The standalone Nakazima implementation was used as an assessment workflow for
 the present report. It does not replace the existing DIN/ISO and Volk--Hora GUI
-tools, but it makes the Min--Stoughton variables explicit and allows their
-sensitivity to be inspected on the same DIC tests. The implementation imports
-the VIC3D coordinates, displacements, and strain fields, reconstructs the
-deformed surface coordinates, and places a local point matrix around the
-localization region. The physical matrix dimensions are prescribed through
-$W_X$ and $W_Y$, while the corresponding numbers of DIC points follow from the
-measured grid spacings $d_X$ and $d_Y$ of each specimen,
-\begin{equation}
-    N_X = \left\lceil \frac{W_X}{d_X} + 1 \right\rceil, \qquad
-    N_Y = \left\lceil \frac{W_Y}{d_Y} + 1 \right\rceil ,
-    \label{eq:ms_matrix_counts}
-\end{equation}
-so that the matrix is sampled from the available data rather than assumed. The
-matrix is anchored at the neck centre $O$, taken as the local maximum of the
-smoothed major strain $\varepsilon_1$ in a band around the user-drawn crack
-line.
+tools, but it connects the mathematical method of
+Section~\ref{sec:minstoughton_method} to the available laboratory DIC exports.
+The workflow imports the VIC3D reference coordinates, displacement fields, and
+principal strains, reconstructs the deformed surface coordinates, and reads the
+fixed specimen metadata needed for the Nakazima transformation.
 
-For the Nakazima branch, the global dome curvature imposed by the punch must be
-separated from the local necking curvature. The punch centre is reconstructed
-from the punch radius $r_N$ and the thinned thickness at the pole,
-\begin{equation}
-    O' = \bigl(0,\,0,\,Z_P - r_N - t_P\bigr), \qquad
-    t_P = t_0 \exp\!\left(-\varepsilon_1 - \varepsilon_2\right),
-    \label{eq:ms_punch_centre}
-\end{equation}
-where $Z_P$ is the current apex height and $t_P$ follows from volume
-conservation. Each deformed DIC point is then described by the arc-distance
-coordinate $D$, computed as the cumulative three-dimensional distance along the
-ordered points of its matrix column, and by the radial coordinate
-$R_\mathrm{out}$, the distance from the point to $O'$. This is the discrete DIC
-realization of the coordinates used by Min et al.~\cite{Min2017}. No ideal
-spherical projection is applied, so the local dimple remains present in the
-$R_\mathrm{out}$ perturbation. The matrix and these coordinates are illustrated
-in Figure~\ref{fig:ms_point_matrix}.
+The user-drawn crack line is used to orient the point matrix. Its centre $O$ is
+then selected from the local strain field as the maximum of the smoothed major
+strain in a band around that line, so the matrix is not blindly centred on the
+crack-line midpoint. The requested physical matrix dimensions $W_X$ and $W_Y$
+are converted into the point counts $N_X$ and $N_Y$ using the measured DIC grid
+spacing according to Eq.~\eqref{eq:ms_matrix_counts}. The same DIC point IDs are
+then followed through the recorded frames.
 
-The background curvature is removed using a reference frame $M$, and a
-superimposed artificial curvature (SAC) is added to keep the subsequent circle
-fit well conditioned while the residual is still small,
-\begin{equation}
-    R''(D) = \bigl(R_\mathrm{out} - R_{\mathrm{out},M}\bigr)
-    + \tfrac{1}{2}\,\mathrm{SAC}\,D^2 ,
-    \label{eq:ms_reference_sac}
-\end{equation}
-where $R_{\mathrm{out},M}$ is the radial profile at frame $M$. A circle of
-radius $\rho_c$ is fitted by least squares to the $(D, R'')$ points of each of
-the $N_X$ columns. The artificial part is then removed again and the column
-values are averaged over the matrix, giving the matrix curvature of the frame,
-\begin{equation}
-    C_{pm} = \frac{1}{N_X}\sum_{c=1}^{N_X} \frac{1}{\rho_c} - \mathrm{SAC} .
-    \label{eq:ms_cpm_corrected}
-\end{equation}
+For the Nakazima branch, the implementation follows the coordinate definitions
+of Eqs.~\eqref{eq:ms_punch_centre}--\eqref{eq:ms_rout}. The coordinate $D$ is
+computed as the cumulative three-dimensional distance along the ordered
+deformed DIC points of each matrix column, and $R_\mathrm{out}$ is computed from
+the measured deformed point to the reconstructed punch centre. No ideal
+spherical projection is applied, so the measured dimple remains present in the
+radial perturbation. The reference subtraction, SAC addition, circle fitting,
+curvature prediction, and onset criterion then follow
+Eqs.~\eqref{eq:ms_reference_subtraction}--\eqref{eq:ms_delta}.
 
-The measured curvature is compared with a predicted value $C_{pm,P}$ obtained by
-a rolling linear regression over the preceding frames. Necking is declared when
-\begin{equation}
-    C_{pm}(k) > C_{pm,P}(k) + \Delta
-    \label{eq:ms_onset}
-\end{equation}
-is satisfied for $n$ consecutive frames, with the tolerance set by the threshold
-multiplier as $\Delta = \alpha\,\mathrm{SAC}$. Here $\alpha$ is the
-curvature-threshold multiplier and should not be confused with the material
-orientation angle used elsewhere in the report.
+The reference frame $M$ is handled as a time-based choice rather than a silent
+frame-count fraction, because the VIC3D sequences used here have different
+frame rates before and near fracture. The selected reference frame ID and time
+are stored with the output so that the subtraction state is traceable.
 
-The procedure relies on a small set of constants that originate from four
-distinct sources. A first group is fixed by the method of Min et
+The implementation therefore relies on a small set of constants that originate
+from four distinct sources. A first group is fixed by the method of Min et
 al.~\cite{Min2017}. A second group is read from the specimen metadata. A third
-group is derived from the measured DIC grid for each specimen, so that it is
-never assumed but obtained from the data. The remaining constants are the
-analysis parameters chosen by the user, which are also the quantities whose
-influence is examined in the sensitivity study. These constants and their
-origin are summarised in Table~\ref{tab:ms_constants}.
+group is derived from the measured DIC grid for each specimen. The remaining
+constants are the analysis parameters chosen by the user and examined in the
+sensitivity study. These constants and their origin are summarised in
+Table~\ref{tab:ms_constants}.
 
 \begin{table}[H]
     \centering
@@ -154,7 +119,7 @@ origin are summarised in Table~\ref{tab:ms_constants}.
         \hline
         \multicolumn{3}{l}{\textit{Derived from the DIC measurement}}\\
         $d_X,\,d_Y$ & DIC grid spacing across and along the band & Median spacing of adjacent DIC points \\
-        $N_X,\,N_Y$ & Matrix point counts & $N_X=\lceil W_X/d_X+1\rceil$, $N_Y=\lceil W_Y/d_Y+1\rceil$ \\
+        $N_X,\,N_Y$ & Matrix point counts & Computed from Eq.~\eqref{eq:ms_matrix_counts} \\
         $O$ & Neck centre that anchors the matrix & Local maximum of smoothed $\varepsilon_1$ near the crack line \\
         \hline
         \multicolumn{3}{l}{\textit{User-selected analysis parameters}}\\
