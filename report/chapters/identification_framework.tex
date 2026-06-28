@@ -68,27 +68,62 @@ sensitivity to be inspected on the same DIC tests. The implementation imports
 the VIC3D coordinates, displacements, and strain fields, reconstructs the
 deformed surface coordinates, and places a local point matrix around the
 localization region. The physical matrix dimensions are prescribed through
-$W_X$ and $W_Y$, while the corresponding numbers of DIC points, $N_X$ and
-$N_Y$, are obtained from the measured DIC point spacing for each specimen.
+$W_X$ and $W_Y$, while the corresponding numbers of DIC points follow from the
+measured grid spacings $d_X$ and $d_Y$ of each specimen,
+\begin{equation}
+    N_X = \left\lceil \frac{W_X}{d_X} + 1 \right\rceil, \qquad
+    N_Y = \left\lceil \frac{W_Y}{d_Y} + 1 \right\rceil ,
+    \label{eq:ms_matrix_counts}
+\end{equation}
+so that the matrix is sampled from the available data rather than assumed. The
+matrix is anchored at the neck centre $O$, taken as the local maximum of the
+smoothed major strain $\varepsilon_1$ in a band around the user-drawn crack
+line.
 
-For the Nakazima branch, the coordinate $D$ is computed as the cumulative
-three-dimensional distance along the ordered deformed DIC points in each matrix
-column. This is the discrete DIC realization of the arc-distance coordinate
-used by Min et al.~\cite{Min2017}. The radial coordinate $R_\mathrm{out}$ is
-computed as the distance from each deformed DIC point to the reconstructed
-spherical punch centre. No ideal spherical projection is applied before this
-step, so the measured local dimple remains present in the $R_\mathrm{out}$
-perturbation. A reference frame $M$ is then used to subtract the background
-curvature. The superimposed artificial curvature (SAC) is applied before
-column-wise circle fitting, and the averaged matrix curvature $C_{pm}$ is
-compared with the predicted value $C_{pm,P}$ from previous frames. Necking is
-declared when
+For the Nakazima branch, the global dome curvature imposed by the punch must be
+separated from the local necking curvature. The punch centre is reconstructed
+from the punch radius $r_N$ and the thinned thickness at the pole,
+\begin{equation}
+    O' = \bigl(0,\,0,\,Z_P - r_N - t_P\bigr), \qquad
+    t_P = t_0 \exp\!\left(-\varepsilon_1 - \varepsilon_2\right),
+    \label{eq:ms_punch_centre}
+\end{equation}
+where $Z_P$ is the current apex height and $t_P$ follows from volume
+conservation. Each deformed DIC point is then described by the arc-distance
+coordinate $D$, computed as the cumulative three-dimensional distance along the
+ordered points of its matrix column, and by the radial coordinate
+$R_\mathrm{out}$, the distance from the point to $O'$. This is the discrete DIC
+realization of the coordinates used by Min et al.~\cite{Min2017}. No ideal
+spherical projection is applied, so the local dimple remains present in the
+$R_\mathrm{out}$ perturbation.
+
+The background curvature is removed using a reference frame $M$, and a
+superimposed artificial curvature (SAC) is added to keep the subsequent circle
+fit well conditioned while the residual is still small,
+\begin{equation}
+    R''(D) = \bigl(R_\mathrm{out} - R_{\mathrm{out},M}\bigr)
+    + \tfrac{1}{2}\,\mathrm{SAC}\,D^2 ,
+    \label{eq:ms_reference_sac}
+\end{equation}
+where $R_{\mathrm{out},M}$ is the radial profile at frame $M$. A circle of
+radius $\rho_c$ is fitted by least squares to the $(D, R'')$ points of each of
+the $N_X$ columns. The artificial part is then removed again and the column
+values are averaged over the matrix, giving the matrix curvature of the frame,
+\begin{equation}
+    C_{pm} = \frac{1}{N_X}\sum_{c=1}^{N_X} \frac{1}{\rho_c} - \mathrm{SAC} .
+    \label{eq:ms_cpm_corrected}
+\end{equation}
+
+The measured curvature is compared with a predicted value $C_{pm,P}$ obtained by
+a rolling linear regression over the preceding frames. Necking is declared when
 \begin{equation}
     C_{pm}(k) > C_{pm,P}(k) + \Delta
+    \label{eq:ms_onset}
 \end{equation}
-is satisfied for $n$ consecutive frames, with $\Delta = \alpha\,\mathrm{SAC}$.
-Here $\alpha$ is the curvature-threshold multiplier and should not be confused
-with the material orientation angle used elsewhere in the report.
+is satisfied for $n$ consecutive frames, with the tolerance set by the threshold
+multiplier as $\Delta = \alpha\,\mathrm{SAC}$. Here $\alpha$ is the
+curvature-threshold multiplier and should not be confused with the material
+orientation angle used elsewhere in the report.
 
 The procedure relies on a small set of constants that originate from four
 distinct sources. A first group is fixed by the method of Min et
