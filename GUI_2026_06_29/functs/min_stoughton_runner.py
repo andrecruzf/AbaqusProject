@@ -37,7 +37,7 @@ DEFAULT_PARAMS = {
     "SAC": 5.0e-4,       # superimposed artificial curvature [1/mm]
     "n": 8,              # consecutive frames required by the onset criterion
     "alpha": 0.1,        # detection threshold fraction: delta = alpha * SAC
-    "M_fraction": 0.75,  # reference frame M as a fraction of the crack frame F
+    "M_fraction": 0.8,   # reference frame M as a fraction of F (report Task II value)
     "min_points_per_column": 8,
 }
 
