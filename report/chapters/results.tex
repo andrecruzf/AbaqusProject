@@ -72,7 +72,7 @@ limit curves for the four thicknesses.
 \end{figure}
 
 To quantify the visual overlap in Figure~\ref{fig:rd_vs_td}, the repeat-level
-DIN average strain values were extracted directly from the TDRD result files
+ISO~12004-2 average strain values were extracted directly from the TDRD result files
 \texttt{all\_results\_2026\_04\_13\_A--D.txt}. For every material and specimen
 width, the usable repetitions were averaged separately for
 \texttt{E0\_RM00\_000} and \texttt{E0\_RM00\_090}; the curve in
@@ -125,7 +125,7 @@ RD--TD distance remains between 0.0072 and 0.0091 strain and is therefore of
 the same order as the observed repeat scatter. The signed differences also
 change sign between specimen widths, so the small offsets do not form a
 consistent orientation-dependent shift. Material D contains one high
-biaxial-point separation at W20; the transverse W20 case has only one usable
+biaxial-point separation at \texttt{W020}; the transverse \texttt{W020} case has only one usable
 repeat and is therefore retained for the mean comparison but not for a local
 standard deviation. No systematic trend with thickness is observed: the
 orientations do not diverge more strongly for the thinner sheets (A, B) than for
@@ -157,14 +157,17 @@ $t/R$ grows fastest for the smallest punch on the thickest sheet.
 Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the
 standard ISO~12004-2 evaluation, that is, the intersection-line method of
 Section~\ref{sec:din_method} using the window width of
-Eq.~\eqref{eq:din_window} with its calibration constant of $10$. For the
+Eq.~\eqref{eq:din_window} with its calibration constant of $10$. The
 \SI{100}{\milli\meter}, \SI{80}{\milli\meter}, and \SI{60}{\milli\meter}
-punches the expected ordering is recovered, but the \SI{40}{\milli\meter} punch
-does not follow it. Its limit curve lies far above the others, by a margin that
-grows with thickness and is too large to be attributed to the $t/R$ curvature
-effect alone. Because all curves in a given diagram originate from the same
-material and thickness, this discrepancy points to the evaluation rather than
-to the material response. The standard window is calibrated for the
+punches form a smooth, monotonic progression: the limit curve rises gradually
+as the punch diameter decreases, in line with the continuous $t/R$ curvature
+trend. The \SI{40}{\milli\meter} punch breaks this continuity. Rather than
+extending the trend by one further step, its limit curve jumps far above the
+other three by a margin that grows with thickness. Because a genuine
+curvature-driven size effect would vary continuously with punch diameter, an
+isolated discontinuity at the smallest punch alone, on curves that otherwise
+share the same material and thickness, points to the evaluation rather than to
+the material response. The standard window is calibrated for the
 $\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
 \SI{40}{\milli\meter} punch produces a much narrower neck, so a window sized
 for the standard punch no longer matches the strain field to which it is
@@ -588,7 +591,7 @@ parameters for the production simulations. The punch velocity is held fixed at
 solution strategy in Chapter~\ref{chap:numerical_model}, so that one degree of
 freedom is fixed and the two remaining numerical controls can be studied
 separately: the mass-scaling target time increment and the mesh-refinement
-level. The runs use the Nakazima W100 specimen with the \SI{100}{\milli\meter}
+level. The runs use the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter}
 punch as the scalar reference case.
 
 \subsubsection{Mass Scaling Analysis}
@@ -605,7 +608,7 @@ chosen as the largest time increment that still satisfies the quasi-static
 energy criterion without changing the failure strain appreciably.
 
 Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
-the present W100 reference case. The full-range energy plot gives the overall
+the present \texttt{W100} reference case. The full-range energy plot gives the overall
 magnitude of the inertial response, while the \SIrange{0}{10}{\percent} zoom
 resolves the neighbourhood of the \SI{5}{\percent} criterion. After the initial
 contact transient is omitted, only
@@ -635,7 +638,7 @@ but their energy ratios are too high for a quasi-static production setting.
         \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
         \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
     \end{subfigure}
-    \caption[Mass-scaling sensitivity on the Nakazima W100 reference case]{Mass-scaling sensitivity on the Nakazima W100 reference case at
+    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
     $f_\mathrm{MR}=2$. The energy ratio is plotted against simulation time on
     a linear scale, with the first \SI{5}{\percent} of punch travel omitted
     because $\mathrm{ALLIE}$ is close to zero. The full-range panel is
@@ -660,7 +663,7 @@ converged, that is, the largest element size beyond which further refinement no
 longer changes the failure strain appreciably.
 
 The strain paths in Figure~\ref{fig:mr_sweep_results} are close over most of
-the deformation history, indicating that the scalar W100 response is not
+the deformation history, indicating that the scalar \texttt{W100} response is not
 strongly affected by the tested mesh-refinement factors before the final
 localisation stage. The accompanying energy overview and
 \SIrange{0}{10}{\percent} zoom also show that the fixed
@@ -691,7 +694,7 @@ mesh-refinement sweep repeated at the accepted mass-scaling target.
         \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy_zoom.png}
         \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
     \end{subfigure}
-    \caption[Mesh-refinement sensitivity on the Nakazima W100 reference case]{Mesh-refinement sensitivity on the Nakazima W100 reference case at
+    \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case at
     $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy ratio is plotted
     against simulation time on a linear scale and uses the same initial-travel
     omission as Figure~\ref{fig:ms_sweep_results}. The full-range panel is
@@ -708,7 +711,7 @@ and mesh-refinement sweeps. The target is the least computationally expensive
 configuration that satisfies both the quasi-static energy criterion and the
 strain-convergence criterion.
 
-For the completed W100 scalar runs, the mass-scaling sweep identifies
+For the completed \texttt{W100} scalar runs, the mass-scaling sweep identifies
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
 the \SI{5}{\percent} energy criterion. The mesh-refinement sweep at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is useful as a discretisation
@@ -724,7 +727,7 @@ under the same quasi-static setting that will be used for the final simulations.
 
 In addition to the mass-scaling and mesh-refinement sweeps, a local contact
 sensitivity check was performed for one Nakazima
-\SI{100}{\milli\meter}-punch geometry. The runs use the W120 specimen at
+\SI{100}{\milli\meter}-punch geometry. The runs use the \texttt{W120} specimen at
 $t=\SI{1.5}{\milli\meter}$, $\alpha=\SI{0}{\degree}$,
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, and a prescribed punch travel of
 \SI{32}{\milli\meter}. Only the punch--blank Coulomb coefficient
@@ -745,7 +748,7 @@ single-width sensitivity check rather than a calibrated numerical FLC.
         \includegraphics[width=\textwidth]{img/results/friction_sensitivity_force_displacement.png}
         \caption{Punch force up to extracted fracture.}
     \end{subfigure}
-    \caption[Punch--blank friction sensitivity on the Nakazima W120 reference case]{Punch--blank friction sensitivity on the Nakazima W120 reference case. The symbols mark the extracted fracture points. The force curves are truncated at the corresponding fracture time to avoid post-fracture continuation to the prescribed end travel.}
+    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case. The symbols mark the extracted fracture points. The force curves are truncated at the corresponding fracture time to avoid post-fracture continuation to the prescribed end travel.}
     \label{fig:friction_sensitivity_results}
 \end{figure}
 
@@ -765,7 +768,7 @@ failure point.
     \centering
     \small
     \setlength{\tabcolsep}{5pt}
-    \caption{Summary of the W120 punch--blank friction sensitivity check. The
+    \caption{Summary of the \texttt{W120} punch--blank friction sensitivity check. The
     force maximum is evaluated only up to the extracted fracture time. The
     energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting
     the first \SI{5}{\percent} of the prescribed punch travel and before the
@@ -793,7 +796,7 @@ failure point.
 The friction check therefore supports two conclusions. First, using a very low
 punch--blank friction coefficient in production simulations would be
 questionable, because the $\mu_\mathrm{punch}=0.05$ case changes both the
-strain path and the extracted failure travel. Second, the available W120 sweep
+strain path and the extracted failure travel. Second, the available \texttt{W120} sweep
 is not sufficient to identify an
 optimal coefficient: the intermediate and high-friction cases have similar
 force histories, the fracture-strain trend is not monotonic, and all five runs

@@ -8,7 +8,7 @@ priority:
   supports automated mesh-size modification, which addresses the corresponding
   Task~III requirement. The next step is to complete the full convergence table
   for all relevant thicknesses and punch configurations, not only the current
-  W100 scalar reference case, and to document the selected production mesh
+  \texttt{W100} scalar reference case, and to document the selected production mesh
   density.
 
   \item \textbf{Complete the numerical campaign.} Run the simulations for all
@@ -45,13 +45,14 @@ priority:
   comparison can be used to identify whether the automated specimen loading
   system introduces systematic effects that should be represented numerically.
 
-  \item \textbf{Calibrate HC material constants.} The 46 VUMAT constants used
-  in this work were taken from a reference calibration. A calibration against
-  dedicated characterisation tests (uniaxial tension, notched tension, shear)
-  for the specific sheet batch used in Task~I would improve predictive
-  accuracy.
+  \item \textbf{Calibrate the material constants for AA5754.} The 46 VUMAT
+  constants used in this work were taken from a surrogate AA5182 calibration, as
+  the AA5754 batch of Task~I had not yet been characterised. A dedicated
+  calibration against characterisation tests (uniaxial tension, notched tension,
+  shear) for the specific AA5754 sheet batch would replace the surrogate
+  parameters and turn the framework verification into a quantitative prediction.
 
-  \item \textbf{Calibrate friction coefficients.} The local W120 sensitivity
+  \item \textbf{Calibrate friction coefficients.} The local \texttt{W120} sensitivity
   check in Section~\ref{sec:friction_sensitivity} should be extended to a full
   calibration against the experimental force--displacement response. A larger
   parametric study varying both the punch--blank and die--blank coefficients

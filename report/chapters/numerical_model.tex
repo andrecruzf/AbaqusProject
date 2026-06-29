@@ -46,12 +46,10 @@ Appendix~\ref{app:configuration_parameters}.
 In addition to editing this configuration directly, the framework provides a
 graphical interface, built with \software{Streamlit}, that exposes the same
 parameters through interactive controls and submits the selected case to the
-cluster. As the number of configurable parameters grows, such an interface
-improves usability, since it groups the settings into clear sections, shows
-their current values, and helps the user assemble a valid configuration without
-editing source files. The interface is an operational prototype that drives the
-same underlying pipeline as the configuration file and provides a basis for
-future development. Its layout is shown in Appendix~\ref{app:interface}.
+cluster. It is an operational prototype that drives the same underlying pipeline
+as the configuration file, so a case prepared in the interface is equivalent to
+one configured by hand. Its layout and views are described in
+Appendix~\ref{app:interface}.
 
 \subsection{Automated Workflow}
 
@@ -136,7 +134,8 @@ low cost, without running a forming simulation.
     \centering
     \includegraphics[width=0.85\linewidth]{img/mesh_settings_zones_clean.png}
     \caption[Partitioned meshing topology shared by all specimen geometries]{Partitioned meshing topology shared by all specimen geometries,
-shown for the W20--W120 family (left) and the W200 family (right). Each specimen
+shown for the \texttt{W020}--\texttt{W120} family (left) and the \texttt{W200}
+family (right). Each specimen
 is divided into concentric sections, from the fine central zone (innermost,
 blue) through the transition and dome sections outward to the coarse flange zone
 (outermost, pink). The same topology is reused for every specimen width and
@@ -183,7 +182,7 @@ coarsened with a single global refinement factor that multiplies all section
 sizes by the same amount, leaving the sectioning unchanged. This makes a
 convergence study straightforward: the factor is stepped through a range and the
 corresponding meshes are produced automatically, without remeshing any model by
-hand. Figure~\ref{fig:mesh_mr_sweep} shows the W100 specimen at three increasing
+hand. Figure~\ref{fig:mesh_mr_sweep} shows the \texttt{W100} specimen at three increasing
 values of the factor; the sectioning is preserved and every section coarsens by
 the same proportion.
 
@@ -209,7 +208,7 @@ the same proportion.
         \caption{Coarsened (factor 4).}
         \label{fig:mesh_mr4}
     \end{subfigure}
-    \caption[Global mesh refinement on the W100 Nakazima specimen]{Global mesh refinement on the W100 Nakazima specimen (quarter
+    \caption[Global mesh refinement on the \texttt{W100} Nakazima specimen]{Global mesh refinement on the \texttt{W100} Nakazima specimen (quarter
 model, face-on view). A single factor scales all section sizes together,
 coarsening the mesh uniformly from left to right while preserving the
 sectioning. The meshes are generated automatically without running the solver.}
@@ -252,7 +251,7 @@ illustrates the flexibility of the sectioned approach.
         \caption{Steep grading.}
         \label{fig:mesh_growth_30}
     \end{subfigure}
-    \caption[Independent section sizing on the W100 Nakazima specimen]{Example of independent section sizing on the W100 Nakazima specimen
+    \caption[Independent section sizing on the \texttt{W100} Nakazima specimen]{Example of independent section sizing on the \texttt{W100} Nakazima specimen
 (quarter model, face-on view). All three meshes share the same fine central
 element size; only the rate at which the elements coarsen towards the flange
 differs, from gentle (left) to steep (right).}
@@ -270,11 +269,21 @@ this same set of controls.
 \subsection{Material Model}
 
 The sheet material is described through a user material subroutine (VUMAT). The
-constitutive formulation combines a Hill48 anisotropic yield criterion, mixed
-Swift--Voce isotropic hardening, and a Hosford--Coulomb damage model for
-fracture initiation. This combination provides a unified description of the
-plastic response, strain hardening, and fracture behaviour required for the
-forming-limit simulations.
+constitutive formulation combines a Hill'48 anisotropic yield criterion with a
+non-associated flow rule, mixed Swift--Voce isotropic hardening, and a
+Hosford--Coulomb model for fracture initiation. This combination provides a
+unified description of the plastic response, strain hardening, and fracture
+behaviour required for the forming-limit simulations.
+
+The 46 material constants were not identified for the AA5754 batch used in the
+experimental campaign, which had not yet been characterised at the time of
+writing. They were instead taken from an existing calibration of AA5182, a
+comparable \mbox{5xxx-series} aluminium alloy of \SI{3.0}{\milli\meter}
+thickness, which is used here as a surrogate so that the framework can be
+exercised on representative material behaviour. The numerical results are
+therefore to be read as framework verification rather than as a quantitative
+prediction for the AA5754 sheets, and a batch-specific calibration is listed
+among the future-work items.
 
 The material orientation is defined through a local material coordinate system,
 whose rolling direction can be specified in the master configuration. This
