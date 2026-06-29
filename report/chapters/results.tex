@@ -71,15 +71,54 @@ limit curves for the four thicknesses.
     \label{fig:rd_vs_td}
 \end{figure}
 
+To quantify the visual overlap in Figure~\ref{fig:rd_vs_td}, the RD--TD
+difference was evaluated directly from the TDRD result files
+\texttt{all\_results\_2026\_04\_13\_A--D.txt}. For every material and specimen
+width, the two repetitions were averaged separately for
+\texttt{E0\_RM00\_000} and \texttt{E0\_RM00\_090} using the DIN average strain
+columns. Table~\ref{tab:rd_td_difference} reports the absolute strain
+differences and the Euclidean distance
+$d_{\mathrm{RD-TD}} =
+\sqrt{(\Delta\varepsilon_1)^2 + (\Delta\varepsilon_2)^2}$ in the forming-limit
+diagram. As a reference, $d_{\mathrm{rep}}$ is the distance between the two
+repetitions for the same orientation and width, averaged over RD and TD.
+
+\begin{table}[htb]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \caption{Numerical RD--TD difference for the \SI{100}{\milli\meter} punch,
+    computed from the DIN average strain values in the TDRD result files.}
+    \label{tab:rd_td_difference}
+    \begin{tabular}{lccccccc}
+        \toprule
+        Material &
+        $t$ &
+        $\overline{|\Delta\varepsilon_1|}$ &
+        $\max |\Delta\varepsilon_1|$ &
+        $\overline{|\Delta\varepsilon_2|}$ &
+        $\max |\Delta\varepsilon_2|$ &
+        $\overline{d}_{\mathrm{RD-TD}}$ &
+        $\overline{d}_{\mathrm{rep}}$ \\
+        & [\si{\milli\meter}] & & & & & & \\
+        \midrule
+        A & 1.2 & 0.0074 & 0.0164 & 0.0039 & 0.0086 & 0.0089 & 0.0183 \\
+        B & 1.5 & 0.0077 & 0.0115 & 0.0027 & 0.0061 & 0.0086 & 0.0113 \\
+        C & 2.0 & 0.0048 & 0.0104 & 0.0048 & 0.0118 & 0.0072 & 0.0146 \\
+        D & 3.0 & 0.0066 & 0.0187 & 0.0051 & 0.0168 & 0.0091 & 0.0105 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 Across all four thicknesses, the RD and TD forming limit curves are nearly
 coincident. The two orientations follow the same trajectory from the uniaxial
-branch through the plane-strain minimum and into the biaxial branch, and the
-residual differences between them remain within the scatter of the underlying
-campaigns. The separation between the RD and TD curves is consistently smaller
-than the spread observed between the two repeated campaigns of a single
-orientation, so it cannot be distinguished from experimental repeatability. No
-systematic trend with thickness is observed: the orientations do not diverge
-more strongly for the thinner sheets (A, B) than for the thicker ones (C, D).
+branch through the plane-strain minimum and into the biaxial branch. The mean
+RD--TD distance remains between 0.0072 and 0.0091 strain, while the mean
+repeat distance ranges from 0.0105 to 0.0183 strain. The signed differences also
+change sign between specimen widths, so the small offsets do not form a
+consistent orientation-dependent shift. No systematic trend with thickness is
+observed: the orientations do not diverge more strongly for the thinner sheets
+(A, B) than for the thicker ones (C, D).
 
 These results indicate that, for the AA5754 sheet material and thickness range
 investigated here, in-plane material orientation has no measurable influence on
