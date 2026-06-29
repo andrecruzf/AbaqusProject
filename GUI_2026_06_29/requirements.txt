@@ -1,0 +1,9 @@
+# FLD Evaluation GUI (2026-06-29) dependencies.
+# tkinter ships with standard CPython; on Linux install python3-tk separately.
+numpy
+pandas
+matplotlib
+Pillow
+# Required by the Min-Stoughton pipeline (Min-Stroughton_post_pro) for reading
+# the VIC-3D VTK mesh exports.
+vtk
