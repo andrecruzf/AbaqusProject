@@ -28,6 +28,16 @@ campaign.
     \label{fig:test_bench}
 \end{figure}
 
+Specimen preparation and lubrication follow the established procedure for this
+bench~\cite{Sen2025}. A random black-and-white speckle pattern is applied by
+spray paint after cleaning the surface with alcohol, giving speckles of roughly
+\SIrange{50}{100}{\micro\meter}, comparable to the camera pixel size of about
+\SI{40}{\micro\meter}. To promote a centred apex fracture and limit press
+contamination, the punch side of each blank is lubricated with a self-adhesive
+PTFE foil covered by a thin layer of lanolin. Each test drives the punch into
+the clamped blank at constant speed until a sudden drop in punch force marks
+fracture and terminates the run.
+
 \section{Material}
 
 All specimens were cut from AA5754 aluminium alloy sheets supplied by
@@ -113,6 +123,12 @@ assess experimental repeatability.
 \section{Data Acquisition}
 
 DIC was used to measure the full-field strain evolution throughout each test.
+Two synchronised cameras mounted above the press record the deforming specimen.
+Frames are acquired at \SI{10}{\hertz} and stored at a reduced rate of
+\SI{2}{\hertz}, except for the final \SI{3}{\second} before fracture, which are
+retained at \SI{40}{\hertz} to resolve the onset of localisation. The fracture
+frame is identified automatically from the force drop and a neural-network crack
+detector applied to the last recorded frames~\cite{Sen2025}.
 The recorded strain histories constitute the primary input for the
 forming-limit identification procedures presented in
 Chapter~\ref{chap:identification_framework}. To facilitate comparison with

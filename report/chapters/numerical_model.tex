@@ -269,21 +269,15 @@ this same set of controls.
 \subsection{Material Model}
 
 The sheet material is described through a user material subroutine (VUMAT). The
-constitutive formulation combines a Hill'48 anisotropic yield criterion with a
-non-associated flow rule, mixed Swift--Voce isotropic hardening, and a
-Hosford--Coulomb model for fracture initiation. This combination provides a
-unified description of the plastic response, strain hardening, and fracture
-behaviour required for the forming-limit simulations.
+anisotropic plasticity model uses a Hill'48 yield function with a non-associated
+flow rule, hardening follows a mixed Swift--Voce law, and fracture initiation is
+described by the Hosford--Coulomb model.
 
-The 46 material constants were not identified for the AA5754 batch used in the
-experimental campaign, which had not yet been characterised at the time of
-writing. They were instead taken from an existing calibration of AA5182, a
-comparable \mbox{5xxx-series} aluminium alloy of \SI{3.0}{\milli\meter}
-thickness, which is used here as a surrogate so that the framework can be
-exercised on representative material behaviour. The numerical results are
-therefore to be read as framework verification rather than as a quantitative
-prediction for the AA5754 sheets, and a batch-specific calibration is listed
-among the future-work items.
+The 46 material constants were taken from an existing calibration of AA5182, a
+comparable \mbox{5xxx-series} aluminium alloy, since the AA5754 batch of the
+campaign had not yet been characterised. They are used here as a surrogate, so
+the numerical results serve to verify the framework rather than to predict the
+AA5754 forming limits quantitatively.
 
 The material orientation is defined through a local material coordinate system,
 whose rolling direction can be specified in the master configuration. This
