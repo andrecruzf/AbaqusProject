@@ -61,19 +61,32 @@ def _u3_at(time_s: np.ndarray, punch: pd.DataFrame) -> np.ndarray:
     return np.interp(time_s, punch["total_time_s"].to_numpy(), punch["U3_mm"].to_numpy())
 
 
-def _thinning_curve(job: Job) -> pd.DataFrame:
-    strain, punch, _, _ = _read(job)
-    u3 = _u3_at(strain["time_s"].to_numpy(), punch)
-    thinning = strain["eps1_major"].to_numpy() + strain["eps2_minor"].to_numpy()
-    return pd.DataFrame({"U3_mm": u3, "thinning": thinning})
+def _strain_path_curve(job: Job) -> pd.DataFrame:
+    strain, _, _, limits = _read(job)
+    fracture = limits[limits["method"] == "fracture"]
+    if not fracture.empty:
+        fracture_time = float(fracture.iloc[0]["time_s"])
+        strain = strain[strain["time_s"] <= fracture_time + 1e-12]
+    return pd.DataFrame(
+        {
+            "time_s": strain["time_s"].to_numpy(),
+            "eps1_major": strain["eps1_major"].to_numpy(),
+            "eps2_minor": strain["eps2_minor"].to_numpy(),
+        }
+    )
 
 
 def _energy_curve(job: Job) -> pd.DataFrame:
     _, punch, energy, _ = _read(job)
-    u3 = _u3_at(energy["total_time_s"].to_numpy(), punch)
     allie = energy["ALLIE"].to_numpy()
     ratio = energy["ALLKE"].to_numpy() / np.where(allie > 1e-12, allie, np.nan) * 100.0
-    return pd.DataFrame({"U3_mm": u3, "ke_ratio_pct": ratio})
+    return pd.DataFrame(
+        {
+            "time_s": energy["total_time_s"].to_numpy(),
+            "U3_mm": _u3_at(energy["total_time_s"].to_numpy(), punch),
+            "ke_ratio_pct": ratio,
+        }
+    )
 
 
 def _limit_row(job: Job, method: str = "fracture") -> pd.Series | None:
@@ -101,24 +114,30 @@ def _save(fig: plt.Figure, stem: str) -> None:
     plt.close(fig)
 
 
-def _plot_thinning(jobs: list[Job], stem: str, title: str) -> None:
-    fig, ax = plt.subplots(figsize=(6.2, 3.7))
+def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
+    fig, ax = plt.subplots(figsize=(5.5, 4.2))
     cmap = plt.get_cmap("tab10")
     for idx, job in enumerate(jobs):
-        curve = _thinning_curve(job)
+        curve = _strain_path_curve(job)
         color = cmap(idx)
-        ax.plot(curve["U3_mm"], curve["thinning"], label=job.label, color=color, linewidth=1.6)
+        ax.plot(
+            curve["eps2_minor"],
+            curve["eps1_major"],
+            label=job.label,
+            color=color,
+            linewidth=1.6,
+        )
         fracture = _limit_row(job)
         if fracture is not None:
             ax.plot(
-                [float(fracture["U3_mm"])],
-                [float(fracture["eps1_major"] + fracture["eps2_minor"])],
+                [float(fracture["eps2_minor"])],
+                [float(fracture["eps1_major"])],
                 marker="o",
                 markersize=4.5,
                 color=color,
                 linestyle="None",
             )
-    _style_axes(ax, r"Punch displacement $U_3$ [mm]", r"Thinning strain $\varepsilon_1+\varepsilon_2$ [-]")
+    _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title(title)
     ax.legend(frameon=False, fontsize=8)
     _save(fig, stem)
@@ -134,11 +153,11 @@ def _plot_energy(jobs: list[Job], stem: str, title: str) -> None:
         curve = curve.replace([np.inf, -np.inf], np.nan).dropna()
         cutoff = 0.05 * max_u3
         curve = curve[curve["U3_mm"] >= cutoff]
-        ax.plot(curve["U3_mm"], curve["ke_ratio_pct"], label=job.label, color=cmap(idx), linewidth=1.5)
+        ax.plot(curve["time_s"], curve["ke_ratio_pct"], label=job.label, color=cmap(idx), linewidth=1.5)
     ax.axhline(5.0, color="#222222", linestyle="--", linewidth=1.0, label="5% criterion")
     ax.set_yscale("log")
     ax.set_ylim(0.5, 5000)
-    _style_axes(ax, r"Punch displacement $U_3$ [mm]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
+    _style_axes(ax, r"Simulation time $t$ [s]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
     ax.set_title(title)
     ax.legend(frameon=False, fontsize=8, ncol=2)
     _save(fig, stem)
@@ -201,9 +220,9 @@ def main() -> None:
             "ps.fonttype": 42,
         }
     )
-    _plot_thinning(MASS_SWEEP, "ms_mr_mass_scaling_thinning", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
+    _plot_strain_path(MASS_SWEEP, "ms_mr_mass_scaling_strain_path", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
     _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Quasi-staticity check ($f_\mathrm{MR}=2$)")
-    _plot_thinning(MESH_SWEEP, "ms_mr_mesh_refinement_thinning", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
+    _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Quasi-staticity check ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
