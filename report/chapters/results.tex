@@ -430,7 +430,7 @@ punch as the scalar reference case.
 \label{sec:mass_scaling_analysis}
 
 The mass-scaling sweep varies the target time increment while keeping the mesh
-refinement factor fixed at $f_\mathrm{MR}=2$. The planned target increments are
+refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
 $1\times10^{-4}$\,\si{\second}. The comparison is based on the
 $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio and on the extracted forming-limit point.
@@ -439,13 +439,40 @@ increases the risk of inertial effects. The final value will therefore be
 chosen as the largest time increment that still satisfies the quasi-static
 energy criterion without changing the failure strain appreciably.
 
+Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
+the present W100 reference case. After the initial contact transient is omitted,
+only $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ remains below the
+\SI{5}{\percent} $\mathrm{ALLKE}/\mathrm{ALLIE}$ limit. The larger target time
+increments produce visibly similar thinning histories over much of the process,
+but their energy ratios are too high for a quasi-static production setting.
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_thinning.png}
+        \caption{Thinning evolution.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
+        \caption{Kinetic-to-internal energy ratio.}
+    \end{subfigure}
+    \caption[Mass-scaling sensitivity on the Nakazima W100 reference case]{Mass-scaling sensitivity on the Nakazima W100 reference case at
+    $f_\mathrm{MR}=2$. The energy plot is shown on a logarithmic scale and
+    omits the first \SI{5}{\percent} of punch travel, where
+    $\mathrm{ALLIE}$ is close to zero.}
+    \label{fig:ms_sweep_results}
+\end{figure}
+
 \subsubsection{Mesh Refinement Analysis}
 \label{sec:mesh_refinement_analysis}
 
 The mesh-refinement sweep varies the global mesh-refinement factor while keeping
 the mass-scaling target fixed at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The
-planned refinement factors are $1$, $2$, and $3$. The meshes are generated
+evaluated refinement factors are $1$, $2$, and $3$. The meshes are generated
 automatically by sweeping the global refinement factor of
 Section~\ref{sec:mesh_generation}, which scales all section sizes together while
 leaving the sectioning unchanged (Figure~\ref{fig:mesh_mr_sweep}). Since strain
@@ -454,6 +481,36 @@ coarsest discretisation for which the extracted forming-limit point has
 converged, that is, the largest element size beyond which further refinement no
 longer changes the failure strain appreciably.
 
+The thinning curves in Figure~\ref{fig:mr_sweep_results} are close over most of
+the deformation history, indicating that the scalar W100 response is not
+strongly affected by the tested mesh-refinement factors before the final
+localisation stage. The accompanying energy plot also shows that the fixed
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ target is not yet an acceptable
+quasi-static setting for this mesh study; increasing $f_\mathrm{MR}$ reduces the
+energy ratio, but the curves remain above the \SI{5}{\percent} limit over part
+of the simulation. A production mesh choice should therefore be confirmed with a
+mesh-refinement sweep repeated at the accepted mass-scaling target.
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_thinning.png}
+        \caption{Thinning evolution.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy.png}
+        \caption{Kinetic-to-internal energy ratio.}
+    \end{subfigure}
+    \caption[Mesh-refinement sensitivity on the Nakazima W100 reference case]{Mesh-refinement sensitivity on the Nakazima W100 reference case at
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy plot uses the same
+    logarithmic scale and initial-travel omission as
+    Figure~\ref{fig:ms_sweep_results}.}
+    \label{fig:mr_sweep_results}
+\end{figure}
+
 \subsubsection{Selection of Numerical Parameters}
 \label{sec:selection_numerical_parameters}
 
@@ -461,6 +518,13 @@ The final production settings will be selected by combining the mass-scaling
 and mesh-refinement sweeps. The target is the least computationally expensive
 configuration that satisfies both the quasi-static energy criterion and the
 strain-convergence criterion.
+
+For the completed W100 scalar runs, the mass-scaling sweep identifies
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
+the \SI{5}{\percent} energy criterion. The mesh-refinement sweep at
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is useful as a discretisation
+diagnostic, but it should not be used alone to select production settings
+because the quasi-static criterion is violated.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
