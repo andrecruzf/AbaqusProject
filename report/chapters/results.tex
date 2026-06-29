@@ -312,18 +312,25 @@ validation is left to future work.
 \label{sec:results_task2}
 
 The standalone Min--Stoughton Nakazima workflow described in
-Section~\ref{sec:minstoughton_workflow_assessment} was applied to two
-experimental DIC samples from material class A with the \SI{100}{\milli\meter}
-punch: the narrow \texttt{W020} specimen and the wide \texttt{W200} specimen.
-The purpose of this analysis is not yet to define a final Min--Stoughton
-parameter set, but to check whether the curvature-based onset occurs in the
-same range as the existing ISO~12004-2 and Volk--Hora outputs and to quantify the
-sensitivity to the matrix length $W_Y$.
+Section~\ref{sec:minstoughton_workflow_assessment} was applied to the full
+repeat campaign of material class~A with the \SI{100}{\milli\meter} punch. The
+data set contains the seven Nakazima widths from \texttt{W020} to \texttt{W200}
+with two repetitions of each width, which gives fourteen DIC samples. Unless
+stated otherwise all runs use $W_X=\SI{2}{\milli\meter}$,
+$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and $\alpha=0.1$ so that
+$\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$, together with the
+time-based reference choice $M=0.8$.
 
-The sweep used $W_X=\SI{2}{\milli\meter}$,
-$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and a time-based reference
-choice $M=0.8$. The threshold multiplier was set to $\alpha=0.1$, so that
-$\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
+The sensitivity to the matrix length $W_Y$ was studied first on the two
+reference specimens, the narrow \texttt{W020} sample and the wide \texttt{W200}
+sample. Tables~\ref{tab:minstoughton_w020_wy_sweep}
+and~\ref{tab:minstoughton_w200_wy_sweep} report this sweep. For both samples the
+setting $W_Y=\SI{15}{\milli\meter}$ gives the closest agreement with the
+ISO~12004-2 average necking result, and larger matrix lengths lead to earlier
+and lower onsets. The \texttt{W020} coverage decreases as $W_Y$ increases
+because the requested matrix extends beyond the valid DIC field for the narrow
+specimen. This value $W_Y=\SI{15}{\milli\meter}$ is therefore used for the
+campaign analysis that follows.
 
 \begin{table}[H]
     \centering
@@ -365,14 +372,15 @@ $\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
     \label{tab:minstoughton_w200_wy_sweep}
 \end{table}
 
-The corresponding comparison with the existing experimental ISO~12004-2 and
-Volk--Hora outputs is summarised in Table~\ref{tab:minstoughton_vh_din_compare}.
-For both specimens, the setting $W_Y=\SI{15}{\milli\meter}$ gives the closest
-agreement with the ISO~12004-2 average necking result. For \texttt{W020}, the
-Min--Stoughton onset occurs three frames before the ISO~12004-2 average result and
-one frame after the Volk--Hora result. For \texttt{W200}, the Min--Stoughton
-onset occurs five frames after the ISO~12004-2 average result, while Volk--Hora
-detects necking later and at a higher strain.
+The onset frame of the curvature criterion can be compared directly with the
+stored ISO~12004-2 and Volk--Hora necking frames for the two reference
+specimens, as summarised in Table~\ref{tab:minstoughton_vh_din_compare}. For
+\texttt{W020} the Min--Stoughton onset occurs three frames before the
+ISO~12004-2 average result and one frame after the Volk--Hora result. For
+\texttt{W200} the Min--Stoughton onset occurs five frames after the ISO~12004-2
+average result, while Volk--Hora detects necking later and at a higher strain.
+The three criteria therefore localise the onset within a few frames of each
+other on these two reference specimens.
 
 \begin{table}[H]
     \centering
@@ -397,17 +405,124 @@ detects necking later and at a higher strain.
     \label{tab:minstoughton_vh_din_compare}
 \end{table}
 
-This agreement should be interpreted as a sensitivity observation rather than
-as a final calibration of $W_Y$. The $W_Y=\SI{15}{\milli\meter}$ setting
-reproduces the ISO~12004-2 necking time closely for the two samples considered, but
-larger matrix lengths lead to earlier and lower Min--Stoughton onsets,
-especially for the biaxial \texttt{W200} specimen. In addition, the
-\texttt{W020} matrix coverage decreases as $W_Y$ increases, because the
-requested matrix extends beyond the valid DIC field for the narrow specimen.
-The result therefore shows that the curvature criterion is operational and can
-be brought into the range of the established criteria, but that the matrix
-dimensions and reference-frame treatment must be reported explicitly and
-validated on a larger set before a production FLC is assembled.
+The curvature criterion was then applied to all fourteen samples of the
+campaign. Table~\ref{tab:minstoughton_campaign} reports the mean and the
+standard deviation over the two repetitions of each width for the three
+methods, and Figure~\ref{fig:flc_minstoughton_campaign} shows the resulting
+forming limit points. The minor strain agrees across the three methods within
+about \num{0.005} for every width up to \texttt{W120}, so all three methods
+place each specimen at the same location on the diagram. The major limit strain
+of the curvature criterion stays within a mean absolute difference of about
+\num{0.02} of both reference methods over the campaign. The curvature criterion
+reads slightly low in the plane-strain trough at \texttt{W080} and \texttt{W090}
+and slightly high on the biaxial side at \texttt{W100}, where both repetitions
+exceed the ISO~12004-2 and Volk--Hora values. On the biaxial \texttt{W200}
+sample the three methods agree in major strain, while the curvature minor strain
+falls about \num{0.03} below the two reference methods.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.302 \pm 0.000$ & $-0.087$ & $0.270 \pm 0.007$ & $-0.083$ & $0.251 \pm 0.076$ & $-0.073$ \\
+        50  & $0.268 \pm 0.006$ & $-0.036$ & $0.249 \pm 0.008$ & $-0.039$ & $0.233 \pm 0.028$ & $-0.033$ \\
+        80  & $0.211 \pm 0.008$ & $0.005$  & $0.229 \pm 0.003$ & $0.005$  & $0.189 \pm 0.004$ & $0.007$ \\
+        90  & $0.207 \pm 0.020$ & $0.016$  & $0.206 \pm 0.000$ & $0.017$  & $0.183 \pm 0.013$ & $0.018$ \\
+        100 & $0.190 \pm 0.020$ & $0.022$  & $0.196 \pm 0.004$ & $0.023$  & $0.211 \pm 0.009$ & $0.022$ \\
+        120 & $0.176 \pm 0.003$ & $0.042$  & $0.186 \pm 0.009$ & $0.048$  & $0.185 \pm 0.014$ & $0.043$ \\
+        200 & $0.382 \pm 0.010$ & $0.342$  & $0.398 \pm 0.018$ & $0.348$  & $0.382$           & $0.318$ \\
+        \bottomrule
+    \end{tabular}
+    \caption[Campaign comparison of the three forming limit criteria]{Major and
+    minor limit strains for the three criteria over the repeat campaign of
+    material class~A with the \SI{100}{\milli\meter} punch. Each entry is the
+    mean and standard deviation over the two repetitions of the width. The
+    Min--Stoughton results use $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, and $n=8$.
+    The biaxial \texttt{W200} curvature onset is detected in only one repetition
+    at $n=8$, so no standard deviation is given there.}
+    \label{tab:minstoughton_campaign}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{img/flc_minstoughton_campaign.png}
+    \caption{Forming limit points of the repeat campaign for material class~A
+    with the \SI{100}{\milli\meter} punch. The markers show the mean over the
+    two repetitions of each width and the bars show the standard deviation of
+    the major strain. The Min--Stoughton results use $W_Y=\SI{15}{\milli\meter}$,
+    $M=0.8$, and $n=8$.}
+    \label{fig:flc_minstoughton_campaign}
+\end{figure}
+
+The repeatability of the curvature criterion depends strongly on the width. The
+standard deviation over the two repetitions stays below \num{0.014} for the five
+widths from \texttt{W050} to \texttt{W120}, which is comparable to the spread of
+the established methods in Table~\ref{tab:minstoughton_campaign}. The two extreme
+geometries behave differently. The deep-draw \texttt{W020} sample reaches a
+standard deviation of \num{0.076}, because one repetition triggers the onset
+early at frame~352 with $\varepsilon_1=\num{0.197}$ while the other triggers at
+frame~415 with $\varepsilon_1=\num{0.304}$. The biaxial \texttt{W200} sample
+detects an onset in only one of its two repetitions at $n=8$, because the
+curvature signal of the second repetition stays above the threshold for only
+five consecutive frames against the eight that are required.
+
+A parameter sweep was carried out to test whether a single setting removes these
+two effects. The grid covers $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
+$M\in\{0.75,0.8\}$, and $n\in\{5,6,8\}$ with $\mathrm{SAC}$ and $\alpha$ held at
+the paper values, which gives eighteen parameter sets and \num{252} runs over
+the fourteen samples. Each set was scored by the detection rate over the
+fourteen samples, the mean absolute difference of the major strain to the
+ISO~12004-2 average, and the mean repeatability standard deviation.
+Table~\ref{tab:minstoughton_sweep} compares the current set with the
+best-scoring set. The five widths from \texttt{W050} to \texttt{W120} are
+insensitive to the persistence length $n$, because their onsets are sustained
+well beyond eight frames, so $n=5$ and $n=8$ return identical limit strains
+there. The two extremes are in opposition. The biaxial \texttt{W200} sample
+needs a shorter persistence to detect both repetitions, while the deep-draw
+\texttt{W020} sample needs the longer persistence to suppress the early onset.
+With $n=5$ all fourteen samples detect and the mean repeatability improves from
+\num{0.024} to \num{0.016}, but the \texttt{W020} agreement with ISO~12004-2
+degrades, because the second \texttt{W020} repetition then also triggers early.
+No set in the grid reaches full detection together with the ISO~12004-2
+agreement of the $n=8$ set.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l c c c c c c}
+        \toprule
+        Set & $W_Y$ (\si{\milli\meter}) & $M$ & $n$ & Detection & $|\Delta\varepsilon_1|$ to ISO & Repeatability \\
+        \midrule
+        Current    & 15 & 0.80 & 8 & 13/14 & 0.025 & 0.024 \\
+        Best score & 15 & 0.80 & 5 & 14/14 & 0.030 & 0.016 \\
+        \bottomrule
+    \end{tabular}
+    \caption[Parameter sweep of the curvature criterion]{Comparison of the
+    current parameter set with the best-scoring set from the sweep over $W_Y$,
+    $M$, and $n$ across the fourteen campaign samples. Detection is the number of
+    samples with a detected onset. The deviation column is the mean absolute
+    difference of the major strain to the ISO~12004-2 average over the detected
+    samples. Repeatability is the mean standard deviation of the major strain
+    over the two repetitions of each width.}
+    \label{tab:minstoughton_sweep}
+\end{table}
+
+These results show that the curvature criterion is operational across the full
+repeat campaign and that it tracks the ISO~12004-2 and Volk--Hora limits within
+about \num{0.02} in major strain through the body of the forming limit curve, as
+seen in Figure~\ref{fig:flc_minstoughton_campaign}. The remaining work concerns
+the two extreme geometries. The early onset of one \texttt{W020} repetition and
+the marginal persistence of the biaxial \texttt{W200} signal are sample-level
+effects that a single global parameter choice does not remove, so they have to
+be examined per sample before a production curvature-based forming limit curve
+is assembled. The matrix dimensions and the reference frame are reported
+explicitly for reproducibility, following
+Section~\ref{sec:minstoughton_workflow_assessment}.
 
 \section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
