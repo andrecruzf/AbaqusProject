@@ -511,7 +511,7 @@ but their energy ratios are too high for a quasi-static production setting.
     \end{subfigure}
     \caption[Mass-scaling sensitivity on the Nakazima W100 reference case]{Mass-scaling sensitivity on the Nakazima W100 reference case at
     $f_\mathrm{MR}=2$. The energy ratio is plotted against simulation time on a
-    logarithmic scale, with the first \SI{5}{\percent} of punch travel omitted
+    linear scale, with the first \SI{5}{\percent} of punch travel omitted
     because $\mathrm{ALLIE}$ is close to zero.}
     \label{fig:ms_sweep_results}
 \end{figure}
@@ -556,8 +556,8 @@ mesh-refinement sweep repeated at the accepted mass-scaling target.
     \end{subfigure}
     \caption[Mesh-refinement sensitivity on the Nakazima W100 reference case]{Mesh-refinement sensitivity on the Nakazima W100 reference case at
     $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy ratio is plotted
-    against simulation time and uses the same logarithmic scale and
-    initial-travel omission as
+    against simulation time on a linear scale and uses the same initial-travel
+    omission as
     Figure~\ref{fig:ms_sweep_results}.}
     \label{fig:mr_sweep_results}
 \end{figure}
@@ -575,7 +575,11 @@ $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
 the \SI{5}{\percent} energy criterion. The mesh-refinement sweep at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is useful as a discretisation
 diagnostic, but it should not be used alone to select production settings
-because the quasi-static criterion is violated.
+because the quasi-static criterion is violated. The next confirmation sweep
+should therefore repeat the mesh-refinement comparison at
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, preferably for
+$f_\mathrm{MR}=1$, $2$, and $4$, so that the selected production mesh is judged
+under the same quasi-static setting that will be used for the final simulations.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}

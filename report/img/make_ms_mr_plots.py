@@ -146,17 +146,16 @@ def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
 def _plot_energy(jobs: list[Job], stem: str, title: str) -> None:
     fig, ax = plt.subplots(figsize=(6.2, 3.7))
     cmap = plt.get_cmap("tab10")
-    max_u3 = 0.0
+    max_ratio = 0.0
     for idx, job in enumerate(jobs):
         curve = _energy_curve(job)
-        max_u3 = max(max_u3, float(np.nanmax(curve["U3_mm"])))
         curve = curve.replace([np.inf, -np.inf], np.nan).dropna()
-        cutoff = 0.05 * max_u3
+        cutoff = 0.05 * float(np.nanmax(curve["U3_mm"]))
         curve = curve[curve["U3_mm"] >= cutoff]
+        max_ratio = max(max_ratio, float(np.nanmax(curve["ke_ratio_pct"])))
         ax.plot(curve["time_s"], curve["ke_ratio_pct"], label=job.label, color=cmap(idx), linewidth=1.5)
     ax.axhline(5.0, color="#222222", linestyle="--", linewidth=1.0, label="5% criterion")
-    ax.set_yscale("log")
-    ax.set_ylim(0.5, 5000)
+    ax.set_ylim(0.0, max(10.0, 1.05 * max_ratio))
     _style_axes(ax, r"Simulation time $t$ [s]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
     ax.set_title(title)
     ax.legend(frameon=False, fontsize=8, ncol=2)
