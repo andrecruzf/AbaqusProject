@@ -157,15 +157,28 @@ def _ensure_on_path():
         sys.path.insert(0, pkg_str)
 
 
-def is_available():
-    """True if the Min-Stoughton pipeline can be imported (incl. vtk)."""
+def availability_error():
+    """Return None if the pipeline can be imported, else a short reason.
+
+    Checks both the package location and the heavy ``vtk`` dependency, so the
+    caller can tell a missing/misplaced package apart from a broken vtk.
+    """
     try:
         _ensure_on_path()
+    except Exception as exc:  # package folder not found at any candidate
+        return str(exc)
+    try:
         import vic_project_metadata  # noqa: F401
-        import dic_loader  # noqa: F401  (pulls in vtk)
-        return True
-    except Exception:
-        return False
+        import dic_loader  # noqa: F401
+        import vtk  # noqa: F401  (imported lazily inside the package; check now)
+        return None
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+
+
+def is_available():
+    """True if the Min-Stoughton pipeline can be imported (incl. vtk)."""
+    return availability_error() is None
 
 
 # ---------------------------------------------------------------------------

@@ -956,13 +956,16 @@ def click_run_min_stoughton():
     if not ok:
         return None
 
-    if not Msr.is_available():
+    avail_err = Msr.availability_error()
+    if avail_err is not None:
         msg.showerror(
             'Min-Stoughton pipeline unavailable',
             'The Min-Stroughton_post_pro package (or its vtk dependency) '
             'could not be imported.\n\n'
-            'Make sure the package is present and its requirements are '
-            'installed, or set the MIN_STOUGHTON_PKG environment variable.')
+            'Details:\n' + avail_err + '\n\n'
+            'Make sure the package folder sits next to the GUI folder and that '
+            "vtk is installed (pip install vtk), or set the MIN_STOUGHTON_PKG "
+            'environment variable.')
         return None
 
     params = ask_min_stoughton_params()
