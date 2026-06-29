@@ -41,10 +41,66 @@ DEFAULT_PARAMS = {
     "min_points_per_column": 8,
 }
 
-# Summary columns written/updated by this runner.
+# Curvature columns consumed by the plotting layer (functs/FLC_Data.py).
 CURV_E1_COL = "Curvature e1"
 CURV_E2_COL = "Curvature e2"
 CURV_FRAME_COL = "Curvature frame"
+
+
+# ---------------------------------------------------------------------------
+#  Non-destructive output store (inside the beta GUI folder)
+# ---------------------------------------------------------------------------
+# Results are written to GUI_<date>/ms_output/ and never into the user's data
+# tree. In particular all_results_<mat>.txt is treated as read-only.
+def output_dir():
+    """Folder holding Min-Stoughton outputs, inside this GUI copy."""
+    # __file__ = <gui>/functs/min_stoughton_runner.py -> parents[1] = <gui>
+    return pathlib.Path(__file__).resolve().parents[1] / "ms_output"
+
+
+def sidecar_path(material):
+    """Path of the per-material Min-Stoughton results file."""
+    return output_dir() / f"min_stoughton_{material}.csv"
+
+
+def load_curvature(material):
+    """Read the stored Min-Stoughton results for a material.
+
+    Returns a DataFrame indexed by 'Experiment name' (empty if no results
+    file exists yet). The leading ``#`` comment lines are skipped.
+    """
+    path = sidecar_path(material)
+    if not path.is_file():
+        return pd.DataFrame()
+    df = pd.read_csv(path, comment="#")
+    if "Experiment name" in df.columns:
+        df = df.set_index("Experiment name")
+    return df
+
+
+def merge_curvature_into(all_data, material):
+    """Add Curvature e1/e2/frame columns to ``all_data`` in memory.
+
+    Values come from the ms_output store, matched by 'Experiment name'.
+    Nothing is written to disk and all_results_<mat>.txt is never modified.
+    Returns ``(all_data, found)`` where ``found`` is True if a results file
+    was present.
+    """
+    for col in (CURV_E1_COL, CURV_E2_COL, CURV_FRAME_COL):
+        if col not in all_data.columns:
+            all_data[col] = np.nan
+
+    side = load_curvature(material)
+    if side.empty:
+        return all_data, False
+
+    for exp_name, row in side.iterrows():
+        mask = all_data["Experiment name"] == exp_name
+        if mask.any():
+            all_data.loc[mask, CURV_E1_COL] = row.get(CURV_E1_COL, np.nan)
+            all_data.loc[mask, CURV_E2_COL] = row.get(CURV_E2_COL, np.nan)
+            all_data.loc[mask, CURV_FRAME_COL] = row.get(CURV_FRAME_COL, np.nan)
+    return all_data, True
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +316,8 @@ def run_for_material(material_path, material, configs, geometries,
 
     Returns a dict summary: counts and the path of the sidecar CSV.
     """
+    # all_results_<mat>.txt is read ONLY to enumerate the experiments; it is
+    # never modified by this runner.
     summary_file = os.path.join(material_path, f"all_results_{material}.txt")
     if not os.path.isfile(summary_file):
         raise FileNotFoundError(f"Summary file not found: {summary_file}")
@@ -274,11 +332,6 @@ def run_for_material(material_path, material, configs, geometries,
     if not include_fails and "Crack position ok" in df.columns:
         mask &= df["Crack position ok"] != "fail"
     rows = df[mask]
-
-    # Make sure the curvature columns exist in the summary.
-    for col in (CURV_E1_COL, CURV_E2_COL, CURV_FRAME_COL):
-        if col not in df.columns:
-            df[col] = ""
 
     total = len(rows)
     diagnostics = []
@@ -300,25 +353,17 @@ def run_for_material(material_path, material, configs, geometries,
 
         if res["onset_found"]:
             n_onset += 1
-            df.at[idx, CURV_E1_COL] = round(res["e1"], 4)
-            df.at[idx, CURV_E2_COL] = round(res["e2"], 4)
-            df.at[idx, CURV_FRAME_COL] = res["frame"]
         else:
             n_fail += 1
-            # Leave any previous value untouched only if there was none; mark
-            # explicitly as empty so a stale eval_V3 value is not plotted.
-            df.at[idx, CURV_E1_COL] = ""
-            df.at[idx, CURV_E2_COL] = ""
-            df.at[idx, CURV_FRAME_COL] = ""
 
         diagnostics.append({
             "Experiment name": exp_name,
             "Configuration": configuration,
             "Geometry": geometry,
             "onset_found": res["onset_found"],
-            "Curvature e1": res["e1"],
-            "Curvature e2": res["e2"],
-            "Curvature frame": res["frame"],
+            CURV_E1_COL: res["e1"],
+            CURV_E2_COL: res["e2"],
+            CURV_FRAME_COL: res["frame"],
             "eps1_nearest": res["eps1_nearest"],
             "eps2_nearest": res["eps2_nearest"],
             "eps1_local_mean": res["eps1_local_mean"],
@@ -329,10 +374,11 @@ def run_for_material(material_path, material, configs, geometries,
     if progress_cb is not None:
         progress_cb(total, total, "done")
 
-    # Persist: update the summary in place and write the diagnostics sidecar.
-    df.to_csv(summary_file, index=False, sep=",", mode="w")
-
-    sidecar = os.path.join(material_path, f"min_stoughton_{material}.csv")
+    # Persist results ONLY to the beta GUI's own output folder. The user's data
+    # tree (including all_results_<mat>.txt) is left completely untouched.
+    out_dir = output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sidecar = str(sidecar_path(material))
     p = dict(DEFAULT_PARAMS)
     if params:
         p.update(params)
@@ -350,6 +396,5 @@ def run_for_material(material_path, material, configs, geometries,
         "total": total,
         "onset": n_onset,
         "failed": n_fail,
-        "summary_file": summary_file,
         "sidecar": sidecar,
     }

@@ -39,14 +39,20 @@ straight from this GUI:
    `sample_ID.xml`, detects the onset of localized necking from the surface
    curvature evolution, and extracts the limit strains `eps1_L`/`eps2_L`.
 
-Results are written into:
+### Non-destructive: your data files are never modified
 
-- `all_results_<mat>.txt` – the `Curvature e1`/`Curvature e2`/`Curvature frame`
-  columns (added if absent). The plotting path reads these columns, so after
-  the run, selecting `MinStoughton` (or `all`) and pressing **Show FLD** draws
-  the curvature FLC.
-- `min_stoughton_<mat>.csv` – full per-experiment diagnostics (limit strains,
-  nearest/local strains, onset frame, failure reason) and the parameters used.
+`all_results_<mat>.txt` (and everything else in your data tree) is treated as
+**read-only** — it is read only to enumerate which experiments to process.
+All Min-Stoughton output is written inside this GUI copy, under:
+
+- `ms_output/min_stoughton_<mat>.csv` – per-experiment results: limit strains,
+  nearest/local strains, onset frame, failure reason, and the parameters used.
+
+When you press **Show FLD** (or **Export FLD Data**) with `MinStoughton`/`all`
+selected, the curvature limit strains are merged from this file **in memory**
+and plotted as diamonds. Nothing is written back to the material folder.
+
+`ms_output/` is git-ignored, so beta results never get committed.
 
 The pipeline itself lives in
 `Post_processing_Nakazima_tests/Min-Stroughton_post_pro/` and is added to

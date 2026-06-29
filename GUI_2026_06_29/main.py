@@ -105,8 +105,17 @@ def show_fld(mat, configs, material_path, inc_strpath, pre_file, inc_prestrain, 
     all_data['Volk&Hora e1'] = all_data['Volk&Hora e1'].astype(float)
     all_data['Volk&Hora e2'] = all_data['Volk&Hora e2'].astype(float)
 
-    # Convert Min-Stoughton curvature columns if they exist (Min et al. 2017).
-    # These columns are added by eval_V3.py; older result files may lack them.
+    # Min-Stoughton curvature method (Min et al. 2017). The limit strains are
+    # NOT read from all_results_<mat>.txt (that file is left untouched). They
+    # are merged in memory from the GUI's own ms_output store, populated by the
+    # 'Run Min-Stoughton' button.
+    if show_curv:
+        all_data, found = Msr.merge_curvature_into(all_data, mat)
+        if not found:
+            msg.showinfo(
+                'No Min-Stoughton results',
+                "No Min-Stoughton results found for this material.\n"
+                "Press 'Run Min-Stoughton' first to compute them.")
     if 'Curvature e1' in all_data.columns:
         all_data['Curvature e1'] = pd.to_numeric(all_data['Curvature e1'], errors='coerce')
         all_data['Curvature e2'] = pd.to_numeric(all_data['Curvature e2'], errors='coerce')
@@ -677,6 +686,11 @@ def click_fld_data():
     if not incl_fails:
         all_data = all_data[all_data['Crack position ok'] != 'fail']
 
+    # Merge Min-Stoughton curvature results from the GUI's ms_output store
+    # (all_results_<mat>.txt is not modified).
+    if curv_meth:
+        all_data, _ = Msr.merge_curvature_into(all_data, mat)
+
     # convert DIN-values and Volk&Hora values to float values
     all_data['DIN average e1'] = all_data['DIN average e1'].astype(float)
     all_data['DIN average e2'] = all_data['DIN average e2'].astype(float)
@@ -994,8 +1008,9 @@ def click_run_min_stoughton():
         f"Processed {result['total']} experiment(s).\n"
         f"Onset detected: {result['onset']}\n"
         f"No onset / failed: {result['failed']}\n\n"
-        f"Limit strains written to:\n{os.path.basename(result['summary_file'])}\n"
-        f"Diagnostics:\n{os.path.basename(result['sidecar'])}\n\n"
+        "Your data files were not modified.\n"
+        f"Results saved inside the GUI folder:\n"
+        f"ms_output/{os.path.basename(result['sidecar'])}\n\n"
         "Select method 'MinStoughton' (or 'all') and press 'Show FLD' to plot.")
 
 
