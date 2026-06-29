@@ -490,8 +490,11 @@ chosen as the largest time increment that still satisfies the quasi-static
 energy criterion without changing the failure strain appreciably.
 
 Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
-the present W100 reference case. After the initial contact transient is omitted,
-only $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ remains below the
+the present W100 reference case. The full-range energy plot gives the overall
+magnitude of the inertial response, while the \SIrange{0}{10}{\percent} zoom
+resolves the neighbourhood of the \SI{5}{\percent} criterion. After the initial
+contact transient is omitted, only
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ remains below the
 \SI{5}{\percent} $\mathrm{ALLKE}/\mathrm{ALLIE}$ limit. The larger target time
 increments produce visibly similar strain paths over much of the process,
 but their energy ratios are too high for a quasi-static production setting.
@@ -507,12 +510,22 @@ but their energy ratios are too high for a quasi-static production setting.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
-        \caption{Kinetic-to-internal energy ratio.}
+        \caption{Energy-ratio overview.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.62\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
+        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
     \end{subfigure}
     \caption[Mass-scaling sensitivity on the Nakazima W100 reference case]{Mass-scaling sensitivity on the Nakazima W100 reference case at
-    $f_\mathrm{MR}=2$. The energy ratio is plotted against simulation time on a
-    linear scale, with the first \SI{5}{\percent} of punch travel omitted
-    because $\mathrm{ALLIE}$ is close to zero.}
+    $f_\mathrm{MR}=2$. The energy ratio is plotted against simulation time on
+    a linear scale, with the first \SI{5}{\percent} of punch travel omitted
+    because $\mathrm{ALLIE}$ is close to zero. The full-range panel is
+    complemented by a \SIrange{0}{10}{\percent} zoom around the
+    \SI{5}{\percent} quasi-staticity criterion.}
     \label{fig:ms_sweep_results}
 \end{figure}
 
@@ -534,7 +547,8 @@ longer changes the failure strain appreciably.
 The strain paths in Figure~\ref{fig:mr_sweep_results} are close over most of
 the deformation history, indicating that the scalar W100 response is not
 strongly affected by the tested mesh-refinement factors before the final
-localisation stage. The accompanying energy plot also shows that the fixed
+localisation stage. The accompanying energy overview and
+\SIrange{0}{10}{\percent} zoom also show that the fixed
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ target is not yet an acceptable
 quasi-static setting for this mesh study; increasing $f_\mathrm{MR}$ reduces the
 energy ratio, but the curves remain above the \SI{5}{\percent} limit over part
@@ -552,13 +566,22 @@ mesh-refinement sweep repeated at the accepted mass-scaling target.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy.png}
-        \caption{Kinetic-to-internal energy ratio.}
+        \caption{Energy-ratio overview.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.62\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy_zoom.png}
+        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
     \end{subfigure}
     \caption[Mesh-refinement sensitivity on the Nakazima W100 reference case]{Mesh-refinement sensitivity on the Nakazima W100 reference case at
     $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy ratio is plotted
     against simulation time on a linear scale and uses the same initial-travel
-    omission as
-    Figure~\ref{fig:ms_sweep_results}.}
+    omission as Figure~\ref{fig:ms_sweep_results}. The full-range panel is
+    complemented by a \SIrange{0}{10}{\percent} zoom around the
+    \SI{5}{\percent} quasi-staticity criterion.}
     \label{fig:mr_sweep_results}
 \end{figure}
 

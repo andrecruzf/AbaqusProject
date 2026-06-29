@@ -143,7 +143,7 @@ def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
     _save(fig, stem)
 
 
-def _plot_energy(jobs: list[Job], stem: str, title: str) -> None:
+def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, float] | None = None) -> None:
     fig, ax = plt.subplots(figsize=(6.2, 3.7))
     cmap = plt.get_cmap("tab10")
     max_ratio = 0.0
@@ -155,7 +155,10 @@ def _plot_energy(jobs: list[Job], stem: str, title: str) -> None:
         max_ratio = max(max_ratio, float(np.nanmax(curve["ke_ratio_pct"])))
         ax.plot(curve["time_s"], curve["ke_ratio_pct"], label=job.label, color=cmap(idx), linewidth=1.5)
     ax.axhline(5.0, color="#222222", linestyle="--", linewidth=1.0, label="5% criterion")
-    ax.set_ylim(0.0, max(10.0, 1.05 * max_ratio))
+    if ylim is None:
+        ax.set_ylim(0.0, max(10.0, 1.05 * max_ratio))
+    else:
+        ax.set_ylim(*ylim)
     _style_axes(ax, r"Simulation time $t$ [s]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
     ax.set_title(title)
     ax.legend(frameon=False, fontsize=8, ncol=2)
@@ -220,9 +223,11 @@ def main() -> None:
         }
     )
     _plot_strain_path(MASS_SWEEP, "ms_mr_mass_scaling_strain_path", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
-    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Quasi-staticity check ($f_\mathrm{MR}=2$)")
+    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Quasi-staticity overview ($f_\mathrm{MR}=2$)")
+    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy_zoom", r"Zoom near 5% criterion ($f_\mathrm{MR}=2$)", ylim=(0.0, 10.0))
     _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
-    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Quasi-staticity check ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
+    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Quasi-staticity overview ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
+    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-5}$ s)", ylim=(0.0, 10.0))
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)
