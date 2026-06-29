@@ -106,30 +106,51 @@ def merge_curvature_into(all_data, material):
 # ---------------------------------------------------------------------------
 #  Locating and importing the Min-Stroughton_post_pro package
 # ---------------------------------------------------------------------------
-def _package_dir():
-    """Return the path to the Min-Stroughton_post_pro package.
+PKG_NAME = "Min-Stroughton_post_pro"
 
-    Resolved relative to this file (``<repo>/GUI_xxxx/functs/...``) so the
-    GUI copy keeps working when the whole repo is moved. An explicit
-    ``MIN_STOUGHTON_PKG`` environment variable overrides the default.
+
+def _candidate_dirs():
+    """Possible locations of the Min-Stroughton_post_pro package.
+
+    Searched in order so the GUI works whether copied with the full repo
+    layout or dropped next to the package as a sibling folder (e.g. a manual
+    Google-Drive transfer). ``MIN_STOUGHTON_PKG`` overrides everything.
     """
     env = os.environ.get("MIN_STOUGHTON_PKG")
     if env:
-        return pathlib.Path(env).resolve()
+        return [pathlib.Path(env).resolve()]
 
     here = pathlib.Path(__file__).resolve()
-    # here = <repo>/<gui>/functs/min_stoughton_runner.py  ->  parents[2] = <repo>
-    repo_root = here.parents[2]
-    return (repo_root / "Post_processing_Nakazima_tests"
-            / "Min-Stroughton_post_pro").resolve()
+    gui_dir = here.parents[1]      # <root>/GUI_xxxx
+    root = here.parents[2]         # <root>
+    return [
+        # Full repo layout
+        root / "Post_processing_Nakazima_tests" / PKG_NAME,
+        # Package sibling of the GUI folder (common after a hand-copy)
+        root / PKG_NAME,
+        gui_dir / PKG_NAME,
+        # Package nested inside the GUI folder
+        gui_dir / "Post_processing_Nakazima_tests" / PKG_NAME,
+    ]
+
+
+def _package_dir():
+    """Return the first existing package location (else the primary one)."""
+    candidates = _candidate_dirs()
+    for cand in candidates:
+        if cand.is_dir():
+            return cand.resolve()
+    return candidates[0]
 
 
 def _ensure_on_path():
     pkg = _package_dir()
     if not pkg.is_dir():
+        looked = "\n  ".join(str(c) for c in _candidate_dirs())
         raise FileNotFoundError(
-            f"Min-Stroughton_post_pro package not found at {pkg}. "
-            "Set the MIN_STOUGHTON_PKG environment variable to its location."
+            f"{PKG_NAME} package not found. Looked in:\n  {looked}\n"
+            "Copy that folder next to the GUI folder, or set the "
+            "MIN_STOUGHTON_PKG environment variable to its location."
         )
     pkg_str = str(pkg)
     if pkg_str not in sys.path:
