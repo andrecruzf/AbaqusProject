@@ -245,43 +245,84 @@ def load_specimen(
     if len(selected_vtk) == 0:
         raise ValueError("No frames to load (all at or after crack frame?)")
 
-    # --- Load first frame to get n_points and validate ---
+    # --- Load first frame to define the canonical point set ---
     first = _load_vtk_arrays(selected_vtk[0])
-    n_points = len(first["X"])
     n_frames = len(selected_vtk)
 
-    # --- Allocate output arrays ---
-    X = np.empty((n_frames, n_points), dtype=np.float64)
-    Y = np.empty((n_frames, n_points), dtype=np.float64)
-    Z = np.empty((n_frames, n_points), dtype=np.float64)
-    U = np.empty((n_frames, n_points), dtype=np.float64)
-    V = np.empty((n_frames, n_points), dtype=np.float64)
-    W = np.empty((n_frames, n_points), dtype=np.float64)
-    eps1 = np.empty((n_frames, n_points), dtype=np.float64)
-    eps2 = np.empty((n_frames, n_points), dtype=np.float64)
-    valid_mask = np.ones((n_frames, n_points), dtype=bool)
+    # VIC-3D exports carry a persistent point-ID array ("index"). When points
+    # drop out (loss of correlation) the per-frame point COUNT changes, so we
+    # cannot assume identical ordering/length across frames. We therefore map
+    # every frame onto the first frame's ID set: present points fill their
+    # slot, missing points stay NaN/invalid. When all frames share the first
+    # frame's ordering (constant count) this reproduces the old arrays exactly.
+    has_index = "index" in first
+    if has_index:
+        canon_index = np.asarray(first["index"]).astype(np.int64)
+        n_points = len(canon_index)
+        # Sorted lookup so each frame's IDs map to canonical columns (vectorized)
+        _order = np.argsort(canon_index)
+        _sorted_ids = canon_index[_order]
+    else:
+        n_points = len(first["X"])
+
+    # --- Allocate output arrays (NaN/invalid by default for missing points) ---
+    X = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    Y = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    Z = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    U = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    V = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    W = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    eps1 = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    eps2 = np.full((n_frames, n_points), np.nan, dtype=np.float64)
+    valid_mask = np.zeros((n_frames, n_points), dtype=bool)
 
     # --- Load all frames ---
     for i, vf in enumerate(selected_vtk):
-        if i == 0:
-            arrays = first
-        else:
-            arrays = _load_vtk_arrays(vf)
+        arrays = first if i == 0 else _load_vtk_arrays(vf)
+        fn = len(arrays["X"])
 
-        X[i] = arrays["X"]
-        Y[i] = arrays["Y"]
-        Z[i] = arrays["Z"]
-        U[i] = arrays.get("U", np.zeros(n_points))
-        V[i] = arrays.get("V", np.zeros(n_points))
-        W[i] = arrays.get("W", np.zeros(n_points))
-        eps1[i] = arrays.get("e1", np.full(n_points, np.nan))
-        eps2[i] = arrays.get("e2", np.full(n_points, np.nan))
+        def _field(name, fill):
+            return arrays[name] if name in arrays else np.full(fn, fill)
 
-        # Validity: sigma != -1 means valid correlation
         if "sigma" in arrays:
-            valid_mask[i] = arrays["sigma"] != -1
+            valid = arrays["sigma"] != -1
         else:
-            valid_mask[i] = np.isfinite(arrays["X"])
+            valid = np.isfinite(arrays["X"])
+
+        if has_index:
+            # Map this frame's point IDs to canonical columns; drop any IDs not
+            # present in the first frame.
+            fid_ids = np.asarray(arrays["index"]).astype(np.int64)
+            pos = np.clip(np.searchsorted(_sorted_ids, fid_ids), 0, len(_sorted_ids) - 1)
+            match = _sorted_ids[pos] == fid_ids
+            cols = _order[pos]
+            c = cols[match]
+            X[i, c] = arrays["X"][match]
+            Y[i, c] = arrays["Y"][match]
+            Z[i, c] = arrays["Z"][match]
+            U[i, c] = _field("U", 0.0)[match]
+            V[i, c] = _field("V", 0.0)[match]
+            W[i, c] = _field("W", 0.0)[match]
+            eps1[i, c] = _field("e1", np.nan)[match]
+            eps2[i, c] = _field("e2", np.nan)[match]
+            valid_mask[i, c] = valid[match]
+        else:
+            # No persistent IDs: require a constant point count (legacy path).
+            if fn != n_points:
+                raise ValueError(
+                    f"Frame {selected_frame_ids[i]} has {fn} points but the "
+                    f"first frame has {n_points}, and no 'index' field is "
+                    "available to align them."
+                )
+            X[i] = arrays["X"]
+            Y[i] = arrays["Y"]
+            Z[i] = arrays["Z"]
+            U[i] = _field("U", 0.0)
+            V[i] = _field("V", 0.0)
+            W[i] = _field("W", 0.0)
+            eps1[i] = _field("e1", np.nan)
+            eps2[i] = _field("e2", np.nan)
+            valid_mask[i] = valid
 
     # --- Build time array ---
     frame_ids = np.array(selected_frame_ids, dtype=int)
