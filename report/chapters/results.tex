@@ -41,7 +41,7 @@ limit curves for the four thicknesses.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/RD_vs_TD_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Material A ($t = \SI{1.25}{\milli\meter}$).}
         \label{fig:rd_vs_td_a}
     \end{subfigure}
     \hfill
@@ -104,7 +104,7 @@ Table~\ref{tab:rd_td_repeat_values}.
         \toprule
         & \multicolumn{4}{c}{$d_{\mathrm{RD-TD}}$} \\
         \cmidrule(lr){2-5}
-        Specimen & A (\SI{1.2}{\milli\meter}) & B (\SI{1.5}{\milli\meter})
+        Specimen & A (\SI{1.25}{\milli\meter}) & B (\SI{1.5}{\milli\meter})
         & C (\SI{2.0}{\milli\meter}) & D (\SI{3.0}{\milli\meter}) \\
         \midrule
         \texttt{W020} & 0.0140 & 0.0033 & 0.0094 & 0.0019 \\
@@ -188,7 +188,7 @@ $t/R$ size effect.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_norm_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Material A ($t = \SI{1.25}{\milli\meter}$).}
         \label{fig:flc_norm_a}
     \end{subfigure}
     \hfill
@@ -233,7 +233,7 @@ $t/R$ size effect.
         \cmidrule(lr){2-5}
         Thickness & 100 & 80 & 60 & 40 & $\Delta_{40}$ \\
         \midrule
-        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.222 & 0.253 & 0.274 & $+0.007$ \\
+        A (\SI{1.25}{\milli\meter}) & 0.218 & 0.222 & 0.253 & 0.274 & $+0.007$ \\
         B (\SI{1.5}{\milli\meter}) & 0.254 & 0.280 & 0.263 & 0.305 & $+0.030$ \\
         C (\SI{2.0}{\milli\meter}) & 0.267 & 0.289 & 0.312 & 0.372 & $+0.039$ \\
         D (\SI{3.0}{\milli\meter}) & 0.320 & 0.342 & 0.395 & 0.482 & $+0.055$ \\
@@ -246,7 +246,7 @@ $t/R$ size effect.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_wvar_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Material A ($t = \SI{1.25}{\milli\meter}$).}
         \label{fig:flc_wvar_a}
     \end{subfigure}
     \hfill
@@ -301,7 +301,7 @@ the window choice rather than by the material.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_pscaled_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Material A ($t = \SI{1.25}{\milli\meter}$).}
         \label{fig:flc_pscaled_a}
     \end{subfigure}
     \hfill
@@ -560,11 +560,125 @@ is assembled. The matrix dimensions and the reference frame are reported
 explicitly for reproducibility, following
 Section~\ref{sec:minstoughton_workflow_assessment}.
 
+\subsection{Extension to Material Classes B--D}
+\label{sec:ms_BCD}
+
+The standalone Nakazima workflow was then applied, with the identical parameter
+set ($W_X=\SI{2}{\milli\meter}$, $W_Y=\SI{15}{\milli\meter}$,
+$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, $M=0.8$, $\alpha=0.1$), to the
+rolling-direction repeat campaigns of the three thicker sheets, B
+($t=\SI{1.5}{\milli\meter}$), C ($t=\SI{2.0}{\milli\meter}$), and D
+($t=\SI{3.0}{\milli\meter}$), each comprising the seven widths in two
+repetitions. The runs were executed on the ETH Euler cluster directly from the
+\software{VIC-3D} exports, and the sheet thickness was taken from the campaign
+code stored in each \texttt{sample\_ID.xml}, because the numeric thickness field
+in that file is left at zero. Tables~\ref{tab:ms_campaign_B}--\ref{tab:ms_campaign_D}
+compare the curvature onset with the ISO~12004-2 and Volk--Hora limits for the
+same DIC samples.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~B]{Major and minor limit
+    strains for the three criteria over the class~B ($t=\SI{1.5}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch. Entries are the mean
+    and standard deviation over the detected repetitions; widths with a single
+    detected onset carry no standard deviation.}
+    \label{tab:ms_campaign_B}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.317 \pm 0.002$ & $-0.091$ & $0.287 \pm 0.011$ & $-0.085$ & $0.306 \pm 0.103$ & $-0.087$ \\
+        50  & $0.293 \pm 0.002$ & $-0.039$ & $0.256 \pm 0.003$ & $-0.041$ & $0.323$           & $-0.064$ \\
+        80  & $0.249 \pm 0.021$ & $0.005$  & $0.228 \pm 0.012$ & $0.005$  & $0.248 \pm 0.045$ & $0.005$ \\
+        90  & $0.221 \pm 0.001$ & $0.019$  & $0.229 \pm 0.016$ & $0.019$  & $0.204 \pm 0.008$ & $0.019$ \\
+        100 & $0.203 \pm 0.009$ & $0.025$  & $0.194 \pm 0.013$ & $0.028$  & $0.215 \pm 0.013$ & $0.026$ \\
+        120 & $0.201 \pm 0.001$ & $0.049$  & $0.202 \pm 0.005$ & $0.052$  & $0.220 \pm 0.032$ & $0.046$ \\
+        200 & $0.385 \pm 0.006$ & $0.355$  & $0.389 \pm 0.054$ & $0.347$  & $0.375 \pm 0.095$ & $0.323$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~C]{Major and minor limit
+    strains for the three criteria over the class~C ($t=\SI{2.0}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
+    Table~\ref{tab:ms_campaign_B}.}
+    \label{tab:ms_campaign_C}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.334 \pm 0.007$ & $-0.087$ & $0.308 \pm 0.000$ & $-0.087$ & $0.305 \pm 0.003$ & $-0.085$ \\
+        50  & $0.308 \pm 0.008$ & $-0.038$ & $0.295 \pm 0.016$ & $-0.046$ & $0.318 \pm 0.058$ & $-0.043$ \\
+        80  & $0.257 \pm 0.004$ & $0.009$  & $0.249 \pm 0.007$ & $0.008$  & $0.230$           & $0.012$ \\
+        90  & $0.242 \pm 0.007$ & $0.021$  & $0.249 \pm 0.016$ & $0.022$  & $0.211 \pm 0.025$ & $0.023$ \\
+        100 & $0.235 \pm 0.011$ & $0.030$  & $0.236 \pm 0.005$ & $0.033$  & $0.202 \pm 0.012$ & $0.032$ \\
+        120 & $0.215 \pm 0.005$ & $0.057$  & $0.243 \pm 0.014$ & $0.057$  & $0.206 \pm 0.004$ & $0.054$ \\
+        200 & $0.380 \pm 0.002$ & $0.355$  & $0.388 \pm 0.015$ & $0.347$  & $0.288$           & $0.278$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~D]{Major and minor limit
+    strains for the three criteria over the class~D ($t=\SI{3.0}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
+    Table~\ref{tab:ms_campaign_B}.}
+    \label{tab:ms_campaign_D}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.358 \pm 0.004$ & $-0.085$ & $0.336 \pm 0.006$ & $-0.085$ & $0.285 \pm 0.003$ & $-0.064$ \\
+        50  & $0.347 \pm 0.021$ & $-0.031$ & $0.328 \pm 0.004$ & $-0.036$ & $0.277 \pm 0.007$ & $-0.019$ \\
+        80  & $0.307 \pm 0.002$ & $0.014$  & $0.305 \pm 0.014$ & $0.011$  & $0.282 \pm 0.008$ & $0.017$ \\
+        90  & $0.299 \pm 0.007$ & $0.025$  & $0.287 \pm 0.008$ & $0.027$  & $0.246 \pm 0.005$ & $0.030$ \\
+        100 & $0.283 \pm 0.015$ & $0.033$  & $0.275 \pm 0.029$ & $0.038$  & $0.234 \pm 0.020$ & $0.039$ \\
+        120 & $0.271 \pm 0.004$ & $0.047$  & $0.285 \pm 0.026$ & $0.064$  & $0.283 \pm 0.028$ & $0.060$ \\
+        200 & $0.416 \pm 0.004$ & $0.393$  & $0.415 \pm 0.029$ & $0.382$  & $0.375 \pm 0.095$ & $0.342$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The curvature criterion detects an onset in 13 of 14 samples for class~B, 12 of
+14 for class~C, and all 14 for class~D, the non-detections being isolated
+\texttt{no\_sustained\_exceedance} cases at a single width. For the thinner
+sheets the curvature limit stays close to the established methods: the mean
+absolute major-strain difference to the ISO~12004-2 average is about \num{0.014}
+for class~B, comparable to the \num{0.02} found for class~A. The agreement
+degrades for the thicker sheets, rising to about \num{0.033} for class~C and
+\num{0.046} for class~D, and class~D shows a consistent negative bias, with the
+curvature major strain falling below both reference methods at nearly every
+width, for example $\varepsilon_1=\num{0.285}$ against the ISO~12004-2
+\num{0.358} at \texttt{W020}. This trend indicates that the parameters
+calibrated on the thin material do not transfer unchanged to thicker sheets,
+where the stronger through-thickness curvature alters the dimple signature so
+that the fixed SAC and threshold trigger the onset earlier. A
+thickness-dependent parameter choice is therefore required before the curvature
+method can be applied for production forming-limit extraction across the full
+thickness range.
+
 \section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
 
 This section reports the verification status of the numerical framework rather
-than a completed numerical FLC campaign. For each selected configuration, the
+than a completed numerical FLC campaign. The surrogate material calibration
+discussed in Chapter~\ref{chap:numerical_model}
+means that the runs are interpreted as framework-verification cases rather than
+quantitative predictions for the AA5754 experimental campaign. For each selected
+configuration, the
 pipeline creates the \software{Abaqus} model, submits the solver job on the
 Euler cluster, runs the ODB-based post-processing, and synchronises a structured
 set of result artefacts. The same interface is used for the Nakazima,
