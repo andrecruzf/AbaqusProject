@@ -173,6 +173,16 @@ $\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
 for the standard punch no longer matches the strain field to which it is
 applied.
 
+Table~\ref{tab:flc0_punch} quantifies this break through the plane-strain limit
+$\mathrm{FLC}_0$, the major strain at $\varepsilon_2=0$. The limit rises
+smoothly across the \SIlist{100;80;60}{\milli\meter} punches; extrapolating that
+trend to \SI{40}{\milli\meter} underpredicts the measured limit by
+$\Delta_{40}=+0.007$ for the thinnest sheet~A, growing to $+0.055$ for the
+thickest sheet~D. This excess over the larger-punch trend, and its growth with
+thickness, is consistent with the fixed standard window increasingly mis-fitting
+the sharper neck of the small punch, rather than with a continuation of the
+$t/R$ size effect.
+
 \begin{figure}[H]
     \centering
     \begin{subfigure}[t]{0.49\textwidth}
@@ -207,6 +217,29 @@ applied.
     \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}. The \SI{40}{\milli\meter} punch (green) departs from the expected ordering by a margin inconsistent with the expected curvature trend.}
     \label{fig:flc_norm}
 \end{figure}
+
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Plane-strain limit $\mathrm{FLC}_0$ (major strain at
+    $\varepsilon_2=0$) extracted with the standard ISO~12004-2 window for each
+    punch diameter and sheet thickness. $\Delta_{40}$ is the excess of the
+    measured \SI{40}{\milli\meter} value over the linear extrapolation of the
+    \SIlist{100;80;60}{\milli\meter} trend.}
+    \label{tab:flc0_punch}
+    \begin{tabular}{lccccc}
+        \toprule
+        & \multicolumn{4}{c}{$\mathrm{FLC}_0$ at punch $\varnothing$ (\si{\milli\meter})} & \\
+        \cmidrule(lr){2-5}
+        Thickness & 100 & 80 & 60 & 40 & $\Delta_{40}$ \\
+        \midrule
+        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.222 & 0.253 & 0.274 & $+0.007$ \\
+        B (\SI{1.5}{\milli\meter}) & 0.254 & 0.280 & 0.263 & 0.305 & $+0.030$ \\
+        C (\SI{2.0}{\milli\meter}) & 0.267 & 0.289 & 0.312 & 0.372 & $+0.039$ \\
+        D (\SI{3.0}{\milli\meter}) & 0.320 & 0.342 & 0.395 & 0.482 & $+0.055$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \begin{figure}[H]
     \centering
