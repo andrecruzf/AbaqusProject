@@ -18,6 +18,7 @@
 
 \usepackage{siunitx}
 \usepackage{subcaption}
+\usepackage{pdfpages}
 
 \usepackage[english,st]{ethidsc} % Special IDSC styles and commands      	
 									 % {german}/english: language of headings, etc.
@@ -57,16 +58,13 @@
 \identification{} 		% Project identifier
 
 \infopage
-\declaration
 \AtEndDocument{%
-  \clearpage
-  \phantomsection
-  \addcontentsline{toc}{chapter}{Declaration of Originality}
-  \thispagestyle{empty}
-  \begin{center}
-    \makebox[\textwidth][c]{\includegraphics[page=1,height=0.98\textheight]{declaration-originality.pdf}}
-  \end{center}
-  \clearpage
+  \includepdf[
+    pages=1,
+    noautoscale=true,
+    offset=1in -1in,
+    pagecommand={\thispagestyle{empty}\phantomsection\addcontentsline{toc}{chapter}{Declaration of Originality}}
+  ]{declaration-originality.pdf}
 }
 
 % Begin document________________________________________________________________
