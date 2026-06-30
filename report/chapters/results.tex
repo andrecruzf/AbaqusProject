@@ -657,6 +657,30 @@ effect, and a thickness-dependent threshold, larger for thicker sheets, is the
 recommended path before the curvature method is used for production
 forming-limit extraction.
 
+Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
+when each thickness uses its own best full-detection set from
+Table~\ref{tab:ms_sweep_thickness}, in place of the single standard set of
+Figure~\ref{fig:flc_ms_comparison}. With the thickness-specific tuning the
+curvature criterion detects all fourteen samples of every thickness, including
+the biaxial \texttt{W200} point that the standard set missed for classes~C
+and~D, and the curvature curve follows the ISO~12004-2 and Volk--Hora references
+more closely through the body of the diagram. A residual gap remains on the
+biaxial branch of the thickest sheets, which the present grid does not fully
+close.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/flc_ms_comparison_best.png}
+    \caption[Forming-limit comparison with the best parameter set per thickness]{Forming-limit
+    diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
+    Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
+    using each thickness's best full-detection parameter set from
+    Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
+    single standard set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
+    mean over the two repetitions of a width.}
+    \label{fig:flc_ms_comparison_best}
+\end{figure}
+
 \section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
 
