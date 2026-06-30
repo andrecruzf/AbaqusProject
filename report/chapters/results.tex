@@ -670,6 +670,59 @@ thickness-dependent parameter choice is therefore required before the curvature
 method can be applied for production forming-limit extraction across the full
 thickness range.
 
+\subsection{Parameter Sweep Across Thicknesses}
+\label{sec:ms_sweep_thickness}
+
+To test whether the thicker-sheet underestimation can be removed by retuning
+rather than being intrinsic, a parameter sweep was run over all four thicknesses
+(\num{56} samples), covering $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
+$M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
+$\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
+$\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
+was scored by its detection rate and by the mean absolute difference of the
+curvature major strain to the ISO~12004-2 average over the detected widths.
+Table~\ref{tab:ms_sweep_thickness} compares the standard set with the
+best-agreeing full-detection set for each thickness.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton parameter sweep across thicknesses]{Standard versus
+    best full-detection parameter set per thickness from the sweep. The standard
+    set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$.
+    Detection is the number of samples with a detected onset (of 14), and
+    $|\Delta\varepsilon_1|$ is the mean absolute difference of the Min--Stoughton
+    major strain to the ISO~12004-2 average over the detected widths.}
+    \label{tab:ms_sweep_thickness}
+    \begin{tabular}{c c c l c c}
+        \toprule
+        & \multicolumn{2}{c}{Standard set} & \multicolumn{3}{c}{Best full-detection set} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-6}
+        Thickness & Det. & $|\Delta\varepsilon_1|$ & $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Det. & $|\Delta\varepsilon_1|$ \\
+        \midrule
+        A ($\SI{1.2}{\milli\meter}$) & 13/14 & 0.026 & $(25,0.70,8,\num{5e-4},0.10)$ & 14/14 & 0.028 \\
+        B ($\SI{1.5}{\milli\meter}$) & 13/14 & 0.037 & $(20,0.80,6,\num{5e-4},0.10)$ & 14/14 & 0.044 \\
+        C ($\SI{2.0}{\milli\meter}$) & 12/14 & 0.034 & $(15,0.75,6,\num{1e-3},0.20)$ & 14/14 & 0.024 \\
+        D ($\SI{3.0}{\milli\meter}$) & 14/14 & 0.051 & $(15,0.75,6,\num{5e-4},0.20)$ & 14/14 & 0.038 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Full detection is reachable for every thickness, but the parameters that achieve
+it differ by thickness, so no single set is optimal across the range. For the
+thin sheets A and B the standard threshold already gives the closest agreement
+with ISO~12004-2, and forcing full detection slightly increases the deviation.
+For the thicker sheets C and D the agreement improves markedly once the detection
+threshold $\Delta=\alpha\,\mathrm{SAC}$ is raised, through $\alpha=0.20$ and, for
+C, $\mathrm{SAC}=\SI{1e-3}{\per\milli\meter}$: the mean deviation to
+ISO~12004-2 falls from \num{0.034} to \num{0.024} for C and from \num{0.051} to
+\num{0.038} for D. A larger threshold delays the detected onset, which raises the
+extracted major strain and counteracts the underestimation seen in
+Section~\ref{sec:ms_BCD}. The thick-sheet bias is therefore largely a tuning
+effect, and a thickness-dependent threshold, larger for thicker sheets, is the
+recommended path before the curvature method is used for production
+forming-limit extraction.
+
 \section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
 
