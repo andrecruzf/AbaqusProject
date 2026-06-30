@@ -17,7 +17,7 @@ from xml.etree import ElementTree as ET
 
 
 THICKNESS_CLASS_TO_MM = {
-    "A": 1.25,
+    "A": 1.2,
     "B": 1.5,
     "C": 2.0,
     "D": 3.0,
