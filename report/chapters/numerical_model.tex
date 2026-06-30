@@ -4,7 +4,7 @@
 
 To complement the experimental campaign presented in
 Chapter~\ref{chap:experimental_campaign}, a numerical simulation framework was
-developed in \software{Abaqus/Explicit}. Its purpose is to create, run, and
+developed in \software{Abaqus/Explicit}~\cite{Abaqus2023}. Its purpose is to create, run, and
 post-process the specimen and punch configurations considered in Task~I in a
 reproducible way. The framework is not written for one single model, but for
 repeated simulation campaigns in which the test type, geometry, mesh density,
@@ -159,7 +159,7 @@ resolved consistently. Through the thickness, a fixed number of element layers i
 used, which keeps the through-thickness resolution constant as well.
 
 \begin{table}[H]
-\begin{center}
+\centering
 \caption{Default target element sizes of the concentric sections, from the pole
 outward, for the standard specimen family. The same sectioning is applied to
 every geometry, which makes the element size identical across specimen widths and
@@ -172,7 +172,6 @@ Transition & Below the dome    & 0.4 \\
 Dome & Main stretched region   & 0.8 \\
 Flange & Clamped outer zone    & 1.2 \\ \bottomrule[1.5pt]
 \end{tabular}
-\end{center}
 \end{table}
 
 \subsubsection{Global Refinement}

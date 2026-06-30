@@ -338,6 +338,11 @@ campaign analysis that follows.
 \begin{table}[H]
     \centering
     \small
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
+    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
+    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
+    paper-grid matrix points found in the valid DIC field.}
+    \label{tab:minstoughton_w020_wy_sweep}
     \begin{tabular}{c c c c c c c}
         \toprule
         $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -349,16 +354,14 @@ campaign analysis that follows.
         30 & $9\times108$ & 0.599 & 393 & 25.775 & 0.2325 & -0.0670 \\
         \bottomrule
     \end{tabular}
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
-    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
-    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
-    paper-grid matrix points found in the valid DIC field.}
-    \label{tab:minstoughton_w020_wy_sweep}
 \end{table}
 
 \begin{table}[H]
     \centering
     \small
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
+    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
+    \label{tab:minstoughton_w200_wy_sweep}
     \begin{tabular}{c c c c c c c}
         \toprule
         $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -370,9 +373,6 @@ campaign analysis that follows.
         30 & $8\times107$ & 1.000 & 499 & 40.601 & 0.3186 & 0.2813 \\
         \bottomrule
     \end{tabular}
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
-    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
-    \label{tab:minstoughton_w200_wy_sweep}
 \end{table}
 
 The onset frame of the curvature criterion can be compared directly with the
@@ -388,6 +388,11 @@ other on these two reference specimens.
 \begin{table}[H]
     \centering
     \small
+    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
+    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
+    necking outputs for the same experimental DIC samples. The table label
+    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
+    \label{tab:minstoughton_vh_din_compare}
     \begin{tabular}{l l c c c c c}
         \toprule
         Specimen & Method & $W_Y$ (\si{\milli\meter}) & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -401,11 +406,6 @@ other on these two reference specimens.
         \texttt{W200} & Volk--Hora     & -- & 591 & 43.401 & 0.4124 & 0.3496 \\
         \bottomrule
     \end{tabular}
-    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
-    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
-    necking outputs for the same experimental DIC samples. The table label
-    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
-    \label{tab:minstoughton_vh_din_compare}
 \end{table}
 
 The curvature criterion was then applied to all fourteen samples of the
@@ -426,6 +426,14 @@ falls about \num{0.03} below the two reference methods.
 \begin{table}[H]
     \centering
     \small
+    \caption[Campaign comparison of the three forming limit criteria]{Major and
+    minor limit strains for the three criteria over the repeat campaign of
+    material class~A with the \SI{100}{\milli\meter} punch. Each entry is the
+    mean and standard deviation over the two repetitions of the width. The
+    Min--Stoughton results use $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, and $n=8$.
+    The biaxial \texttt{W200} curvature onset is detected in only one repetition
+    at $n=8$, so no standard deviation is given there.}
+    \label{tab:minstoughton_campaign}
     \begin{tabular}{c c c c c c c}
         \toprule
         Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
@@ -441,14 +449,6 @@ falls about \num{0.03} below the two reference methods.
         200 & $0.382 \pm 0.010$ & $0.342$  & $0.398 \pm 0.018$ & $0.348$  & $0.382$           & $0.318$ \\
         \bottomrule
     \end{tabular}
-    \caption[Campaign comparison of the three forming limit criteria]{Major and
-    minor limit strains for the three criteria over the repeat campaign of
-    material class~A with the \SI{100}{\milli\meter} punch. Each entry is the
-    mean and standard deviation over the two repetitions of the width. The
-    Min--Stoughton results use $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, and $n=8$.
-    The biaxial \texttt{W200} curvature onset is detected in only one repetition
-    at $n=8$, so no standard deviation is given there.}
-    \label{tab:minstoughton_campaign}
 \end{table}
 
 \begin{figure}[H]
@@ -497,14 +497,6 @@ agreement of the $n=8$ set.
 \begin{table}[H]
     \centering
     \small
-    \begin{tabular}{l c c c c c c}
-        \toprule
-        Set & $W_Y$ (\si{\milli\meter}) & $M$ & $n$ & Detection & $|\Delta\varepsilon_1|$ to ISO & Repeatability \\
-        \midrule
-        Current    & 15 & 0.80 & 8 & 13/14 & 0.025 & 0.024 \\
-        Best score & 15 & 0.80 & 5 & 14/14 & 0.030 & 0.016 \\
-        \bottomrule
-    \end{tabular}
     \caption[Parameter sweep of the curvature criterion]{Comparison of the
     current parameter set with the best-scoring set from the sweep over $W_Y$,
     $M$, and $n$ across the fourteen campaign samples. Detection is the number of
@@ -513,6 +505,14 @@ agreement of the $n=8$ set.
     samples. Repeatability is the mean standard deviation of the major strain
     over the two repetitions of each width.}
     \label{tab:minstoughton_sweep}
+    \begin{tabular}{l c c c c c c}
+        \toprule
+        Set & $W_Y$ (\si{\milli\meter}) & $M$ & $n$ & Detection & $|\Delta\varepsilon_1|$ to ISO & Repeatability \\
+        \midrule
+        Current    & 15 & 0.80 & 8 & 13/14 & 0.025 & 0.024 \\
+        Best score & 15 & 0.80 & 5 & 14/14 & 0.030 & 0.016 \\
+        \bottomrule
+    \end{tabular}
 \end{table}
 
 These results show that the curvature criterion is operational across the full

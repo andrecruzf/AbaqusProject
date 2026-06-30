@@ -103,7 +103,7 @@ configuration groups are collected here to keep the numerical model chapter
 focused on the general framework.
 
 \begin{table}[ht]
-\begin{center}
+\centering
 \caption{Main user-tunable parameter groups in the numerical framework.}
 \label{tab:framework_parameters}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}
@@ -120,7 +120,6 @@ Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial r
 Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
 Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
 \end{tabular}
-\end{center}
 \end{table}
 
 For the current scalar sensitivity study, mass scaling and mesh refinement are
@@ -131,7 +130,7 @@ number of \software{Abaqus} token-consuming jobs manageable and separates
 inertial effects from spatial-discretisation effects.
 
 \begin{table}[ht]
-\begin{center}
+\centering
 \caption{Mass-scaling sweep for the scalar Nakazima \texttt{W100} study. The mesh
 refinement factor is kept fixed at the reference value $f_\mathrm{MR}=2$ while
 the mass-scaling target time increment is varied.}
@@ -147,11 +146,10 @@ $1\times10^{-4}$ \\
 $f_\mathrm{MR}$ & 2 & 2 & 2 & 2 & 2 \\
 \bottomrule[1.5pt]
 \end{tabular}
-\end{center}
 \end{table}
 
 \begin{table}[ht]
-\begin{center}
+\centering
 \caption{Mesh-refinement sweep for the scalar Nakazima \texttt{W100} study. The
 mass-scaling target is kept fixed at the reference value
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ while the global mesh-refinement factor
@@ -166,7 +164,6 @@ $1\times10^{-5}$ &
 $1\times10^{-5}$ \\
 \bottomrule[1.5pt]
 \end{tabular}
-\end{center}
 \end{table}
 
 \section{Numerical Framework Implementation Details}
