@@ -60,9 +60,11 @@
 \declaration
 \AtEndDocument{%
   \clearpage
+  \phantomsection
+  \addcontentsline{toc}{chapter}{Declaration of Originality}
   \thispagestyle{empty}
   \begin{center}
-    \includegraphics[page=1,width=\textwidth,height=0.98\textheight,keepaspectratio]{declaration-originality.pdf}
+    \makebox[\textwidth][c]{\includegraphics[page=1,height=0.98\textheight]{declaration-originality.pdf}}
   \end{center}
   \clearpage
 }
