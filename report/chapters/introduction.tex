@@ -13,7 +13,8 @@ Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
 
 Despite its broad industrial acceptance, the experimental determination of
 FLCs is sensitive to the test setup, specimen geometry, sheet thickness,
-material behaviour, and the criterion used to detect necking. Two standardised test configurations are commonly used: the
+material behaviour, and the criterion used to detect necking
+\cite{ISO120042}. Two standardised test configurations are commonly used: the
 Nakazima test, which deforms the specimen with a hemispherical punch, and the
 Marciniak test, which uses a flat cylindrical punch. Both are described in
 ISO12004-2\cite{ISO120042}. The Marciniak configuration generally produces
@@ -38,12 +39,37 @@ criteria.
 
 \section{Project Context}
 
-This work is part of the project \textit{Towards Robust Forming Limit Curve Identification: Experiments and Modeling}. The overall project is divided into three connected tasks:
+This work is part of the project \textit{Towards Robust Forming Limit Curve
+Identification: Experiments and Modeling}. The project outline starts from the
+need for reliable sheet metal formability data and from the observation that
+FLC identification is sensitive to test setup, specimen geometry, sheet
+thickness, material behaviour, and evaluation methodology. It combines high
+throughput testing, DIC strain measurements, identification criteria, and
+numerical simulation to make forming limit assessment more robust and
+reproducible.
+
+The broader project is organised around three tasks. The present report covers
+only the parts of those tasks that were available within this semester project:
 
 \begin{description}
-  \item[Task I] A large-scale experimental study on several engineering materials using a high-throughput Nakazima/Marciniak test bench. The campaign investigates size effects on FLCs across specimen geometries, sheet thicknesses, punch radii, and a novel Punch-in-Punch setup, while also assessing the robustness of the automated specimen loading system.
-  \item[Task II] Development of a modular, robust, and user-friendly FLC identification framework in \software{MATLAB}/\software{Python}. The framework integrates and improves established criteria such as Volk--Hora~\cite{VolkHora2011}, Merklein~\cite{Merklein2010}, and Pham--Sigvant~\cite{Pham2023}, addresses unstable ISO~12004-2 evaluations for materials affected by dynamic strain ageing, and includes a Min--Stoughton-type criterion~\cite{Min2017}.
-  \item[Task III] Development of a numerical simulation framework that fully automates model creation, execution, and post-processing for all specimen and punch configurations relevant to Task~I. A central requirement is maintaining identical element size across configurations and enabling an automated mesh-size study.
+  \item[Task I] The experimental work is restricted to the AA5754 Nakazima
+  campaign. It analyses the available specimen widths, four sheet thicknesses,
+  four hemispherical punch diameters, and the rolling and transverse material
+  directions. Marciniak experiments, Punch in Punch experiments, additional
+  materials, and the automated specimen loading system are part of the broader
+  project scope but are not experimentally assessed here.
+  \item[Task II] The identification work uses the available FLC workflow to
+  evaluate ISO~12004-2 and Volk--Hora results, with emphasis on the sensitivity
+  of the ISO fitting window for nonstandard punch diameters. The additional
+  criterion studied in detail is the Min--Stoughton curvature method. It is
+  assessed on the rolling direction, \SI{100}{\milli\meter} punch subset rather
+  than delivered as a fully calibrated production criterion.
+  \item[Task III] The numerical work develops a parameterised
+  \software{Abaqus/Explicit} workflow for Nakazima, Marciniak, and Punch in
+  Punch model generation, Euler execution, and post processing. The numerical
+  results in this report are limited to framework verification and scalar
+  mass scaling, mesh refinement, and friction checks. They are not yet a
+  completed predictive numerical FLC campaign.
 \end{description}
 
 \section{Objectives}
