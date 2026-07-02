@@ -263,7 +263,7 @@ $M=0.8$, $n=8$.
 Figure~\ref{fig:architecture} shows the full pipeline architecture, from local
 configuration to HPC output.
 
-\begin{figure}[ht]
+\begin{figure}[H]
     \centering
     \resizebox{\textwidth}{!}{%
     \begin{tikzpicture}[
@@ -295,7 +295,7 @@ configuration to HPC output.
         \node[box, below=24mm of build] (solver) {\software{Abaqus/Explicit} solver\\\texttt{VUMAT\_explicit.f}, runs in scratch};
         \node[box, below=10mm of solver] (postproc) {\texttt{postproc.py}\\reads ODB};
         \node[box, below=10mm of postproc] (movie) {\texttt{postproc\_movie.py}\\EQPS movie};
-        \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh} $\to$ \texttt{plot\_flc.py}\\optional, \texttt{afterok} dependency};
+        \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh}\\\texttt{plot\_results.py}, then \texttt{plot\_flc.py} (Nakazima/Marciniak only)\\optional, \texttt{afterok} dependency};
         \node[rowlbl, above left=2mm and 0mm of solver.north west, anchor=south west] {Euler HPC --- compute node (\software{SLURM}, \texttt{run\_cluster.sh})};
 
         \draw[arr] (build.south) -- (solver.north)
@@ -304,15 +304,17 @@ configuration to HPC output.
         \draw[arr] (postproc) -- (movie);
         \draw[darr] (solver.east) -- (plots.west) node[midway, above, font=\scriptsize] {afterok};
 
-        \node[box, below=23mm of movie] (results) {\texttt{\{TestType\}\_W\{N\}\_t\{t\}\_ang\{a\}/}\\results, mesh render, and EQPS movie};
-        \node[box, right=18mm of results] (flc) {\texttt{FLC\_\{testtype\}\_t\{t\}\_ang\{a\}/}\\aggregated FLC plot};
-        \node[rowlbl, above left=2mm and 0mm of results.north west, anchor=south west] {Outputs (synced back to local)};
+        \node[box, below=23mm of movie] (results) {job result folder (test type, punch, thickness, orientation, and active option suffixes)\\results, mesh render, and EQPS movie};
+        \node[box, right=18mm of results] (flc) {\texttt{FLC\_*} folder\\aggregated FLC plot (Nakazima/Marciniak only)};
+        \node[rowlbl, above left=2mm and 0mm of results.north west, anchor=south west] {Euler home (copied from scratch by \texttt{run\_cluster.sh})};
 
         \draw[arr] (movie.south) -- (results.north) node[pos=0.25, right, font=\scriptsize] {copy back};
         \draw[arr] (plots.south) -- (flc.north);
+
+        \node[rowlbl, font=\scriptsize\itshape, below=3mm of $(results.south)!0.5!(flc.south)$] {Synced to the local machine on demand via \texttt{app.py} (\texttt{rsync})};
     \end{tikzpicture}%
     }
-  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed.}
+  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed. Results remain on the Euler home directory until pulled to the local machine on demand.}
   \label{fig:architecture}
 \end{figure}
 
@@ -322,8 +324,11 @@ configuration to HPC output.
 Figure~\ref{fig:model_gen_sequence} shows the processing logic of
 \texttt{build\_model.py}, the orchestrator called on the Euler login node
 shown in Figure~\ref{fig:architecture}. Each step is a separate module under
-\texttt{modules/}, called in a fixed order independent of the selected test
-type (Nakazima, Marciniak, or Punch-in-Punch).
+\texttt{modules/}, called in a fixed order for every solver build, independent
+of the selected test type (Nakazima, Marciniak, or Punch-in-Punch); some
+steps branch internally on test type, as noted below. A separate
+\texttt{MESH\_ONLY} mode bypasses this sequence to export a mesh-only
+\texttt{.cae} for verification and is not shown here.
 
 \begin{figure}[H]
     \centering
@@ -351,19 +356,19 @@ type (Nakazima, Marciniak, or Punch-in-Punch).
         \node[lbl, right=2mm of material] {\texttt{modules/material.py}};
         \node[lbl, opacity=0, left=2mm of material] {\texttt{modules/material.py}};
 
-        \node[box, below=of material] (step) {[4/7] Create step\\(Dynamic Explicit step, smooth-step amplitude)};
+        \node[box, below=of material] (step) {[4/7] Create step\\(Explicit dynamics step(s), smooth-step or tabular punch amplitude)};
         \node[lbl, right=2mm of step] {\texttt{modules/step.py}};
         \node[lbl, opacity=0, left=2mm of step] {\texttt{modules/step.py}};
 
-        \node[box, below=of step] (contact) {[5/7] Define contact\\(punch, die, and blank-holder pairs, Coulomb friction)};
+        \node[box, below=of step] (contact) {[5/7] Define contact\\(punch, die, and blank-holder pairs, Coulomb friction; a second punch pair is added for PiP)};
         \node[lbl, right=2mm of contact] {\texttt{modules/contact.py}};
         \node[lbl, opacity=0, left=2mm of contact] {\texttt{modules/contact.py}};
 
-        \node[box, below=of contact] (boundary) {[6/7] Apply boundary conditions\\(symmetry planes, blank-holder/die clamp, punch displacement)};
+        \node[box, below=of contact] (boundary) {[6/7] Apply boundary conditions\\(optional symmetry planes, blank-holder/die clamp, punch displacement)};
         \node[lbl, right=2mm of boundary] {\texttt{modules/boundary.py}};
         \node[lbl, opacity=0, left=2mm of boundary] {\texttt{modules/boundary.py}};
 
-        \node[box, below=of boundary] (job) {[7/7] Save and export\\(write \texttt{.cae}/\texttt{.inp}, inject mass scaling and output requests)};
+        \node[box, below=of boundary] (job) {[7/7] Save and export\\(write \texttt{.cae}/\texttt{.inp}; inject mass scaling, output requests, and initial SDVs; copy VUMAT)};
         \node[lbl, right=2mm of job] {\texttt{modules/job.py}};
         \node[lbl, opacity=0, left=2mm of job] {\texttt{modules/job.py}};
 
@@ -378,9 +383,10 @@ type (Nakazima, Marciniak, or Punch-in-Punch).
     }
     \caption[Model-generation module sequence]{Processing logic of
     \texttt{build\_model.py}. The same seven-step sequence runs for every
-    test type and geometry; the resulting \texttt{.inp} file is submitted to
-    the \software{Abaqus/Explicit} solver as shown in
-    Figure~\ref{fig:architecture}.}
+    test type and geometry, with test-type-specific branches inside the
+    step, contact, and boundary-condition modules for Punch-in-Punch; the
+    resulting \texttt{.inp} file is submitted to the \software{Abaqus/Explicit}
+    solver as shown in Figure~\ref{fig:architecture}.}
     \label{fig:model_gen_sequence}
 \end{figure}
 
@@ -393,7 +399,7 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
  \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
  \texttt{app.py}                \> \software{Streamlit} interface for inspecting results and preparing scalar runs \\[0.5ex]
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
- \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{job} (output requests are injected in \texttt{job.py}) \\[0.5ex]
+ \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{job} (see Figure~\ref{fig:model_gen_sequence}) \\[0.5ex]
  \texttt{VUMAT\_explicit.f}     \> Hosford--Coulomb VUMAT subroutine (\software{Fortran} 77) \\[0.5ex]
  \texttt{geometries/}           \> Reference blank geometry files (\texttt{W020}--\texttt{W200}) \\[0.5ex]
  \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
