@@ -270,6 +270,74 @@ configuration to HPC output.
   \label{fig:architecture}
 \end{figure}
 
+\section{Model-Generation Module Sequence}
+\label{app:model_generation_sequence}
+
+Figure~\ref{fig:model_gen_sequence} shows the processing logic of
+\texttt{build\_model.py}, the orchestrator called on the Euler login node
+shown in Figure~\ref{fig:architecture}. Each step is a separate module under
+\texttt{modules/}, called in a fixed order independent of the selected test
+type (Nakazima, Marciniak, or Punch-in-Punch).
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=6mm and 10mm,
+        box/.style={rectangle, draw, rounded corners, align=center,
+            minimum width=7.4cm, minimum height=1cm, font=\small},
+        lbl/.style={font=\scriptsize\itshape, text=black!60},
+        arr/.style={-{Latex[length=2mm]}}
+    ]
+        \node[box] (config) {Read configuration\\(test type, geometry, punch, mesh, material)};
+        \node[lbl, right=2mm of config] {\texttt{config.py}};
+        \node[lbl, opacity=0, left=2mm of config] {\texttt{config.py}};
+
+        \node[box, below=of config] (parts) {[1/7] Create parts\\(blank, punch, die, blank holder geometry)};
+        \node[lbl, right=2mm of parts] {\texttt{modules/parts.py}};
+        \node[lbl, opacity=0, left=2mm of parts] {\texttt{modules/parts.py}};
+
+        \node[box, below=of parts] (assembly) {[2/7] Create assembly\\(instantiate parts, orient rigid tools to global $Z$)};
+        \node[lbl, right=2mm of assembly] {\texttt{modules/assembly.py}};
+        \node[lbl, opacity=0, left=2mm of assembly] {\texttt{modules/assembly.py}};
+
+        \node[box, below=of assembly] (material) {[3/7] Define material\\(Hosford--Coulomb VUMAT, 46 constants, 17 SDVs)};
+        \node[lbl, right=2mm of material] {\texttt{modules/material.py}};
+        \node[lbl, opacity=0, left=2mm of material] {\texttt{modules/material.py}};
+
+        \node[box, below=of material] (step) {[4/7] Create step\\(Dynamic Explicit step, smooth-step amplitude)};
+        \node[lbl, right=2mm of step] {\texttt{modules/step.py}};
+        \node[lbl, opacity=0, left=2mm of step] {\texttt{modules/step.py}};
+
+        \node[box, below=of step] (contact) {[5/7] Define contact\\(punch, die, and blank-holder pairs, Coulomb friction)};
+        \node[lbl, right=2mm of contact] {\texttt{modules/contact.py}};
+        \node[lbl, opacity=0, left=2mm of contact] {\texttt{modules/contact.py}};
+
+        \node[box, below=of contact] (boundary) {[6/7] Apply boundary conditions\\(symmetry planes, blank-holder/die clamp, punch displacement)};
+        \node[lbl, right=2mm of boundary] {\texttt{modules/boundary.py}};
+        \node[lbl, opacity=0, left=2mm of boundary] {\texttt{modules/boundary.py}};
+
+        \node[box, below=of boundary] (job) {[7/7] Save and export\\(write \texttt{.cae}/\texttt{.inp}, inject mass scaling and output requests)};
+        \node[lbl, right=2mm of job] {\texttt{modules/job.py}};
+        \node[lbl, opacity=0, left=2mm of job] {\texttt{modules/job.py}};
+
+        \draw[arr] (config) -- (parts);
+        \draw[arr] (parts) -- (assembly);
+        \draw[arr] (assembly) -- (material);
+        \draw[arr] (material) -- (step);
+        \draw[arr] (step) -- (contact);
+        \draw[arr] (contact) -- (boundary);
+        \draw[arr] (boundary) -- (job);
+    \end{tikzpicture}%
+    }
+    \caption[Model-generation module sequence]{Processing logic of
+    \texttt{build\_model.py}. The same seven-step sequence runs for every
+    test type and geometry; the resulting \texttt{.inp} file is submitted to
+    the \software{Abaqus/Explicit} solver as shown in
+    Figure~\ref{fig:architecture}.}
+    \label{fig:model_gen_sequence}
+\end{figure}
+
 \section{Repository Structure}
 
 The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
@@ -279,7 +347,7 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
  \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
  \texttt{app.py}                \> \software{Streamlit} interface for inspecting results and preparing scalar runs \\[0.5ex]
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
- \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{output}, \texttt{job} \\[0.5ex]
+ \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{job} (output requests are injected in \texttt{job.py}) \\[0.5ex]
  \texttt{VUMAT\_explicit.f}     \> Hosford--Coulomb VUMAT subroutine (\software{Fortran} 77) \\[0.5ex]
  \texttt{geometries/}           \> Reference blank geometry files (\texttt{W020}--\texttt{W200}) \\[0.5ex]
  \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
