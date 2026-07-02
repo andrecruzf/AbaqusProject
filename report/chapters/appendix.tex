@@ -73,6 +73,7 @@ steps and differ only in how the background curvature is removed.
 
 \begin{figure}[H]
     \centering
+    \resizebox{\textwidth}{!}{%
     \begin{tikzpicture}[
         node distance=6mm and 10mm,
         box/.style={rectangle, draw, rounded corners, align=center,
@@ -84,12 +85,15 @@ steps and differ only in how the background curvature is removed.
     ]
         \node[box] (load) {Load specimen data\\(\software{VIC-3D} VTK mesh, \texttt{CrackData.txt}, \texttt{*\_DataFile.txt})};
         \node[lbl, right=2mm of load] {\texttt{dic\_loader.py}};
+        \node[lbl, opacity=0, left=2mm of load] {\texttt{dic\_loader.py}};
 
         \node[box, below=of load] (region) {Select region\\(crack line $\to$ neck centre $O$, point matrix $W_X\times W_Y \to N_X\times N_Y$)};
         \node[lbl, right=2mm of region] {\texttt{region\_selector.py}};
+        \node[lbl, opacity=0, left=2mm of region] {\texttt{region\_selector.py}};
 
         \node[box, below=of region] (matrix) {Build curvature matrix\\(track matrix point IDs and field histories across frames)};
         \node[lbl, right=2mm of matrix] {\texttt{curvature\_matrix.py}};
+        \node[lbl, opacity=0, left=2mm of matrix] {\texttt{curvature\_matrix.py}};
 
         \node[branch, below=18mm of matrix, xshift=-2.4cm] (marciniak) {Marciniak branch\\$Z' = Z_{\mathrm{def}} - Z_{\mathrm{def}}(M)$};
         \node[lbl, left=1mm of marciniak] {\texttt{reference\_subtraction.py}};
@@ -98,15 +102,19 @@ steps and differ only in how the background curvature is removed.
 
         \node[box, below=12mm of marciniak, xshift=2.4cm] (sac) {Apply SAC and build columns\\(superimposed artificial curvature for a well-conditioned circle fit)};
         \node[lbl, right=2mm of sac] {\texttt{sac\_preparation.py}};
+        \node[lbl, opacity=0, left=2mm of sac] {\texttt{sac\_preparation.py}};
 
         \node[box, below=of sac] (circle) {Fit circles per column $\to$ curvature signal $C_{pm}(t)$};
         \node[lbl, right=2mm of circle] {\texttt{circle\_fitting.py}};
+        \node[lbl, opacity=0, left=2mm of circle] {\texttt{circle\_fitting.py}};
 
         \node[box, below=of circle] (onset) {Detect onset\\($C_{pm}(k) > C_{pm,P}(k)+\Delta$ for $n$ consecutive frames)};
         \node[lbl, right=2mm of onset] {\texttt{onset\_detection.py}};
+        \node[lbl, opacity=0, left=2mm of onset] {\texttt{onset\_detection.py}};
 
         \node[box, below=of onset] (limit) {Extract limit strains $\varepsilon_{1,L},\varepsilon_{2,L}$ at $O$, onset frame};
         \node[lbl, right=2mm of limit] {\texttt{limit\_strains.py}};
+        \node[lbl, opacity=0, left=2mm of limit] {\texttt{limit\_strains.py}};
 
         \draw[arr] (load) -- (region);
         \draw[arr] (region) -- (matrix);
@@ -117,7 +125,8 @@ steps and differ only in how the background curvature is removed.
         \draw[arr] (sac) -- (circle);
         \draw[arr] (circle) -- (onset);
         \draw[arr] (onset) -- (limit);
-    \end{tikzpicture}
+    \end{tikzpicture}%
+    }
     \caption[Standalone Min--Stoughton workflow logic]{Processing logic of the
     standalone Min--Stoughton workflow. Both branches were implemented, but
     only the Nakazima branch was assessed against experimental data
