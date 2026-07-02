@@ -1,22 +1,6 @@
 \chapter{FLC Identification Framework}
 \label{chap:identification_framework}
 
-\section{Motivation and Scope}
-
-The identification of forming-limit points is a key step in the construction
-of forming limit curves. After a forming test, the measured strain field must
-be evaluated in order to determine the strain state at the onset of localised
-necking. Since different identification criteria can lead to different limit
-strains, it is useful to compare them within the same post-processing workflow.
-
-In this project, the starting point was an existing graphical user interface
-(GUI) developed in the laboratory for the post-processing of DIC measurements. This
-tool already included data import, visualisation, plotting routines, the
-ISO~12004-2 intersection-line method, and the Volk--Hora method. The
-contribution of the present work was therefore to study an additional criterion
-based on the work of Min, Stoughton, Carsley, and Lin, and to prepare a draft
-methodology for its future integration into the existing framework.
-
 \section{Existing Identification Criteria}
 
 The existing framework contains two forming-limit identification methods. The
@@ -36,14 +20,11 @@ curvature, is described in Section~\ref{sec:minstoughton_method}. The present
 section concerns its translation into a working post-processing procedure for
 the laboratory DIC data.
 
-For Marciniak tests, this curvature is fitted on a small narrow surface patch
-around the neck band, rather than on one manually selected line. This makes the
-criterion less dependent on the exact line chosen by the operator. For
-Nakazima tests, the same idea is applied after a geometric transformation,
-because the sheet wraps around a hemispherical punch. The measured surface is
-expressed relative to the punch geometry, so that the local curvature increase
-caused by necking can be separated from the global curvature imposed by the
-punch.
+The curvature is fitted on a small surface patch around the neck band rather
+than on one manually selected line, making the criterion less dependent on
+the exact line chosen by the operator. The same point-matrix approach is
+applied to Nakazima tests after the geometric transformation described in
+Section~\ref{sec:minstoughton_method}.
 
 Within this project the Min--Stoughton method was therefore treated as a
 methodology and data-integration task rather than as a finalised GUI feature.
