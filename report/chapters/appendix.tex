@@ -264,9 +264,55 @@ Figure~\ref{fig:architecture} shows the full pipeline architecture, from local
 configuration to HPC output.
 
 \begin{figure}[ht]
-  \centering
-  \includegraphics[width=\textwidth]{img/architecture.png}
-  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. Local machine (blue) pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed.}
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=6mm and 8mm,
+        box/.style={rectangle, draw, rounded corners, align=center,
+            text width=5.0cm, minimum height=1cm, font=\small},
+        rowlbl/.style={font=\small\itshape},
+        arr/.style={-{Latex[length=2mm]}},
+        darr/.style={-{Latex[length=2mm]}, dashed}
+    ]
+        \node[box] (config) {\texttt{config.py}\\central configuration};
+        \node[box, right=18mm of config] (app) {\texttt{app.py}\\\software{Streamlit} job setup};
+        \node[rowlbl, above left=2mm and 0mm of config.north west, anchor=south west] {Local machine};
+
+        \coordinate (mid1) at ($(config)!0.5!(app)$);
+        \node[box, below=16mm of mid1] (deploy) {\texttt{deploy.sh}\\push code, launch one case};
+
+        \draw[arr] (config.south) -- ++(0,-8mm) -| (deploy.north);
+        \draw[arr] (app.south) -- ++(0,-8mm) -| (deploy.north);
+
+        \node[box, below=23mm of deploy] (build) {\texttt{build\_model.py} + \texttt{modules/}\\writes \texttt{.cae} + \texttt{.inp}};
+        \node[box, right=18mm of build] (screenshot) {\texttt{screenshot\_mesh.py}\\mesh verification render};
+        \node[rowlbl, above left=2mm and 0mm of build.north west, anchor=south west] {Euler HPC --- login node (\texttt{submit\_one.sh})};
+
+        \draw[arr] (deploy.south) -- (build.north)
+            node[pos=0.25, right, font=\scriptsize] {rsync push + ssh};
+        \draw[arr] (build.east) -- (screenshot.west);
+
+        \node[box, below=24mm of build] (solver) {\software{Abaqus/Explicit} solver\\\texttt{VUMAT\_explicit.f}, runs in scratch};
+        \node[box, below=10mm of solver] (postproc) {\texttt{postproc.py}\\reads ODB};
+        \node[box, below=10mm of postproc] (movie) {\texttt{postproc\_movie.py}\\EQPS movie};
+        \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh} $\to$ \texttt{plot\_flc.py}\\optional, \texttt{afterok} dependency};
+        \node[rowlbl, above left=2mm and 0mm of solver.north west, anchor=south west] {Euler HPC --- compute node (\software{SLURM}, \texttt{run\_cluster.sh})};
+
+        \draw[arr] (build.south) -- (solver.north)
+            node[midway, right, font=\scriptsize] {sbatch \texttt{run\_cluster.sh}};
+        \draw[arr] (solver) -- (postproc);
+        \draw[arr] (postproc) -- (movie);
+        \draw[darr] (solver.east) -- (plots.west) node[midway, above, font=\scriptsize] {afterok};
+
+        \node[box, below=23mm of movie] (results) {\texttt{\{TestType\}\_W\{N\}\_t\{t\}\_ang\{a\}/}\\results, mesh render, and EQPS movie};
+        \node[box, right=18mm of results] (flc) {\texttt{FLC\_\{testtype\}\_t\{t\}\_ang\{a\}/}\\aggregated FLC plot};
+        \node[rowlbl, above left=2mm and 0mm of results.north west, anchor=south west] {Outputs (synced back to local)};
+
+        \draw[arr] (movie.south) -- (results.north) node[pos=0.25, right, font=\scriptsize] {copy back};
+        \draw[arr] (plots.south) -- (flc.north);
+    \end{tikzpicture}%
+    }
+  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed.}
   \label{fig:architecture}
 \end{figure}
 
