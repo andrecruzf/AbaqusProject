@@ -1,31 +1,5 @@
 \chapter{Automated Numerical Framework}\label{chap:numerical_model}
 
-\section{Framework Overview}
-
-To complement the experimental campaign presented in
-Chapter~\ref{chap:experimental_campaign}, a numerical simulation framework was
-developed in \software{Abaqus/Explicit}~\cite{Abaqus2023}. Its purpose is to
-create, run, and post process the specimen and punch configurations considered
-in the experimental campaign in a reproducible way. The framework is not
-written for one single model. It supports repeated simulation campaigns in
-which the test type, geometry, mesh density, material orientation, loading, and
-post processing settings can be changed from a common interface.
-
-The main design goal was automation. Starting from a central configuration
-file, the pipeline builds the finite element model, writes the
-\software{Abaqus} input deck, submits the simulation, extracts the relevant
-quantities from the output database, and stores the processed results in a
-common format. This makes it possible to compare Nakazima, Marciniak, and
-Punch in Punch simulations using the same numerical and post processing
-workflow.
-
-Special attention was paid to the mesh. Since the numerical results should be
-compared across different specimen and punch configurations, the element size
-must be controlled systematically. The framework therefore includes
-user defined mesh size modification routines, which allow mesh refinement
-studies to be generated automatically instead of manually rebuilding each
-model.
-
 \section{Framework Architecture}
 \subsection{Central Configuration}
 
