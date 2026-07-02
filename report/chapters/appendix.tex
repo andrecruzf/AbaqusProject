@@ -295,7 +295,7 @@ configuration to HPC output.
         \node[box, below=24mm of build] (solver) {\software{Abaqus/Explicit} solver\\\texttt{VUMAT\_explicit.f}, runs in scratch};
         \node[box, below=10mm of solver] (postproc) {\texttt{postproc.py}\\reads ODB};
         \node[box, below=10mm of postproc] (movie) {\texttt{postproc\_movie.py}\\EQPS movie};
-        \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh}\\\texttt{plot\_results.py}, then \texttt{plot\_flc.py} (Nakazima/Marciniak only)\\optional, \texttt{afterok} dependency};
+        \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh}\\re-runs \texttt{plot\_results.py}, then \texttt{plot\_flc.py} (\mbox{Nakazima/Marciniak} only)\\optional, \texttt{afterok} dependency, single-run submissions only};
         \node[rowlbl, above left=2mm and 0mm of solver.north west, anchor=south west] {Euler HPC --- compute node (\software{SLURM}, \texttt{run\_cluster.sh})};
 
         \draw[arr] (build.south) -- (solver.north)
@@ -304,8 +304,8 @@ configuration to HPC output.
         \draw[arr] (postproc) -- (movie);
         \draw[darr] (solver.east) -- (plots.west) node[midway, above, font=\scriptsize] {afterok};
 
-        \node[box, below=23mm of movie] (results) {job result folder (test type, punch, thickness, orientation, and active option suffixes)\\results, mesh render, and EQPS movie};
-        \node[box, right=18mm of results] (flc) {\texttt{FLC\_*} folder\\aggregated FLC plot (Nakazima/Marciniak only)};
+        \node[box, below=23mm of movie] (results) {job result folder (test type, punch, thickness, orientation, and active option suffixes)\\results, \mbox{mesh render}, EQPS movie, and per-specimen plots (\texttt{plot\_results.py})};
+        \node[box, right=18mm of results] (flc) {\texttt{FLC\_*} folder\\aggregated FLC plot (\mbox{Nakazima/Marciniak} only)};
         \node[rowlbl, above left=2mm and 0mm of results.north west, anchor=south west] {Euler home (copied from scratch by \texttt{run\_cluster.sh})};
 
         \draw[arr] (movie.south) -- (results.north) node[pos=0.25, right, font=\scriptsize] {copy back};
@@ -325,7 +325,7 @@ Figure~\ref{fig:model_gen_sequence} shows the processing logic of
 \texttt{build\_model.py}, the orchestrator called on the Euler login node
 shown in Figure~\ref{fig:architecture}. Each step is a separate module under
 \texttt{modules/}, called in a fixed order for every solver build, independent
-of the selected test type (Nakazima, Marciniak, or Punch-in-Punch); some
+of the selected test type (\mbox{Nakazima}, Marciniak, or Punch-in-Punch); some
 steps branch internally on test type, as noted below. A separate
 \texttt{MESH\_ONLY} mode bypasses this sequence to export a mesh-only
 \texttt{.cae} for verification and is not shown here.
@@ -364,7 +364,7 @@ steps branch internally on test type, as noted below. A separate
         \node[lbl, right=2mm of contact] {\texttt{modules/contact.py}};
         \node[lbl, opacity=0, left=2mm of contact] {\texttt{modules/contact.py}};
 
-        \node[box, below=of contact] (boundary) {[6/7] Apply boundary conditions\\(optional symmetry planes, blank-holder/die clamp, punch displacement)};
+        \node[box, below=of contact] (boundary) {[6/7] Apply boundary conditions\\(optional symmetry planes and edge encastre, blank-holder/die clamp, punch displacement)};
         \node[lbl, right=2mm of boundary] {\texttt{modules/boundary.py}};
         \node[lbl, opacity=0, left=2mm of boundary] {\texttt{modules/boundary.py}};
 
