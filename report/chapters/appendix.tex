@@ -61,6 +61,68 @@ only one usable repeat is available.
 \chapter{Min--Stoughton Parameter Sweep}
 \label{app:ms_sweep}
 
+\section{Standalone Workflow Logic}
+\label{app:ms_workflow_logic}
+
+Figure~\ref{fig:ms_workflow_logic} shows the processing logic of the
+standalone Min--Stoughton workflow described in
+Section~\ref{sec:minstoughton_workflow_assessment}, from the raw
+\software{VIC-3D} export to the extracted limit strains. The Marciniak and
+Nakazima branches share the same region-selection and curvature-fitting
+steps and differ only in how the background curvature is removed.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=6mm and 10mm,
+        box/.style={rectangle, draw, rounded corners, align=center,
+            minimum width=6.6cm, minimum height=1cm, font=\small},
+        branch/.style={rectangle, draw, rounded corners, align=center,
+            minimum width=3.1cm, minimum height=1.1cm, font=\small},
+        lbl/.style={font=\scriptsize\itshape, text=black!60},
+        arr/.style={-{Latex[length=2mm]}}
+    ]
+        \node[box] (load) {Load specimen data\\(\software{VIC-3D} VTK mesh, \texttt{CrackData.txt}, \texttt{*\_DataFile.txt})};
+        \node[lbl, right=2mm of load] {\texttt{dic\_loader.py}};
+
+        \node[box, below=of load] (region) {Select region\\(crack line $\to$ neck centre $O$, point matrix $W_X\times W_Y \to N_X\times N_Y$)};
+        \node[lbl, right=2mm of region] {\texttt{region\_selector.py}};
+
+        \node[box, below=of region] (matrix) {Build curvature matrix\\(track matrix point IDs and field histories across frames)};
+        \node[lbl, right=2mm of matrix] {\texttt{curvature\_matrix.py}};
+
+        \node[branch, below=18mm of matrix, xshift=-3.5cm] (marciniak) {Marciniak branch\\$Z' = Z_{\mathrm{def}} - Z_{\mathrm{def}}(M)$\\\scriptsize\texttt{reference\_subtraction.py}};
+        \node[branch, below=18mm of matrix, xshift=3.5cm] (nakazima) {Nakazima branch\\punch-centred $(D, R_{\mathrm{out}})$ transform\\\scriptsize\texttt{nakazima\_transform.py}};
+
+        \node[box, below=42mm of matrix] (sac) {Apply SAC and build columns\\(superimposed artificial curvature for a well-conditioned circle fit)};
+        \node[lbl, right=2mm of sac] {\texttt{sac\_preparation.py}};
+
+        \node[box, below=of sac] (circle) {Fit circles per column $\to$ curvature signal $C_{pm}(t)$};
+        \node[lbl, right=2mm of circle] {\texttt{circle\_fitting.py}};
+
+        \node[box, below=of circle] (onset) {Detect onset\\($C_{pm}(k) > C_{pm,P}(k)+\Delta$ for $n$ consecutive frames)};
+        \node[lbl, right=2mm of onset] {\texttt{onset\_detection.py}};
+
+        \node[box, below=of onset] (limit) {Extract limit strains $\varepsilon_{1,L},\varepsilon_{2,L}$ at $O$, onset frame};
+        \node[lbl, right=2mm of limit] {\texttt{limit\_strains.py}};
+
+        \draw[arr] (load) -- (region);
+        \draw[arr] (region) -- (matrix);
+        \draw[arr] (matrix.south) -| (marciniak.north);
+        \draw[arr] (matrix.south) -| (nakazima.north);
+        \draw[arr] (marciniak.south) |- (sac.west);
+        \draw[arr] (nakazima.south) |- (sac.east);
+        \draw[arr] (sac) -- (circle);
+        \draw[arr] (circle) -- (onset);
+        \draw[arr] (onset) -- (limit);
+    \end{tikzpicture}
+    \caption[Standalone Min--Stoughton workflow logic]{Processing logic of the
+    standalone Min--Stoughton workflow. Both branches were implemented, but
+    only the Nakazima branch was assessed against experimental data
+    (Section~\ref{sec:minstoughton_draft}).}
+    \label{fig:ms_workflow_logic}
+\end{figure}
+
 Table~\ref{tab:ms_sweep_full} lists the complete Min--Stoughton parameter sweep
 summarised in Section~\ref{sec:ms_sweep_thickness}. Each of the 108 parameter
 sets was applied to all 14 rolling-direction samples of every thickness, and the
