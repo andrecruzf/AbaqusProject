@@ -3,7 +3,7 @@
 \section{Motivation}
 
 Sheet metal forming is a fundamental manufacturing process in the automotive,
-aerospace, and consumer-goods industries. A key challenge in forming operations
+aerospace, and consumer goods industries. A key challenge in forming operations
 is predicting the onset of localised necking and fracture, since this limit
 determines whether a blank can be formed into a target geometry without
 failure. The \textit{Forming Limit Diagram} (FLD) is the standard engineering
@@ -13,23 +13,24 @@ Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
 
 Despite its broad industrial acceptance, the experimental determination of
 FLCs is sensitive to the test setup, specimen geometry, sheet thickness,
-material behaviour, and the criterion used to detect necking. Two standardised test configurations are commonly used: the
-Nakazima test, which deforms the specimen with a hemispherical punch, and the
-Marciniak test, which uses a flat cylindrical punch. Both are described in
-ISO12004-2\cite{ISO120042}. The Marciniak configuration generally produces
-more linear strain paths than the Nakazima configuration, while the latter
-remains attractive because of its simpler specimen and tooling requirements.
+material behaviour, and the criterion used to detect necking. Two standardised
+test configurations are commonly used: the Nakazima test, which deforms the
+specimen with a hemispherical punch, and the Marciniak test, which uses a flat
+cylindrical punch. Both are described in ISO~12004-2~\cite{ISO120042}. The
+Marciniak configuration generally produces more linear strain paths than the
+Nakazima configuration, while the latter remains attractive because of its
+simpler specimen and tooling requirements.
 
-The Nakazima test is a long-established method for the experimental
+The Nakazima test is an established method for the experimental
 determination of forming limits and remains widely used in research and
 industrial practice. Nevertheless, the accurate identification of the onset of
 localised necking remains an active topic of investigation. Examples include
-time-dependent approaches such as the Volk–Hora criterion
-\cite{VolkHora2011} and spatio-temporal curvature-based approaches such as the
-Min–Stoughton method~\cite{Min2017}.
+time dependent approaches such as the Volk Hora criterion~\cite{VolkHora2011}
+and spatio temporal curvature based approaches such as the Min and Stoughton
+method~\cite{Min2017}.
 
 Numerical simulation provides a complementary approach to physical testing.
-Once a calibrated material model is available, finite-element simulations can
+Once a calibrated material model is available, finite element simulations can
 be used to vary specimen geometry, sheet thickness, punch radius, material
 orientation, and process parameters without manufacturing additional samples.
 This makes simulation particularly useful for studying size effects and for
@@ -58,9 +59,9 @@ only the parts of those tasks that were available within this semester project:
   materials, and the automated specimen loading system are part of the broader
   project scope but are not experimentally assessed here.
   \item[Task II] The identification work uses the available FLC workflow to
-  evaluate ISO~12004-2 and Volk--Hora results, with emphasis on the sensitivity
+  evaluate ISO~12004-2 and Volk Hora results, with emphasis on the sensitivity
   of the ISO fitting window for nonstandard punch diameters. The additional
-  criterion studied in detail is the Min--Stoughton curvature method. It is
+  criterion studied in detail is the Min and Stoughton curvature method. It is
   assessed on the rolling direction, \SI{100}{\milli\meter} punch subset rather
   than delivered as a fully calibrated production criterion.
   \item[Task III] The numerical work develops a parameterised
