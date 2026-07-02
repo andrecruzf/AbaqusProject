@@ -17,12 +17,11 @@ configuration. It covers sheet thicknesses of \SI{1.2}{\milli\meter},
 and transverse direction limits remain within repeat scatter, so no major
 anisotropy effect is identified. In the punch diameter study, the standard
 ISO~12004-2 fitting window can move complete FLCs out of the expected ordering
-for nonstandard punch geometries. The Volk Hora comparison shows related
+for non-ISO punch geometries. The Volk Hora comparison shows related
 qualitative trends, but its ordering exceptions are limited to individual
 points rather than whole curves. This motivates replacing the fixed ISO window
 constant with the geometry dependent factor $D/10$, which recovers a more
-intuitive ordering across punch diameters. Possible punch radius effects should
-therefore be considered rather than treated as confirmed.
+intuitive ordering across punch diameters.
 
 The identification framework integrates a Min and Stoughton curvature
 criterion and applies it to the \num{56} DIC samples of the rolling direction,
@@ -119,19 +118,10 @@ VUMAT \> \software{Abaqus/Explicit} user material subroutine
  \hspace*{2.0cm} \= \hspace*{8cm} \= \kill
  $\varepsilon_1$ \> Major principal strain \> -- \\[0.5ex]
  $\varepsilon_2$ \> Minor principal strain \> -- \\[0.5ex]
- $\bar{\varepsilon}^p$ \> Equivalent plastic strain \> -- \\[0.5ex]
- $\bar{\varepsilon}^p_f$ \> Critical fracture strain \> -- \\[0.5ex]
- $\dot{\bar{\varepsilon}}^p$ \> Equivalent plastic strain rate \> \si{\per\second} \\[0.5ex]
- $\eta$ \> Stress triaxiality \> -- \\[0.5ex]
- $\bar{\theta}$ \> Lode angle parameter \> -- \\[0.5ex]
- $D$ \> Damage variable \> -- \\[0.5ex]
  $t$ \> Blank thickness \> \si{\milli\meter} \\[0.5ex]
- $W$ \> Specimen width \> \si{\milli\meter} \\[0.5ex]
  $R$ \> Punch radius \> \si{\milli\meter} \\[0.5ex]
- $R_\mathrm{dome}$ \> Dome-zone observation radius \> \si{\milli\meter} \\[0.5ex]
  $\alpha$ \> Material orientation angle \> \si{\degree} \\[0.5ex]
- $\Delta t$ \> Stable time increment or mass-scaling target \> \si{\second} \\[0.5ex]
- $\mu$ \> Coulomb friction coefficient \> --
+ $\Delta t$ \> Stable time increment or mass-scaling target \> \si{\second}
 \end{tabbing}
 
 \cleardoublepage

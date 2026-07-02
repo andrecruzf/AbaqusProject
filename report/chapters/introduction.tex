@@ -2,11 +2,39 @@
 
 \section{Motivation}
 
-Sheet metal forming is a fundamental manufacturing process in the automotive, aerospace, and consumer goods industries. A key challenge in forming operations is predicting the onset of localised necking and fracture, since this limit determines whether a blank can be formed into a target geometry without failure. The \textit{Forming Limit Diagram} (FLD) is the standard engineering representation of this limit. It maps the major and minor principal strains, $(\varepsilon_1,\varepsilon_2)$, at the onset of instability and defines the Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
+Sheet metal forming is a fundamental manufacturing process in the automotive,
+aerospace, and consumer-goods industries. A key challenge in forming operations
+is predicting the onset of localised necking and fracture, since this limit
+determines whether a blank can be formed into a target geometry without
+failure. The \textit{Forming Limit Diagram} (FLD) is the standard engineering
+representation of this limit. It maps the major and minor principal strains,
+$(\varepsilon_1,\varepsilon_2)$, at the onset of instability and defines the
+Forming Limit Curve (FLC) as the boundary between safe deformation and failure.
 
-Despite its broad industrial acceptance, the experimental determination of FLCs is sensitive to the test setup, specimen geometry, sheet thickness, material behaviour, and the criterion used to detect necking~\cite{ISO120042}. Two standardised test configurations are commonly used: the Nakazima test, which deforms the specimen with a hemispherical punch, and the Marciniak test, which uses a flat cylindrical punch. Both are described in ISO~12004-2~\cite{ISO120042}. The Marciniak configuration generally produces more linear strain paths than Nakazima, while Nakazima tests remain attractive because of their simpler specimen and tooling requirements.
+Despite its broad industrial acceptance, the experimental determination of
+FLCs is sensitive to the test setup, specimen geometry, sheet thickness,
+material behaviour, and the criterion used to detect necking. Two standardised test configurations are commonly used: the
+Nakazima test, which deforms the specimen with a hemispherical punch, and the
+Marciniak test, which uses a flat cylindrical punch. Both are described in
+ISO12004-2\cite{ISO120042}. The Marciniak configuration generally produces
+more linear strain paths than the Nakazima configuration, while the latter
+remains attractive because of its simpler specimen and tooling requirements.
 
-Numerical simulation provides a complementary approach to physical testing. Once a calibrated material model is available, finite element simulations can be used to vary specimen geometry, sheet thickness, punch radius, material orientation, and process parameters without manufacturing additional samples. This makes simulation particularly useful for studying size effects and for generating consistent data for the evaluation of different FLC identification criteria.
+The Nakazima test is a long-established method for the experimental
+determination of forming limits and remains widely used in research and
+industrial practice. Nevertheless, the accurate identification of the onset of
+localised necking remains an active topic of investigation. Examples include
+time-dependent approaches such as the Volk–Hora criterion
+\cite{VolkHora2011} and spatio-temporal curvature-based approaches such as the
+Min–Stoughton method~\cite{Min2017}.
+
+Numerical simulation provides a complementary approach to physical testing.
+Once a calibrated material model is available, finite-element simulations can
+be used to vary specimen geometry, sheet thickness, punch radius, material
+orientation, and process parameters without manufacturing additional samples.
+This makes simulation particularly useful for studying size effects and for
+generating consistent data for the evaluation of different FLC identification
+criteria.
 
 \section{Project Context}
 
