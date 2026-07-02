@@ -164,8 +164,12 @@ i \;\middle|\;
 \right\},
 \end{equation}
 where $\alpha$ is selected such that a sufficient number of facets is included
-in the necking zone. For a grid size of approximately \SI{1}{\milli\meter}, a
-typical value is $\alpha = 0.55$.
+in the necking zone. Volk and Hora~\cite{VolkHora2011} recommend
+$\alpha \in [0.5,\,0.6]$ for a \SI{1}{\milli\meter} grid size. Following the
+calibration of Groner~\cite{Groner2021} for the same test bench, $\alpha=0.55$
+is used as the default value in the existing framework, which the present work
+retains unchanged even though the current DIC grid is finer, at
+approximately \SI{0.28}{\milli\meter}.
 
 The mean thinning rate inside the necking zone is then plotted as a function of
 time. Two linear fits are applied: one to the stable pre-necking regime and one
@@ -200,40 +204,20 @@ of the forming-limit strains.}
 \subsection{Merklein Method}
 
 The Merklein method~\cite{Merklein2010} is a time-dependent approach that
-detects necking from the acceleration of the major strain rate at a critical
-point. On the last frame before fracture, the facet with the highest major
-strain value within the necking zone is selected. To reduce scatter, the mean
-major strain within a circle of \SI{2}{\milli\meter} radius around this point is
-tracked over time.
-
-During Nakazima tests, the major strain rate increases approximately linearly
-until the transition from elastic to plastic deformation, after which a mostly
-linear progression of the strain rate is observed until necking begins. A strong
-increase in the time derivative of the strain rate is observed during the final
-stages before fracture. To determine the necking time point, a regression curve
-of the coefficient of determination ($R^2$) is computed for all data points up to
-each candidate time. The maximum of this regression curve indicates the onset of
-necking. The limit strains are the mean values of major and minor strains within
-the \SI{2}{\milli\meter} radius at the identified necking time.
+tracks the mean major strain within a small circle around the facet of
+highest major strain in the necking zone, and detects necking from the point
+of maximum curvature (highest $R^2$ of a regression fit) in the time
+derivative of this strain rate. It is not part of the existing identification
+framework and is not applied in this work.
 
 \subsection{Sigvant Method}
 
-The Sigvant method~\cite{Pham2023} detects necking using the coefficient of
-variation (CoV) of the major strain rate within a local region of interest. The
-CoV is defined as
-\begin{equation}
-    \mathrm{CoV} = \frac{\sigma}{\mu},
-\end{equation}
-where $\mu$ and $\sigma$ are the mean and standard deviation of the major strain
-rate within a circle of \SI{5}{\milli\meter} diameter centred on the point of
-highest equivalent plastic strain on the last frame before fracture.
-
-During homogeneous deformation, the mean strain rate increases steadily while the
-standard deviation remains approximately constant, causing the CoV to decrease.
-Once localisation begins, the standard deviation increases sharply, leading to a
-rapid rise in the CoV. The global minimum of the CoV therefore identifies the
-onset of necking. The limit strains are the mean principal strains in the region
-of interest at the frame corresponding to this minimum.
+The Sigvant method~\cite{Pham2023} detects necking from the coefficient of
+variation (CoV), the ratio of standard deviation to mean, of the major strain
+rate within a local region of interest around the point of highest equivalent
+plastic strain. The global minimum of the CoV over time marks the onset of
+necking. Like the Merklein method, it is not part of the existing
+identification framework and is not applied in this work.
 
 \subsection{Min--Stoughton Curvature Method}
 \label{sec:minstoughton_method}
