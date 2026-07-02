@@ -28,6 +28,38 @@ campaign.
     \label{fig:test_bench}
 \end{figure}
 
+Specimen preparation and lubrication follow the established procedure for this
+bench~\cite{Sen2025}. A random black-and-white speckle pattern is applied by
+spray paint after cleaning the surface with alcohol, giving speckles of roughly
+\SIrange{50}{100}{\micro\meter}, comparable to the camera pixel size of about
+\SI{40}{\micro\meter}. To promote a centred apex fracture and limit press
+contamination, the punch side of each blank is lubricated with a self-adhesive
+PTFE foil covered by a thin layer of lanolin. The blank is clamped along its
+outer edge before the test starts, and each test then drives the punch into the
+clamped blank at constant speed until a sudden drop in punch force marks
+fracture and terminates the run. Table~\ref{tab:test_conditions} summarises the
+key test conditions common to all specimens in the campaign.
+
+\begin{table}[htbp]
+\centering
+\caption{Test conditions for the Nakazima campaign, common to all specimens.}
+\label{tab:test_conditions}
+\begin{tabular}{ll}
+\toprule
+Condition & Value \\
+\midrule
+Punch speed & \SI{60}{\milli\meter\per\minute} (\SI{1}{\milli\meter\per\second}) \\
+Blank holder & Outer edge clamped, fixed during the test \\
+Termination criterion & Punch-force drop, confirmed by the crack detector~\cite{Sen2025} \\
+DIC acquisition rate & \SI{10}{\hertz}, reduced to \SI{2}{\hertz} for storage \\
+DIC rate near fracture & \SI{40}{\hertz} for the last \SI{3}{\second} before fracture \\
+DIC subset size & 41~px ($\approx\SI{1.6}{\milli\meter}$)~\cite{Sen2025} \\
+DIC step size & 7~px ($\approx\SI{0.28}{\milli\meter}$)~\cite{Sen2025} \\
+Repetitions per configuration & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Material}
 
 All specimens were cut from AA5754 aluminium alloy sheets supplied by
@@ -63,8 +95,9 @@ thickness in ascending order.
 The experimental campaign employs Nakazima tests with hemispherical punches. By
 varying the specimen width, strain paths ranging from uniaxial tension to
 equi-biaxial stretching are generated, enabling the construction of complete
-FLDs. Seven standard specimen widths are used: W20, W50, W80, W90, W100, W120,
-and W200. Narrow specimens promote uniaxial deformation, whereas wider specimens
+FLDs. Seven standard specimen widths are used: \texttt{W020}, \texttt{W050},
+\texttt{W080}, \texttt{W090}, \texttt{W100}, \texttt{W120}, and \texttt{W200}.
+Narrow specimens promote uniaxial deformation, whereas wider specimens
 progressively shift the strain state towards biaxial stretching.
 
 The experimental results reported in this work therefore focus on the Nakazima
@@ -103,7 +136,8 @@ D & 3.0 & 100 & TD & 2 & 14 \\
 \end{tabular}
 \end{table}
 
-Each set consists of seven specimens (W20, W50, W80, W90, W100, W120, W200),
+Each set consists of seven specimens (\texttt{W020}, \texttt{W050},
+\texttt{W080}, \texttt{W090}, \texttt{W100}, \texttt{W120}, \texttt{W200}),
 covering the full range of strain states from uniaxial tension to
 equi-biaxial stretching. Two repetitions per configuration are performed to
 assess experimental repeatability.
@@ -111,6 +145,10 @@ assess experimental repeatability.
 \section{Data Acquisition}
 
 DIC was used to measure the full-field strain evolution throughout each test.
+Two synchronised cameras mounted above the press record the deforming specimen
+at the acquisition and storage rates given in Table~\ref{tab:test_conditions}.
+The fracture frame is identified automatically from the force drop and a
+neural-network crack detector applied to the last recorded frames~\cite{Sen2025}.
 The recorded strain histories constitute the primary input for the
 forming-limit identification procedures presented in
 Chapter~\ref{chap:identification_framework}. To facilitate comparison with

@@ -1,15 +1,29 @@
 \chapter{Future Work}\label{chap:future_work}
 
-The following directions are identified for future investigation, ordered by
-priority:
+The following directions are identified for future investigation, grouped into
+four themes and ordered by priority within each.
+
+\section{Numerical Validation}
 
 \begin{enumerate}
-  \item \textbf{Complete and extend the mesh-size study.} The framework now
-  supports automated mesh-size modification, which addresses the corresponding
-  Task~III requirement. The next step is to complete the full convergence table
-  for all relevant thicknesses and punch configurations, not only the current
-  W100 scalar reference case, and to document the selected production mesh
-  density.
+  \item \textbf{Extend the mesh-size study beyond the reference case.} The
+  production settings ($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$,
+  $f_\mathrm{MR}=2$) are now fixed for the \texttt{W100} scalar reference case
+  (Section~\ref{sec:selection_numerical_parameters}), but the two-point
+  $f_\mathrm{MR}=2$--$3$ comparison could not confirm mesh convergence because
+  $f_\mathrm{MR}=1$ violates the quasi-static criterion at this mass-scaling
+  target. The next step is to extend the coarse-side sweep to
+  $f_\mathrm{MR}=4$, and separately test whether a smaller
+  $\Delta t_\mathrm{MS}$ keeps $f_\mathrm{MR}=1$ quasi-static so that a valid
+  fine-mesh reference becomes available; the confirmation sweep should then be
+  repeated for the other relevant thicknesses and punch configurations. The
+  present sweep only varies the single global refinement factor; the
+  independent per-section sizing of Section~\ref{sec:mesh_generation} (central,
+  transition, dome, and flange target sizes) is already implemented but has not
+  yet been exercised in a sensitivity study, and a more extensive mesh study
+  varying these sizes independently, rather than uniformly through
+  $f_\mathrm{MR}$, is a natural next step now that every meshing parameter is
+  exposed and tunable.
 
   \item \textbf{Complete the numerical campaign.} Run the simulations for all
   three test configurations (Nakazima, Marciniak, PiP) across the specimen
@@ -29,15 +43,11 @@ priority:
   assumed strain state and assess non-linearity induced by punch contact and
   bending. The force-drop fracture-frame detector should be cross-checked
   against STATUS deletion and visual movie inspection for borderline cases.
+\end{enumerate}
 
-  \item \textbf{Integrate Task~II identification criteria.} The numerical
-  strain-field data from \texttt{strain\_path.csv} can be fed into the FLC
-  identification framework of Task~II (Volk--Hora~\cite{VolkHora2011},
-  Merklein~\cite{Merklein2010}, Pham--Sigvant~\cite{Pham2023}, and
-  Min--Stoughton~\cite{Min2017}). This would allow criterion-dependent FLC
-  values to be compared on simulated data for which the damage state and
-  fracture location are known.
+\section{Experimental/Numerical Comparison}
 
+\begin{enumerate}
   \item \textbf{Validate against experimental results.} Once the experimental
   FLC from the high-throughput Nakazima/Marciniak test bench is available, the
   numerical FLC can be compared directly to assess the accuracy of the
@@ -45,17 +55,36 @@ priority:
   comparison can be used to identify whether the automated specimen loading
   system introduces systematic effects that should be represented numerically.
 
-  \item \textbf{Calibrate HC material constants.} The 46 VUMAT constants used
-  in this work were taken from a reference calibration. A calibration against
-  dedicated characterisation tests (uniaxial tension, notched tension, shear)
-  for the specific sheet batch used in Task~I would improve predictive
-  accuracy.
+  \item \textbf{Calibrate the material constants for AA5754.} The 46 VUMAT
+  constants used in this work were taken from a surrogate AA5182 calibration, as
+  the AA5754 batch of Task~I had not yet been characterised. A dedicated
+  calibration against characterisation tests (uniaxial tension, notched tension,
+  shear) for the specific AA5754 sheet batch would replace the surrogate
+  parameters and turn the framework verification into a quantitative prediction.
 
-  \item \textbf{Assess friction sensitivity.} The Coulomb friction coefficients
-  are set to fixed values in \texttt{config.py}. A parametric study varying the
-  punch--blank and die--blank coefficients would quantify their influence on
-  the FLC and on the prevalence of base fracture versus dome fracture.
+  \item \textbf{Calibrate friction coefficients.} The local \texttt{W120} sensitivity
+  check in Section~\ref{sec:friction_sensitivity} should be extended to a full
+  calibration against the experimental force--displacement response. A larger
+  parametric study varying both the punch--blank and die--blank coefficients
+  would quantify their influence on the FLC and on the prevalence of base
+  fracture versus dome fracture.
+\end{enumerate}
 
+\section{Min--Stoughton Integration}
+
+\begin{enumerate}
+  \item \textbf{Integrate Task~II identification criteria.} The numerical
+  strain-field data from \texttt{strain\_path.csv} can be fed into the FLC
+  identification framework of Task~II (Volk--Hora~\cite{VolkHora2011},
+  Merklein~\cite{Merklein2010}, Pham--Sigvant~\cite{Pham2023}, and
+  Min--Stoughton~\cite{Min2017}). This would allow criterion-dependent FLC
+  values to be compared on simulated data for which the damage state and
+  fracture location are known.
+\end{enumerate}
+
+\section{Usability and Interface}
+
+\begin{enumerate}
   \item \textbf{Develop the user interface.} The current \software{Streamlit}
   interface (Appendix~\ref{app:interface}) runs as a web application and is
   convenient for configuring and launching individual cases. A standalone local

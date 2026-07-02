@@ -16,9 +16,10 @@
 % ______________________________________________________________________________
 \documentclass[11pt,oneside,a4paper]{report}
 
-\usepackage[utf8]{inputenc}
 \usepackage{siunitx}
 \usepackage{subcaption}
+\usepackage{longtable}
+\usepackage{pdfpages}
 
 \usepackage[english,st]{ethidsc} % Special IDSC styles and commands      	
 									 % {german}/english: language of headings, etc.
@@ -26,6 +27,9 @@
 \usepackage[hidelinks,unicode,hypertexnames=false]{hyperref}
 
 \newcommand{\software}[1]{\textit{#1}}
+\makeatletter
+\gdef\@type{Semester Project}
+\makeatother
 							
 % Page header (don't change)____________________________________________________
 \setlength{\parindent}{0em}                 % Disable parindent
@@ -52,13 +56,22 @@
 \semesterA{3}
 \emailA{acruzfaria@student.ethz.ch}
 
-\supervision{Prof. Dr. Vincent Grolleau\\ Dr. Christian Roth}
-\date{February 2026 -- June 2026}
+\supervision{Supervisor: Prof. Dr. Dirk Mohr\\[1ex]
+Advisors: Prof. Vincent Grolleau\\
+Dr. Christian Roth}
+\date{March 2026 -- July 2026}
 
 \identification{} 		% Project identifier
 
-\infopage
-\declaration
+% \infopage  % removed: dropped the trailing IDSC institute info sheet (template default, wrong chair)
+\AtEndDocument{%
+  \includepdf[
+    pages=1,
+    noautoscale=true,
+    offset=1in -1in,
+    pagecommand={\thispagestyle{empty}\phantomsection\addcontentsline{toc}{chapter}{Declaration of Originality}}
+  ]{declaration-originality.pdf}
+}
 
 % Begin document________________________________________________________________
 \begin{document}

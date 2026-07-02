@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+# Generated study/batch outputs (results, not source) — not needed to run.
+batch_*/
+sensitivity_output*/

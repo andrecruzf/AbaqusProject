@@ -3,47 +3,42 @@
 
 \chapter*{Abstract}
 
-Forming Limit Curves (FLCs) are widely used to assess the onset of necking and
-fracture in sheet metal forming. Their experimental and numerical
-identification is sensitive to the test setup, specimen geometry, sheet
-thickness, material behaviour, and the data evaluation methodology. These
-sensitivities become especially relevant when FLCs are investigated with
-smaller specimen dimensions, high-throughput testing, automated specimen
-handling, and digital image correlation (DIC).
+Forming Limit Curves (FLCs) assess localized necking in sheet metal forming,
+but their identification depends on geometry, thickness, material behaviour,
+and criterion. This project connects experimental Nakazima analysis, criterion
+evaluation, and an automated numerical framework.
 
-This thesis contributes to the project \textit{Towards Robust Forming Limit
-Curve Identification: Experiments and Modeling}. The report is organised around
-the three connected project tasks. Task~I defines the experimental campaign on
-the high-throughput Nakazima/Marciniak test bench, including specimen-size,
-sheet-thickness, punch-radius, and Punch-in-Punch variations. Task~II provides
-the modular FLC identification framework used to evaluate experimental and
-numerical strain data with multiple criteria. Task~III develops the numerical
-simulation framework that automates the creation, execution, and
-post-processing of the corresponding specimen and punch configurations.
+The AA5754 Nakazima campaign contains \num{280} tests with two repetitions per
+configuration, covering specimen widths, sheet thicknesses, punch diameters,
+and material orientations. Rolling and transverse direction limits remain
+within repeat scatter, so no systematic orientation effect is identified. The
+punch diameter study shows that the standard ISO~12004-2 fitting window can
+distort nonstandard punch geometries. For the \SI{40}{\milli\meter} punch, the plane
+strain limit is up to \num{0.055} strain above the larger punch trend for the
+\SI{3.0}{\milli\meter} sheet. Replacing the fixed ISO window constant with the
+geometry dependent factor $D/10$ recovers a more consistent ordering across
+punch diameters. The Volk Hora comparison shows related qualitative patterns
+with exceptions, so possible punch radius effects should be considered rather
+than treated as confirmed.
 
-The implemented numerical framework generates Nakazima, Marciniak, and
-Punch-in-Punch models in \software{Abaqus/Explicit}, submits simulations to the
-ETH Euler cluster, and processes the resulting output databases without manual
-intervention. A VUMAT implementation of the Hosford--Coulomb fracture criterion
-is used to represent failure.
+The identification framework integrates a Min and Stoughton curvature
+criterion and applies it to the \num{56} DIC samples of the rolling direction,
+\SI{100}{\milli\meter} punch subset. With one standard parameter set, it
+detects 12 to 14 of 14 samples per thickness, with mean major strain
+differences to ISO~12004-2 of \num{0.014} to \num{0.046}. Thickness dependent
+recalibration improves the combined forming limit diagram distance to
+\num{0.018} to \num{0.036} while keeping at least 13 of 14 detections, but
+sensitivity to matrix length, reference frame, and DIC coverage remains.
 
-Special attention is given to comparability between configurations. Specimen
-width, sheet thickness, punch radius, forming travel, mass scaling, and mesh
-controls are exposed as parameters, while the mesh generation workflow is
-designed to maintain identical element sizes in the relevant observation zone.
-A mesh-size modification script and two independent scalar sensitivity sweeps,
-one for mesh refinement and one for mass scaling, provide the basis for
-selecting production settings.
-
-The post-processing pipeline extracts punch force--displacement histories,
-energy histories, forming-limit points, strain paths, and diagnostic
-visualisations. The resulting data products are structured for comparison
-between experimental and numerical test configurations and for use with the
-modular FLC identification framework, including Volk--Hora, Merklein,
-Pham--Sigvant, and Min--Stoughton criteria. The available results are presented
-as experimental observations, preliminary criterion assessment, and
-numerical-framework verification rather than as a completed production numerical
-FLC campaign.
+The numerical part implements an automated \software{Abaqus/Explicit} workflow
+for Nakazima, Marciniak, and Punch in Punch simulations, including model
+generation, Euler submission, ODB post processing, and result synchronisation.
+For the \texttt{W100} reference case, the accepted setting is a mass scaling
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=2$, giving a maximum kinetic
+to internal energy ratio of \SI{1.8}{\percent}. Mesh convergence remains open
+because $f_\mathrm{MR}=1$ is not quasistatic and $f_\mathrm{MR}=2$ and $3$ do
+not define a reliable trend. Intermediate refinements such as
+$f_\mathrm{MR}=1.25$ and $1.5$ are therefore needed before predictive FLC use.
 
 \cleardoublepage
 
@@ -52,11 +47,21 @@ FLC campaign.
 
 \chapter*{Acknowledgements}
 
-I would like to thank Prof. Dr. Vincent Grolleau and Dr. Christian Roth for
-their guidance and technical feedback throughout this project. I am also
-grateful to the Chair of Artificial Intelligence in Mechanics and Manufacturing
-for providing the research context, computational resources, and previous
-experimental and numerical work on which this project builds.
+While working on this project, I had the pleasure to count on the help of
+many different people. I would like to thank:
+
+\begin{itemize}
+    \item Prof. Dr. Mohr, for letting me work on such an interesting project
+    and in his lab.
+    \item Prof. Dr. Grolleau, for the many discussions, for helping out
+    through the experimental campaign, and for the result analysis.
+    \item Dr. Thomas Tancogne-Dejean, for the interesting discussions.
+    \item Dr. Roth, for the project suggestion and trust.
+\end{itemize}
+
+I am also grateful to the Chair of Artificial Intelligence in Mechanics and
+Manufacturing for providing the research context, computational resources,
+and previous experimental and numerical work on which this project builds.
 
 The simulations presented in this report were carried out on the ETH Euler
 cluster.
@@ -83,16 +88,12 @@ cluster.
  \hspace*{2.4cm} \= \kill
 ALLIE \> Internal energy history output in \software{Abaqus} \\[0.5ex]
 ALLKE \> Kinetic energy history output in \software{Abaqus} \\[0.5ex]
-BC \> Boundary condition \\[0.5ex]
-CAE \> Computer-aided engineering (\software{Abaqus} pre-/post-processor) \\[0.5ex]
 DIC \> Digital image correlation \\[0.5ex]
 EQPS \> Equivalent plastic strain \\[0.5ex]
-FE \> Finite element \\[0.5ex]
 FEA \> Finite element analysis \\[0.5ex]
-FFLC \> Fracture forming limit curve \\[0.5ex]
 FLC \> Forming limit curve \\[0.5ex]
 FLD \> Forming limit diagram \\[0.5ex]
-HC \> Hosford--Coulomb \\[0.5ex]
+GUI \> Graphical user interface \\[0.5ex]
 HPC \> High-performance computing \\[0.5ex]
 ODB \> Output database \\[0.5ex]
 PiP \> Punch-in-Punch \\[0.5ex]

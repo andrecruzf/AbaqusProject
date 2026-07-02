@@ -71,19 +71,69 @@ limit curves for the four thicknesses.
     \label{fig:rd_vs_td}
 \end{figure}
 
+To quantify the visual overlap in Figure~\ref{fig:rd_vs_td}, the repeat-level
+ISO~12004-2 average strain values were extracted directly from the TDRD result files
+\texttt{all\_results\_2026\_04\_13\_A--D.txt}. For every material and specimen
+width, the usable repetitions were averaged separately for
+\texttt{E0\_RM00\_000} and \texttt{E0\_RM00\_090}; the curve in
+Figure~\ref{fig:rd_vs_td} therefore represents the mean response. The
+repeat-level values are listed in Table~\ref{tab:rd_td_repeat_values}. Because
+the campaign contains at most two usable repetitions per point, the standard
+deviations are interpreted as descriptive repeat scatter rather than as a
+formal statistical test.
+
+The orientation effect is reported for each specimen geometry separately, rather
+than condensed into a single per-thickness average, so that any geometry-specific
+deviation remains visible. Table~\ref{tab:rd_td_summary} lists the distance
+between the RD and TD mean points,
+$d_{\mathrm{RD-TD}} = \sqrt{(\Delta\varepsilon_1)^2 + (\Delta\varepsilon_2)^2}$,
+for every width and thickness. The corresponding per-geometry repeat scatter is
+given together with the underlying RD and TD strains in
+Table~\ref{tab:rd_td_repeat_values}.
+
+\begin{table}[htb]
+    \centering
+    \small
+    \setlength{\tabcolsep}{6pt}
+    \caption{RD--TD separation $d_{\mathrm{RD-TD}}$ for each specimen geometry
+    and sheet thickness, for the \SI{100}{\milli\meter} punch, expressed in
+    strain units in the forming-limit diagram. The values are reported per
+    geometry and are not averaged across widths.}
+    \label{tab:rd_td_summary}
+    \begin{tabular}{lcccc}
+        \toprule
+        & \multicolumn{4}{c}{$d_{\mathrm{RD-TD}}$} \\
+        \cmidrule(lr){2-5}
+        Specimen & A (\SI{1.2}{\milli\meter}) & B (\SI{1.5}{\milli\meter})
+        & C (\SI{2.0}{\milli\meter}) & D (\SI{3.0}{\milli\meter}) \\
+        \midrule
+        \texttt{W020} & 0.0140 & 0.0033 & 0.0094 & 0.0019 \\
+        \texttt{W050} & 0.0035 & 0.0096 & 0.0064 & 0.0011 \\
+        \texttt{W080} & 0.0165 & 0.0087 & 0.0014 & 0.0082 \\
+        \texttt{W090} & 0.0017 & 0.0115 & 0.0017 & 0.0046 \\
+        \texttt{W100} & 0.0044 & 0.0098 & 0.0113 & 0.0087 \\
+        \texttt{W120} & 0.0062 & 0.0086 & 0.0050 & 0.0139 \\
+        \texttt{W200} & 0.0158 & 0.0086 & 0.0150 & 0.0252 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 Across all four thicknesses, the RD and TD forming limit curves are nearly
-coincident. The two orientations follow the same trajectory from the uniaxial
-branch through the plane-strain minimum and into the biaxial branch, and the
-residual differences between them remain within the scatter of the underlying
-campaigns. The separation between the RD and TD curves is consistently smaller
-than the spread observed between the two repeated campaigns of a single
-orientation, so it cannot be distinguished from experimental repeatability. No
-systematic trend with thickness is observed: the orientations do not diverge
-more strongly for the thinner sheets (A, B) than for the thicker ones (C, D).
+coincident, following the same trajectory from the uniaxial branch through the
+plane-strain minimum and into the biaxial branch. Read per geometry, every
+$d_{\mathrm{RD-TD}}$ in Table~\ref{tab:rd_td_summary} stays small, between
+\num{0.0011} and \num{0.0252} strain, and remains of the same order as the
+repeat scatter of the corresponding geometry in
+Table~\ref{tab:rd_td_repeat_values}. No single width separates beyond its own
+scatter: the largest values occur at the equi-biaxial \texttt{W200} point, most
+notably for the thickest sheet~D, where the transverse \texttt{W200} case has
+only one usable repeat. The signed differences also change sign between widths,
+so the per-geometry offsets do not form a consistent orientation-dependent
+shift, and no systematic trend with thickness is observed.
 
 These results indicate that, for the AA5754 sheet material and thickness range
-investigated here, in-plane material orientation has no measurable influence on
-the forming limits within the repeatability of the campaign. This justifies
+investigated here, in-plane material orientation produces no systematic shift in
+the forming limits beyond the repeat scatter of the campaign. This justifies
 restricting the remaining punch-diameter tests to the rolling direction and
 supports using one orientation-independent experimental FLC reference for this
 dataset.
@@ -107,18 +157,31 @@ $t/R$ grows fastest for the smallest punch on the thickest sheet.
 Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the
 standard ISO~12004-2 evaluation, that is, the intersection-line method of
 Section~\ref{sec:din_method} using the window width of
-Eq.~\eqref{eq:din_window} with its calibration constant of $10$. For the
+Eq.~\eqref{eq:din_window} with its calibration constant of $10$. The
 \SI{100}{\milli\meter}, \SI{80}{\milli\meter}, and \SI{60}{\milli\meter}
-punches the expected ordering is recovered, but the \SI{40}{\milli\meter} punch
-does not follow it. Its limit curve lies far above the others, by a margin that
-grows with thickness and is too large to be attributed to the $t/R$ curvature
-effect alone. Because all curves in a given diagram originate from the same
-material and thickness, this discrepancy points to the evaluation rather than
-to the material response. The standard window is calibrated for the
+punches form a smooth, monotonic progression: the limit curve rises gradually
+as the punch diameter decreases, in line with the continuous $t/R$ curvature
+trend. The \SI{40}{\milli\meter} punch breaks this continuity. Rather than
+extending the trend by one further step, its limit curve jumps far above the
+other three by a margin that grows with thickness. Because a genuine
+curvature-driven size effect would vary continuously with punch diameter, an
+isolated discontinuity at the smallest punch alone, on curves that otherwise
+share the same material and thickness, points to the evaluation rather than to
+the material response. The standard window is calibrated for the
 $\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
 \SI{40}{\milli\meter} punch produces a much narrower neck, so a window sized
 for the standard punch no longer matches the strain field to which it is
 applied.
+
+Table~\ref{tab:flc0_punch} quantifies this break through the plane-strain limit
+$\mathrm{FLC}_0$, the major strain at $\varepsilon_2=0$. The limit rises
+smoothly across the \SIlist{100;80;60}{\milli\meter} punches; extrapolating that
+trend to \SI{40}{\milli\meter} underpredicts the measured limit by
+$\Delta_{40}=+0.007$ for the thinnest sheet~A, growing to $+0.055$ for the
+thickest sheet~D. This excess over the larger-punch trend, and its growth with
+thickness, is consistent with the fixed standard window increasingly mis-fitting
+the sharper neck of the small punch, rather than with a continuation of the
+$t/R$ size effect.
 
 \begin{figure}[H]
     \centering
@@ -153,6 +216,80 @@ applied.
     \end{subfigure}
     \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}. The \SI{40}{\milli\meter} punch (green) departs from the expected ordering by a margin inconsistent with the expected curvature trend.}
     \label{fig:flc_norm}
+\end{figure}
+
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Plane-strain limit $\mathrm{FLC}_0$ (major strain at
+    $\varepsilon_2=0$) extracted with the standard ISO~12004-2 window for each
+    punch diameter and sheet thickness. $\Delta_{40}$ is the excess of the
+    measured \SI{40}{\milli\meter} value over the linear extrapolation of the
+    \SIlist{100;80;60}{\milli\meter} trend.}
+    \label{tab:flc0_punch}
+    \begin{tabular}{lccccc}
+        \toprule
+        & \multicolumn{4}{c}{$\mathrm{FLC}_0$ at punch $\varnothing$ (\si{\milli\meter})} & \\
+        \cmidrule(lr){2-5}
+        Thickness & 100 & 80 & 60 & 40 & $\Delta_{40}$ \\
+        \midrule
+        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.222 & 0.253 & 0.274 & $+0.007$ \\
+        B (\SI{1.5}{\milli\meter}) & 0.254 & 0.280 & 0.263 & 0.305 & $+0.030$ \\
+        C (\SI{2.0}{\milli\meter}) & 0.267 & 0.289 & 0.312 & 0.372 & $+0.039$ \\
+        D (\SI{3.0}{\milli\meter}) & 0.320 & 0.342 & 0.395 & 0.482 & $+0.055$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+As a criterion comparison, the same punch diameter and thickness groups were
+also evaluated with the Volk Hora criterion. Figure~\ref{fig:flc_vh_pr_th}
+shows that some of the ISO trends are also visible in this independent
+evaluation. At the same time, the ordering is not fully monotonic for all
+thicknesses and punch diameters. This supports using the ISO result as evidence
+that the evaluation procedure is sensitive to punch geometry, but it does not
+prove a physical punch radius effect on its own. Possible punch radius effects
+should therefore be considered when applying ISO~12004-2 to nonstandard punch
+geometries, while the final interpretation should remain criterion aware.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/vh_pr_th/VH_A.png}
+        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \label{fig:flc_vh_a}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/vh_pr_th/VH_B.png}
+        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \label{fig:flc_vh_b}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/vh_pr_th/VH_C.png}
+        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \label{fig:flc_vh_c}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/vh_pr_th/VH_D.png}
+        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \label{fig:flc_vh_d}
+    \end{subfigure}
+    \caption[Volk Hora comparison across punch diameters and thicknesses]{Forming
+    limit curves evaluated with the Volk Hora criterion for the same punch
+    diameter and thickness groups as Figure~\ref{fig:flc_norm}. The same
+    laboratory legend is retained. The comparison shows that punch diameter
+    related patterns are not limited to the ISO~12004-2 extraction, although
+    exceptions remain and the result should not be interpreted as a confirmed
+    physical punch radius effect.}
+    \label{fig:flc_vh_pr_th}
 \end{figure}
 
 \begin{figure}[H]
@@ -262,22 +399,43 @@ validation is left to future work.
 \label{sec:results_task2}
 
 The standalone Min--Stoughton Nakazima workflow described in
-Section~\ref{sec:minstoughton_workflow_assessment} was applied to two
-experimental DIC samples from material class A with the \SI{100}{\milli\meter}
-punch: the narrow \texttt{W020} specimen and the wide \texttt{W200} specimen.
-The purpose of this analysis is not yet to define a final Min--Stoughton
-parameter set, but to check whether the curvature-based onset occurs in the
-same range as the existing ISO~12004-2 and Volk--Hora outputs and to quantify the
-sensitivity to the matrix length $W_Y$.
+Section~\ref{sec:minstoughton_workflow_assessment} was applied to the complete
+rolling-direction campaign of all four sheet thicknesses, A
+($t=\SI{1.2}{\milli\meter}$), B ($t=\SI{1.5}{\milli\meter}$), C
+($t=\SI{2.0}{\milli\meter}$), and D ($t=\SI{3.0}{\milli\meter}$), with the
+\SI{100}{\milli\meter} punch. Each thickness provides the seven Nakazima widths
+from \texttt{W020} to \texttt{W200} in two repetitions, so the data set contains
+\num{56} DIC samples. The runs were executed on the ETH Euler cluster directly
+from the \software{VIC-3D} exports, and the sheet thickness was taken from the
+campaign code stored in each \texttt{sample\_ID.xml}, because the numeric
+thickness field in that file is left at zero. Unless stated otherwise all runs
+use $W_X=\SI{2}{\milli\meter}$,
+$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and $\alpha=0.1$ so that
+$\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$, together with the
+time-based reference choice $M=0.8$.
 
-The sweep used $W_X=\SI{2}{\milli\meter}$,
-$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and a time-based reference
-choice $M=0.8$. The threshold multiplier was set to $\alpha=0.1$, so that
-$\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
+\subsection{Parameter selection on the reference specimens}
+\label{sec:ms_reference}
+
+The sensitivity to the matrix length $W_Y$ was studied first on the two
+reference specimens, the narrow \texttt{W020} sample and the wide \texttt{W200}
+sample. Tables~\ref{tab:minstoughton_w020_wy_sweep}
+and~\ref{tab:minstoughton_w200_wy_sweep} report this sweep. For both samples the
+setting $W_Y=\SI{15}{\milli\meter}$ gives the closest agreement with the
+ISO~12004-2 average necking result, and larger matrix lengths lead to earlier
+and lower onsets. The \texttt{W020} coverage decreases as $W_Y$ increases
+because the requested matrix extends beyond the valid DIC field for the narrow
+specimen. This value $W_Y=\SI{15}{\milli\meter}$ is therefore used for the
+campaign analysis that follows.
 
 \begin{table}[H]
     \centering
     \small
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
+    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
+    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
+    paper-grid matrix points found in the valid DIC field.}
+    \label{tab:minstoughton_w020_wy_sweep}
     \begin{tabular}{c c c c c c c}
         \toprule
         $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -289,16 +447,14 @@ $\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
         30 & $9\times108$ & 0.599 & 393 & 25.775 & 0.2325 & -0.0670 \\
         \bottomrule
     \end{tabular}
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
-    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
-    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
-    paper-grid matrix points found in the valid DIC field.}
-    \label{tab:minstoughton_w020_wy_sweep}
 \end{table}
 
 \begin{table}[H]
     \centering
     \small
+    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
+    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
+    \label{tab:minstoughton_w200_wy_sweep}
     \begin{tabular}{c c c c c c c}
         \toprule
         $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -310,23 +466,26 @@ $\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$.
         30 & $8\times107$ & 1.000 & 499 & 40.601 & 0.3186 & 0.2813 \\
         \bottomrule
     \end{tabular}
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
-    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
-    \label{tab:minstoughton_w200_wy_sweep}
 \end{table}
 
-The corresponding comparison with the existing experimental ISO~12004-2 and
-Volk--Hora outputs is summarised in Table~\ref{tab:minstoughton_vh_din_compare}.
-For both specimens, the setting $W_Y=\SI{15}{\milli\meter}$ gives the closest
-agreement with the ISO~12004-2 average necking result. For \texttt{W020}, the
-Min--Stoughton onset occurs three frames before the ISO~12004-2 average result and
-one frame after the Volk--Hora result. For \texttt{W200}, the Min--Stoughton
-onset occurs five frames after the ISO~12004-2 average result, while Volk--Hora
-detects necking later and at a higher strain.
+The onset frame of the curvature criterion can be compared directly with the
+stored ISO~12004-2 and Volk--Hora necking frames for the two reference
+specimens, as summarised in Table~\ref{tab:minstoughton_vh_din_compare}. For
+\texttt{W020} the Min--Stoughton onset occurs three frames before the
+ISO~12004-2 average result and one frame after the Volk--Hora result. For
+\texttt{W200} the Min--Stoughton onset occurs five frames after the ISO~12004-2
+average result, while Volk--Hora detects necking later and at a higher strain.
+The three criteria therefore localise the onset within a few frames of each
+other on these two reference specimens.
 
 \begin{table}[H]
     \centering
     \small
+    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
+    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
+    necking outputs for the same experimental DIC samples. The table label
+    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
+    \label{tab:minstoughton_vh_din_compare}
     \begin{tabular}{l l c c c c c}
         \toprule
         Specimen & Method & $W_Y$ (\si{\milli\meter}) & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
@@ -340,30 +499,178 @@ detects necking later and at a higher strain.
         \texttt{W200} & Volk--Hora     & -- & 591 & 43.401 & 0.4124 & 0.3496 \\
         \bottomrule
     \end{tabular}
-    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
-    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
-    necking outputs for the same experimental DIC samples. The table label
-    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
-    \label{tab:minstoughton_vh_din_compare}
 \end{table}
 
-This agreement should be interpreted as a sensitivity observation rather than
-as a final calibration of $W_Y$. The $W_Y=\SI{15}{\milli\meter}$ setting
-reproduces the ISO~12004-2 necking time closely for the two samples considered, but
-larger matrix lengths lead to earlier and lower Min--Stoughton onsets,
-especially for the biaxial \texttt{W200} specimen. In addition, the
-\texttt{W020} matrix coverage decreases as $W_Y$ increases, because the
-requested matrix extends beyond the valid DIC field for the narrow specimen.
-The result therefore shows that the curvature criterion is operational and can
-be brought into the range of the established criteria, but that the matrix
-dimensions and reference-frame treatment must be reported explicitly and
-validated on a larger set before a production FLC is assembled.
+\subsection{Forming-limit comparison across thicknesses}
+\label{sec:ms_campaign}
+
+With the parameters fixed, the curvature criterion was applied to the full
+campaign and compared, for every thickness, against the ISO~12004-2 and
+Volk--Hora limits extracted from the same DIC samples.
+Figure~\ref{fig:flc_ms_comparison} overlays the three criteria in the
+forming-limit diagram for the four thicknesses, Table~\ref{tab:ms_campaign_summary}
+summarises the detection rate and mean major-strain agreement with ISO~12004-2
+per thickness, and the width-by-width mean and standard deviation over the two
+repetitions are tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/flc_ms_comparison.png}
+    \caption[Forming-limit comparison of the three criteria across thicknesses]{Forming-limit
+    diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
+    Min--Stoughton ($\diamond$) criteria for the four sheet thicknesses, with the
+    \SI{100}{\milli\meter} punch. Each marker is the mean over the two
+    repetitions of a width, and the Min--Stoughton results use the standard set
+    $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$. The three criteria coincide for
+    the thin sheets, while the curvature points fall increasingly below the
+    reference curves as the thickness increases.}
+    \label{fig:flc_ms_comparison}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison summary]{Detection rate and
+    mean major-strain agreement with ISO~12004-2 per thickness, over the 14
+    rolling-direction samples of the repeat campaign with the
+    \SI{100}{\milli\meter} punch. The Min--Stoughton results use the standard
+    set $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$. Full per-width values for
+    all three criteria are given in Appendix~\ref{app:ms_campaign_tables}.}
+    \label{tab:ms_campaign_summary}
+    \begin{tabular}{c c c c}
+        \toprule
+        Thickness & $t$ (\si{\milli\meter}) & Detection (of 14) & Mean $|\Delta\varepsilon_1|$ to ISO \\
+        \midrule
+        A & 1.2 & 13 & 0.020 \\
+        B & 1.5 & 13 & 0.014 \\
+        C & 2.0 & 12 & 0.033 \\
+        D & 3.0 & 14 & 0.046 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+As Figure~\ref{fig:flc_ms_comparison} shows, the curvature criterion detects an
+onset in 13 of 14 samples for both class~A and class~B, 12 of 14 for class~C,
+and all 14 for class~D, the non-detections being isolated
+\texttt{no\_sustained\_exceedance} cases at a single width. Per-width
+repeatability is good through the body of the curve, with a standard deviation
+below \num{0.014} from \texttt{W050} to \texttt{W120}, but it degrades at the
+extreme geometries, where the narrow \texttt{W020} and the biaxial \texttt{W200}
+samples occasionally trigger early or fail the persistence requirement. For the
+thinner sheets the curvature limit stays close to the established methods: the
+mean absolute major-strain difference to the ISO~12004-2 average is about
+\num{0.014} for class~B, comparable to the \num{0.02} found for class~A. The agreement
+degrades for the thicker sheets, rising to about \num{0.033} for class~C and
+\num{0.046} for class~D, and class~D shows a consistent negative bias, with the
+curvature major strain falling below both reference methods at nearly every
+width, for example $\varepsilon_1=\num{0.285}$ against the ISO~12004-2
+\num{0.358} at \texttt{W020}. This trend indicates that the parameters
+calibrated on the thin material do not transfer unchanged to thicker sheets,
+where the stronger through-thickness curvature alters the dimple signature so
+that the fixed SAC and threshold trigger the onset earlier. A
+thickness-dependent parameter choice is therefore required before the curvature
+method can be applied for production forming-limit extraction across the full
+thickness range.
+
+\subsection{Parameter Sweep Across Thicknesses}
+\label{sec:ms_sweep_thickness}
+
+To test whether the thicker-sheet underestimation can be removed by retuning
+rather than being intrinsic, a parameter sweep was run over all four thicknesses
+(\num{56} samples), covering $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
+$M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
+$\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
+$\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
+was scored by its detection rate and, as a single accuracy measure, by the mean
+Euclidean distance in the forming-limit diagram,
+$d_{\mathrm{ISO}}=\big\langle\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}\big\rangle$,
+of the curvature point to the ISO~12004-2 average over the detected widths, so
+that both the major and the minor limit strain enter the ranking.
+Table~\ref{tab:ms_sweep_thickness} compares the standard set with the most
+accurate set (minimum $d_{\mathrm{ISO}}$, detecting at least 13 of the 14
+samples) for each thickness; the complete sweep is tabulated in
+Appendix~\ref{app:ms_sweep}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton parameter sweep across thicknesses]{Standard versus
+    most accurate parameter set per thickness from the sweep. The standard
+    set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$; the most
+    accurate set minimises $d_{\mathrm{ISO}}$ subject to detecting at least 13 of
+    14 samples. Detection is the number of samples with a detected onset (of 14),
+    and $d_{\mathrm{ISO}}$ is the mean forming-limit-diagram distance
+    $\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}$ of the
+    Min--Stoughton point to the ISO~12004-2 average over the detected widths.}
+    \label{tab:ms_sweep_thickness}
+    \begin{tabular}{c c c l c c}
+        \toprule
+        & \multicolumn{2}{c}{Standard set} & \multicolumn{3}{c}{Most accurate set (det.\ $\geq 13$)} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-6}
+        Thickness & Det. & $d_{\mathrm{ISO}}$ & $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Det. & $d_{\mathrm{ISO}}$ \\
+        \midrule
+        A ($\SI{1.2}{\milli\meter}$) & 13/14 & 0.027 & $(20,0.70,6,\num{5e-4},0.20)$ & 13/14 & 0.018 \\
+        B ($\SI{1.5}{\milli\meter}$) & 13/14 & 0.019 & $(15,0.80,8,\num{5e-4},0.10)$ & 13/14 & 0.019 \\
+        C ($\SI{2.0}{\milli\meter}$) & 12/14 & 0.037 & $(25,0.80,6,\num{5e-4},0.20)$ & 14/14 & 0.019 \\
+        D ($\SI{3.0}{\milli\meter}$) & 14/14 & 0.051 & $(25,0.80,10,\num{1e-3},0.10)$ & 13/14 & 0.036 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Requiring detection of all fourteen samples is not always the best choice. For
+the thinner sheets the fourteenth sample is the stubborn second repetition of
+the biaxial \texttt{W200} geometry, and the only sets that capture it place
+\texttt{W200} far from the reference: for class~B the best full-detection set
+reaches $d_{\mathrm{ISO}}=\num{0.036}$, with the \texttt{W200} point alone
+\num{0.081} in strain from the ISO~12004-2 average. Allowing at most one
+undetected sample, the most accurate set per thickness gives
+$d_{\mathrm{ISO}}=\num{0.018}$ (A), \num{0.019} (B), \num{0.019} (C, which also
+detects all fourteen), and \num{0.036} (D). For class~B the standard set is
+already the most accurate, so tuning brings no gain; class~C benefits most, its
+distance dropping from \num{0.037} to \num{0.019} once the threshold multiplier
+is raised to $\alpha=0.20$ with a longer matrix ($W_Y=\SI{25}{\milli\meter}$),
+and class~D improves from \num{0.051} to \num{0.036}. A larger threshold delays
+the detected onset, which raises the extracted strain and counteracts the
+underestimation seen in Section~\ref{sec:ms_campaign}. The parameters were
+selected by minimising the distance to the ISO~12004-2 average rather than
+validated against an independent reference, so the values are indicative; a
+thickness-dependent parameter choice, with a larger curvature threshold for
+thicker sheets, is the recommended path before the curvature method is used for
+production forming-limit extraction.
+
+Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
+when each thickness uses its most accurate set from
+Table~\ref{tab:ms_sweep_thickness}, in place of the single standard set of
+Figure~\ref{fig:flc_ms_comparison}. The curvature curve now follows the
+ISO~12004-2 and Volk--Hora references closely across the whole diagram, including
+the biaxial \texttt{W200} point that the standard set placed far off; only the
+uniaxial branch of the thickest sheet~D retains a visible offset. These sets
+detect thirteen or fourteen of the fourteen samples, the single miss being the
+extreme biaxial repetition whose forced detection would pull the \texttt{W200}
+point away from the reference.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{img/flc_ms_comparison_best.png}
+    \caption[Forming-limit comparison with the best parameter set per thickness]{Forming-limit
+    diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
+    Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
+    using each thickness's most accurate parameter set (detection $\geq 13/14$) from
+    Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
+    single standard set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
+    mean over the two repetitions of a width.}
+    \label{fig:flc_ms_comparison_best}
+\end{figure}
 
 \section{Task III: Numerical Framework Verification Status}
 \label{sec:numerical_results}
 
 This section reports the verification status of the numerical framework rather
-than a completed numerical FLC campaign. For each selected configuration, the
+than a completed numerical FLC campaign. The surrogate material calibration
+discussed in Chapter~\ref{chap:numerical_model}
+means that the runs are interpreted as framework-verification cases rather than
+quantitative predictions for the AA5754 experimental campaign. For each selected
+configuration, the
 pipeline creates the \software{Abaqus} model, submits the solver job on the
 Euler cluster, runs the ODB-based post-processing, and synchronises a structured
 set of result artefacts. The same interface is used for the Nakazima,
@@ -423,14 +730,14 @@ parameters for the production simulations. The punch velocity is held fixed at
 solution strategy in Chapter~\ref{chap:numerical_model}, so that one degree of
 freedom is fixed and the two remaining numerical controls can be studied
 separately: the mass-scaling target time increment and the mesh-refinement
-level. The runs use the Nakazima W100 specimen with the \SI{100}{\milli\meter}
+level. The runs use the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter}
 punch as the scalar reference case.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
 
 The mass-scaling sweep varies the target time increment while keeping the mesh
-refinement factor fixed at $f_\mathrm{MR}=2$. The planned target increments are
+refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
 $1\times10^{-4}$\,\si{\second}. The comparison is based on the
 $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio and on the extracted forming-limit point.
@@ -439,13 +746,79 @@ increases the risk of inertial effects. The final value will therefore be
 chosen as the largest time increment that still satisfies the quasi-static
 energy criterion without changing the failure strain appreciably.
 
+Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
+the present \texttt{W100} reference case. The full-range energy plot gives the overall
+magnitude of the inertial response, while the \SIrange{0}{10}{\percent} zoom
+resolves the neighbourhood of the \SI{5}{\percent} criterion. After the initial
+contact transient is omitted, only
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ remains below the
+\SI{5}{\percent} $\mathrm{ALLKE}/\mathrm{ALLIE}$ limit. The larger target time
+increments produce visibly similar strain paths over much of the process,
+but their energy ratios are too high for a quasi-static production setting.
+This quasi-static requirement is also the computationally expensive choice:
+Table~\ref{tab:mass_scaling_walltime} shows that the only target that passes
+the energy criterion, $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, costs about
+\SI{95}{\times} the solver wall-clock time of the fastest but non-quasi-static
+target, $\Delta t_\mathrm{MS}=\SI{1e-4}{\second}$.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Solver wall-clock time and quasi-staticity of the mass-scaling
+    sweep at $f_\mathrm{MR}=2$, on 24 CPUs. The energy ratio is the maximum
+    $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting the first \SI{5}{\percent}
+    of punch travel.}
+    \label{tab:mass_scaling_walltime}
+    \begin{tabular}{c c c}
+        \toprule
+        $\Delta t_\mathrm{MS}$ [\si{\second}] & $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ [\si{\percent}] & Wall-clock time [\si{\hour}] \\
+        \midrule
+        $1\times10^{-6}$ &   1.8 & 20.9 \\
+        $5\times10^{-6}$ &  42.7 &  4.0 \\
+        $1\times10^{-5}$ & 149.4 &  2.0 \\
+        $5\times10^{-5}$ & 2665  &  0.4 \\
+        $1\times10^{-4}$ & 2705  &  0.2 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
+        \caption{Energy-ratio overview.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
+        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
+    \end{subfigure}
+    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
+    $f_\mathrm{MR}=2$. The energy ratio is plotted against simulation time on
+    a linear scale, with the first \SI{5}{\percent} of punch travel omitted
+    because $\mathrm{ALLIE}$ is close to zero. The full-range panel is
+    complemented by a \SIrange{0}{10}{\percent} zoom around the
+    \SI{5}{\percent} quasi-staticity criterion.}
+    \label{fig:ms_sweep_results}
+\end{figure}
+
 \subsubsection{Mesh Refinement Analysis}
 \label{sec:mesh_refinement_analysis}
 
 The mesh-refinement sweep varies the global mesh-refinement factor while keeping
 the mass-scaling target fixed at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The
-planned refinement factors are $1$, $2$, and $3$. The meshes are generated
+evaluated refinement factors are $1$, $2$, and $3$. The meshes are generated
 automatically by sweeping the global refinement factor of
 Section~\ref{sec:mesh_generation}, which scales all section sizes together while
 leaving the sectioning unchanged (Figure~\ref{fig:mesh_mr_sweep}). Since strain
@@ -454,13 +827,262 @@ coarsest discretisation for which the extracted forming-limit point has
 converged, that is, the largest element size beyond which further refinement no
 longer changes the failure strain appreciably.
 
+The strain paths in Figure~\ref{fig:mr_sweep_results} are close over most of
+the deformation history, indicating that the scalar \texttt{W100} response is not
+strongly affected by the tested mesh-refinement factors before the final
+localisation stage. The accompanying energy overview and
+\SIrange{0}{10}{\percent} zoom also show that the fixed
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ target is not yet an acceptable
+quasi-static setting for this mesh study; increasing $f_\mathrm{MR}$ reduces the
+energy ratio, but the curves remain above the \SI{5}{\percent} limit over part
+of the simulation. A production mesh choice should therefore be confirmed with a
+mesh-refinement sweep repeated at the accepted mass-scaling target.
+Table~\ref{tab:mesh_refinement_walltime} shows the solver wall-clock time of
+this diagnostic sweep; the coarser meshes are cheaper, as expected, but the
+comparison is only indicative here since none of the three settings meet the
+energy criterion at this mass-scaling target.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Solver wall-clock time and quasi-staticity of the diagnostic
+    mesh-refinement sweep at $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, on 24 CPUs.}
+    \label{tab:mesh_refinement_walltime}
+    \begin{tabular}{c c c}
+        \toprule
+        $f_\mathrm{MR}$ & $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ [\si{\percent}] & Wall-clock time [\si{\hour}] \\
+        \midrule
+        1 & 1130.5 & 3.4 \\
+        2 & 149.4  & 2.0 \\
+        3 &  42.4  & 1.4 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy.png}
+        \caption{Energy-ratio overview.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy_zoom.png}
+        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
+    \end{subfigure}
+    \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case at
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy ratio is plotted
+    against simulation time on a linear scale and uses the same initial-travel
+    omission as Figure~\ref{fig:ms_sweep_results}. The full-range panel is
+    complemented by a \SIrange{0}{10}{\percent} zoom around the
+    \SI{5}{\percent} quasi-staticity criterion.}
+    \label{fig:mr_sweep_results}
+\end{figure}
+
 \subsubsection{Selection of Numerical Parameters}
 \label{sec:selection_numerical_parameters}
 
-The final production settings will be selected by combining the mass-scaling
-and mesh-refinement sweeps. The target is the least computationally expensive
+The final production settings are selected by combining the mass-scaling and
+mesh-refinement sweeps. The target is the least computationally expensive
 configuration that satisfies both the quasi-static energy criterion and the
 strain-convergence criterion.
+
+For the completed \texttt{W100} scalar runs, the mass-scaling sweep identifies
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
+the \SI{5}{\percent} energy criterion. The mesh-refinement sweep at
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is useful as a discretisation
+diagnostic, but is not used alone to select production settings because the
+quasi-static criterion is violated there. The mesh-refinement comparison was
+therefore repeated at the accepted mass-scaling target
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, for $f_\mathrm{MR}=1$, $2$, and $3$,
+so that the selected production mesh is judged under the same quasi-static
+setting used for the final simulations.
+
+Figure~\ref{fig:confirm_sweep_results} and the max $\mathrm{ALLKE}/\mathrm{ALLIE}$
+values in Table~\ref{tab:confirm_sweep_summary} show that the finest tested
+mesh, $f_\mathrm{MR}=1$, still violates the \SI{5}{\percent} criterion
+(\SI{23.9}{\percent}) at this mass-scaling target. This is a coupling effect
+rather than a meshing problem on its own: at a fixed mass-scaling target, a
+finer mesh has a smaller natural stable time increment, so reaching the same
+$\Delta t_\mathrm{MS}$ requires proportionally more artificial mass, which
+increases the inertial ratio. Both $f_\mathrm{MR}=2$ (\SI{1.8}{\percent}) and
+$f_\mathrm{MR}=3$ (\SI{0.9}{\percent}) satisfy the energy criterion, with
+$f_\mathrm{MR}=3$ about \SI{40}{\percent} cheaper in solver wall-clock time
+(Table~\ref{tab:confirm_sweep_summary}).
+
+Because $f_\mathrm{MR}=1$ fails the energy criterion, it cannot be treated as a
+trustworthy fine-mesh reference, but it is still informative to compare the
+extracted fracture strain across all three meshes. Relative to
+$f_\mathrm{MR}=1$, the major fracture strain is \SI{21.4}{\percent} higher at
+$f_\mathrm{MR}=2$ and only \SI{8.9}{\percent} higher at $f_\mathrm{MR}=3$,
+while the minor fracture strain is essentially unchanged across all three
+(within \SI{1.3}{\percent}). The comparison is therefore not monotonic in mesh
+size: $f_\mathrm{MR}=2$ is the outlier of the three rather than sitting between
+$f_\mathrm{MR}=1$ and $f_\mathrm{MR}=3$, so there is no clear evidence that
+$f_\mathrm{MR}=2$ is closer to a converged, fine-mesh answer than
+$f_\mathrm{MR}=3$ is. The production settings are nonetheless fixed at the
+finer $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, $f_\mathrm{MR}=2$ for the
+remainder of this report, since neither point can be confirmed as converged
+with only two valid meshes and $f_\mathrm{MR}=1$ unusable as a reference;
+$f_\mathrm{MR}=3$ remains the cheaper alternative pending a proper convergence
+check. Extending the coarse-side sweep to $f_\mathrm{MR}=4$, and separately
+re-examining whether a smaller $\Delta t_\mathrm{MS}$ can keep $f_\mathrm{MR}=1$
+quasi-static so that a genuine fine-mesh reference becomes available, are left
+as future work (Chapter~\ref{chap:future_work}).
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy.png}
+        \caption{Energy-ratio overview.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy_zoom.png}
+        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
+    \end{subfigure}
+    \caption[Mesh-refinement confirmation sweep at the accepted mass-scaling target]{Mesh-refinement sweep repeated at the accepted mass-scaling target
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, for $f_\mathrm{MR}=1$, $2$, and
+    $3$. Unlike the diagnostic sweep of Figure~\ref{fig:mr_sweep_results}
+    (evaluated at $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$), $f_\mathrm{MR}=2$
+    and $f_\mathrm{MR}=3$ now remain within the quasi-static energy criterion.}
+    \label{fig:confirm_sweep_results}
+\end{figure}
+
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Mesh-refinement confirmation sweep at
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, on 24 CPUs. The energy ratio is
+    the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting the first
+    \SI{5}{\percent} of punch travel. The fracture strains are the
+    element-status-based limit point.}
+    \label{tab:confirm_sweep_summary}
+    \begin{tabular}{c c c c c}
+        \toprule
+        $f_\mathrm{MR}$ & $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] \\
+        \midrule
+        1 & 23.9 & 0.201 & 0.097 & 40.0 \\
+        2 & 1.8  & 0.244 & 0.096 & 20.9 \\
+        3 & 0.9  & 0.219 & 0.097 & 12.7 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Friction-Factor Sensitivity Check}
+\label{sec:friction_sensitivity}
+
+In addition to the mass-scaling and mesh-refinement sweeps, a local contact
+sensitivity check was performed for one Nakazima
+\SI{100}{\milli\meter}-punch geometry. The runs use the \texttt{W120} specimen at
+$t=\SI{1.5}{\milli\meter}$, $\alpha=\SI{0}{\degree}$,
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, $f_\mathrm{MR}=1$, and a prescribed
+punch travel of \SI{32}{\milli\meter}. Only the punch--blank Coulomb
+coefficient $\mu_\mathrm{punch}$ was varied, from 0 to 0.25. The die and
+blank-holder contact coefficient remained at the default value of 0.35. This
+is therefore a single-width sensitivity check rather than a calibrated
+numerical FLC. The mesh is the finest tested in the confirmation sweep of
+Section~\ref{sec:selection_numerical_parameters}, not the production default
+$f_\mathrm{MR}=2$, which is consistent with all six runs remaining above the
+\SI{5}{\percent} quasi-static energy criterion below.
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/friction_sensitivity_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/friction_sensitivity_force_displacement.png}
+        \caption{Punch force up to extracted fracture.}
+    \end{subfigure}
+    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case. The symbols mark the extracted fracture points. The force curves are truncated at the corresponding fracture time to avoid post-fracture continuation to the prescribed end travel.}
+    \label{fig:friction_sensitivity_results}
+\end{figure}
+
+The strain paths in Figure~\ref{fig:friction_sensitivity_results} show that
+the extracted fracture strain is affected by the assumed punch--blank friction,
+and that the response is not monotonic over the investigated range. The
+frictionless case, $\mu_\mathrm{punch}=0$, gives the highest extracted fracture
+strain of the sweep, and the strain decreases smoothly as friction increases
+from $\mu_\mathrm{punch}=0$ to $0.10$. The $\mu_\mathrm{punch}=0.05$ case
+breaks this trend, failing far earlier than both its frictionless and
+higher-friction neighbours, so it stands out as an isolated anomaly rather than
+part of a genuine non-monotonic dependence on friction. Above
+$\mu_\mathrm{punch}=0.10$, increasing friction gradually reduces the extracted
+fracture strain and failure travel, consistent with the frictionless-to-0.10
+trend. The punch-force histories, however, remain nearly coincident up to the
+late forming stage for $\mu_\mathrm{punch}=0.10$--0.25. The main difference
+between these runs is therefore not a large change in the global force level,
+but a shift in the localisation and extracted failure point.
+
+\begin{table}[ht]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \caption{Summary of the \texttt{W120} punch--blank friction sensitivity check. The
+    force maximum is evaluated only up to the extracted fracture time. The
+    energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting
+    the first \SI{5}{\percent} of the prescribed punch travel and before the
+    extracted fracture point.}
+    \label{tab:friction_sensitivity_summary}
+    \begin{tabular}{c c c c c c}
+        \toprule
+        $\mu_\mathrm{punch}$ &
+        $\varepsilon_1^\mathrm{f}$ &
+        $\varepsilon_2^\mathrm{f}$ &
+        $U_3^\mathrm{f}$ &
+        $F_{3,\max}$ &
+        $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ \\
+        & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] \\
+        \midrule
+        0.00 & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 \\
+        0.05 & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 \\
+        0.10 & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 \\
+        0.15 & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 \\
+        0.20 & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 \\
+        0.25 & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The friction check therefore supports two conclusions. First, the
+$\mu_\mathrm{punch}=0.05$ case is the outlier of the sweep rather than
+$\mu_\mathrm{punch}=0$: the frictionless run reaches the deepest punch travel
+and the highest fracture strain, in line with a smooth reduction in formability
+as friction increases from $0$ to $0.10$, so a low but nonzero coefficient such
+as $0.05$ should not be assumed safe by interpolation between the frictionless
+and higher-friction cases. Second, the available \texttt{W120} sweep is not
+sufficient to identify an optimal coefficient beyond this: the intermediate and
+high-friction cases have similar force histories, and all six runs remain above
+the \SI{5}{\percent} quasi-static energy criterion because they were run at
+$f_\mathrm{MR}=1$ rather than the accepted production mesh. A defensible
+friction choice should therefore be calibrated against the experimental
+force--displacement response and then rechecked at the production settings
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, $f_\mathrm{MR}=2$.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
