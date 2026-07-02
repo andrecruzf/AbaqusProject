@@ -296,7 +296,7 @@ configuration to HPC output.
         \node[box, below=10mm of solver] (postproc) {\texttt{postproc.py}\\reads ODB};
         \node[box, below=10mm of postproc] (movie) {\texttt{postproc\_movie.py}\\EQPS movie};
         \node[box, right=18mm of solver, yshift=-16mm] (plots) {\texttt{run\_plots.sh}\\re-runs \texttt{plot\_results.py}, then \texttt{plot\_flc.py} (\mbox{Nakazima/Marciniak} only)\\optional, \texttt{afterok} dependency, single-run submissions only};
-        \node[rowlbl, above left=2mm and 0mm of solver.north west, anchor=south west] {Euler HPC --- compute node (\software{SLURM}, \texttt{run\_cluster.sh})};
+        \node[rowlbl, above left=2mm and 0mm of solver.north west, anchor=south west] {Euler HPC --- compute node (\software{SLURM} jobs)};
 
         \draw[arr] (build.south) -- (solver.north)
             node[midway, right, font=\scriptsize] {sbatch \texttt{run\_cluster.sh}};
