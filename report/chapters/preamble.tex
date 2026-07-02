@@ -3,19 +3,42 @@
 
 \chapter*{Abstract}
 
-Forming Limit Curves (FLCs) are widely used to assess the onset of localized
-necking in sheet metal forming, but their identification remains sensitive to
-test configuration, specimen geometry, sheet thickness, material behaviour, and
-the evaluation criterion. This semester project contributes to the broader
-project \textit{Towards Robust Forming Limit Curve Identification: Experiments
-and Modeling} by connecting experimental analysis, criterion evaluation, and
-automated numerical simulation.
+Forming Limit Curves (FLCs) assess localized necking in sheet metal forming,
+but their identification depends on geometry, thickness, material behaviour,
+and criterion. This project connects experimental Nakazima analysis, criterion
+evaluation, and an automated numerical framework.
 
-The experimental part analyses an AA5754 Nakazima campaign across specimen widths, sheet thicknesses, punch diameters, and material orientations. The forming limits measured in the rolling and transverse directions remain within the observed repeat scatter, indicating that material anisotropy has no measurable influence on the onset of localized necking for the investigated material. In contrast, the punch-diameter study reveals systematic inconsistencies when the standard ISO~12004-2 fitting window is applied to nonstandard punch geometries. For some configurations, an entire FLC is shifted below the expected ordering, suggesting that the deviation is linked to the evaluation procedure rather than to isolated experimental scatter. The Volk–Hora results show broadly similar qualitative trends, but the departures from the expected ordering are limited to individual points rather than complete curves. The systematic ordering of the curves is consistent with the expected punch-diameter effect. This tendency is partially confirmed by the Volk–Hora results and can also be recovered with the ISO method when a geometry-dependent factor is introduced in the fitting-window definition.
+The AA5754 Nakazima campaign contains \num{280} tests with two repetitions per
+configuration, covering specimen widths, sheet thicknesses, punch diameters,
+and material orientations. Rolling and transverse direction limits remain
+within repeat scatter, so no systematic orientation effect is identified. The
+punch diameter study shows that the standard ISO~12004-2 fitting window can
+distort nonstandard geometries. For the \SI{40}{\milli\meter} punch, the plane
+strain limit is up to \num{0.055} strain above the larger punch trend for the
+\SI{3.0}{\milli\meter} sheet. Replacing the fixed ISO window constant with the
+geometry dependent factor $D/10$ recovers a more consistent ordering across
+punch diameters. The Volk Hora comparison shows related qualitative patterns
+with exceptions, so possible punch radius effects should be considered rather
+than treated as confirmed.
 
-The identification framework part examines the integration of a Min and Stoughton curvature criterion. The method is shown to operate on laboratory DIC exports and to produce onset frames in the range of established criteria, but its sensitivity to matrix length, reference frame choice, and DIC coverage prevents its use as a calibrated production criterion at this stage.
+The identification framework integrates a Min and Stoughton curvature
+criterion and applies it to the \num{56} DIC samples of the rolling direction,
+\SI{100}{\milli\meter} punch subset. With one standard parameter set, it
+detects 12 to 14 of 14 samples per thickness, with mean major strain
+differences to ISO~12004-2 of \num{0.014} to \num{0.046}. Thickness dependent
+recalibration improves the combined forming limit diagram distance to
+\num{0.018} to \num{0.036} while keeping at least 13 of 14 detections, but
+sensitivity to matrix length, reference frame, and DIC coverage remains.
 
-The numerical part develops a parameterised \software{Abaqus/Explicit} pipeline for Nakazima, Marciniak, and Punch-in-Punch simulations. The framework automates model generation, Euler cluster submission, ODB processing, and structured result synchronisation. It exposes specimen width, sheet thickness, punch geometry, punch travel, mass scaling, and mesh controls as parameters, while maintaining comparable output formats for later experimental and numerical comparison. Initial mass scaling and mesh refinement sweeps on a Nakazima \texttt{W100} reference case define provisional production settings, but the numerical results are presented as framework verification rather than as a completed predictive FLC campaign.
+The numerical part implements an automated \software{Abaqus/Explicit} workflow
+for Nakazima, Marciniak, and Punch in Punch simulations, including model
+generation, Euler submission, ODB post processing, and result synchronisation.
+For the \texttt{W100} reference case, the accepted setting is a mass scaling
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=2$, giving a maximum kinetic
+to internal energy ratio of \SI{1.8}{\percent}. Mesh convergence remains open
+because $f_\mathrm{MR}=1$ is not quasistatic and $f_\mathrm{MR}=2$ and $3$ do
+not define a reliable trend. Intermediate refinements such as
+$f_\mathrm{MR}=1.25$ and $1.5$ are therefore needed before predictive FLC use.
 
 \cleardoublepage
 
@@ -24,13 +47,21 @@ The numerical part develops a parameterised \software{Abaqus/Explicit} pipeline 
 
 \chapter*{Acknowledgements}
 
-I would like to thank Dr. Dirk Mohr for the opportunity to carry out this
-semester project in his laboratory. I would also like to thank Prof. Dr.
-Vincent Grolleau and Dr. Christian Roth for their guidance and technical
-feedback throughout this project. I am also grateful to the Chair of Artificial
-Intelligence in Mechanics and Manufacturing for providing the research context,
-computational resources, and previous experimental and numerical work on which
-this project builds.
+While working on this project, I had the pleasure to count on the help of
+many different people. I would like to thank:
+
+\begin{itemize}
+    \item Prof. Dr. Mohr, for letting me work on such an interesting project
+    and in his lab.
+    \item Prof. Dr. Grolleau, for the many discussions, for helping out
+    through the experimental campaign, and for the result analysis.
+    \item Dr. Thomas Tancogne-Dejean, for the interesting discussions.
+    \item Dr. Roth, for the project suggestion and trust.
+\end{itemize}
+
+I am also grateful to the Chair of Artificial Intelligence in Mechanics and
+Manufacturing for providing the research context, computational resources,
+and previous experimental and numerical work on which this project builds.
 
 The simulations presented in this report were carried out on the ETH Euler
 cluster.
