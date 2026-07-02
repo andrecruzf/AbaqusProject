@@ -67,54 +67,29 @@ configuration therefore generally produces more linear strain paths than the
 Nakazima test and is often considered more suitable for fundamental
 investigations of forming limits~\cite{ISO120042, Min2017}.
 
-This geometrical difference is important for criteria based on curvature.
-In a Marciniak test, the analysed region remains close to flat, so the local
-out-of-plane displacement can be evaluated directly after subtracting a
-reference profile. In a Nakazima test, the sheet wraps around the hemispherical
-punch, and the local dimple associated with necking is superimposed on the
-global dome curvature. The Nakazima extension of Min et al.~\cite{Min2017}
-therefore requires a punch-centred coordinate transformation before the local
-curvature can be interpreted.
-
-While ISO~12004-2 specifies a reference punch diameter of
-\SI{100}{\milli\meter} for both testing methods, the present work additionally
-investigates the influence of punch geometry by considering hemispherical punch
-diameters of \SI{40}{\milli\meter}, \SI{60}{\milli\meter},
-\SI{80}{\milli\meter}, and \SI{100}{\milli\meter} in the Nakazima
-configuration. This enables a systematic assessment of the influence of punch
-size on the measured forming limits and contributes to the broader investigation
-of size effects in sheet metal forming.
-
-
 \section{Punch-in-Punch Test}
 
-The Punch-in-Punch (PiP) test is an alternative forming test designed to
-generate more linear strain paths than the standard Nakazima configuration,
-particularly in the biaxial stretching regime. It employs two coaxial punches
-acting sequentially on the specimen.
+The Punch-in-Punch (PiP) test is an alternative forming test designed to generate more linear strain paths than the standard Nakazima configuration, particularly in the biaxial stretching regime. It employs two coaxial punches acting sequentially on the specimen~\cite{Sen2025}.
 
-The process consists of two steps. In Step~1, both punches advance together, pre-forming the specimen. In Step~2, the outer punch is held fixed while the inner one advances further, deepening the dome until fracture. This two-stage loading produces a more controlled strain path.
+The process consists of two steps. In Step~1, both punches advance together, pre-forming the specimen. In Step~2, the outer punch is held fixed while the inner one advances further, deepening the dome until fracture. This two-stage loading produces a more controlled strain path~\cite{Sen2025}.
 
 \section{Forming Limit Identification Methods}
 
-Determining the onset of localised necking from full-field strain data is
-non-trivial, as the transition from diffuse to localised necking is gradual and
-its detection depends on the chosen criterion. Several methods have been
-proposed in the literature, which can be broadly classified into
-position-dependent and time-dependent approaches. Position-dependent methods
-evaluate the spatial strain distribution at a single time instant, whereas
-time-dependent methods track the temporal evolution of the strain field and
-detect necking from changes in the strain rate. The following subsections
-describe the methods considered in this work. The Min--Stoughton method is
-presented in greater detail because it is the specific extension investigated in
-Task~II.
+Detecting the onset of localised necking from full-field strain data depends on
+the chosen criterion, since the transition from diffuse necking to a
+localised one is gradual. Existing methods are broadly position-dependent,
+evaluating the spatial strain distribution at a single time instant, or
+time-dependent, tracking the temporal evolution of the strain field. The
+Min--Stoughton method combines both aspects and is presented in greater
+detail, as it is the specific extension investigated in Task~II.
 
 \subsection{Intersection-Line Method (ISO 12004-2)}
 \label{sec:din_method}
 
-The intersection-line method specified in ISO~12004-2~\cite{ISO120042} is a
-position-dependent approach that evaluates the spatial strain distribution on
-the last DIC frame recorded before fracture. Five parallel cross-sections
+The intersection-line method specified in ISO~12004-2~\cite{ISO120042}
+evaluates the spatial strain distribution on the last DIC frame recorded
+before fracture, without considering the strain evolution over time. Five
+parallel cross-sections
 (intersection lines) are constructed perpendicular to the crack, spaced
 \SI{2}{\milli\meter} apart, each extending \SI{20}{\milli\meter} on both sides
 of the fracture line. The orientation of the intersection lines depends on the
@@ -150,13 +125,24 @@ The method is straightforward and widely used, but relies on a single time frame
 and is sensitive to the selected cross-section and the regularity of the strain
 field near the crack.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/E0_RM00_000_W02_001_DIN_intersection_lines.png}
+    \caption[Example ISO~12004-2 intersection-line evaluation]{Example ISO~12004-2 intersection-line evaluation for an AA5754
+    \texttt{W020} specimen. Top row: major strain profile $\varepsilon_1$ along
+    each of the five intersection lines, with the shaded fitting regions, the
+    fitted parabolas, and the resulting limit strain. Bottom row: detail of the
+    bell-shaped curve used to locate the exact crack position on each line.}
+    \label{fig:din_example}
+\end{figure}
+
 \subsection{Volk--Hora Time-Dependent Method}
 \label{sec:vh_method}
 
 In contrast to the intersection-line method, the approach proposed by
-Volk and Hora~\cite{VolkHora2011} is a time-dependent method that identifies
-the onset of localised necking from the evolution of the thickness strain rate.
-First, the thickness strain rate is computed from the in-plane DIC strains
+Volk and Hora~\cite{VolkHora2011} identifies the onset of localised necking
+from the evolution of the thickness strain rate. First, the thickness strain
+rate is computed from the in-plane DIC strains
 using plastic incompressibility:
 \begin{equation}
 \dot{\varepsilon}_3 =
@@ -192,8 +178,12 @@ i \;\middle|\;
 \right\},
 \end{equation}
 where $\alpha$ is selected such that a sufficient number of facets is included
-in the necking zone. For a grid size of approximately \SI{1}{\milli\meter}, a
-typical value is $\alpha = 0.55$.
+in the necking zone. Volk and Hora~\cite{VolkHora2011} recommend
+$\alpha \in [0.5,\,0.6]$ for a \SI{1}{\milli\meter} grid size. Following the
+calibration of Groner~\cite{Groner2021} for the same test bench, $\alpha=0.55$
+is used as the default value in the existing framework, which the present work
+retains unchanged even though the current DIC grid is finer, at
+approximately \SI{0.28}{\milli\meter}.
 
 The mean thinning rate inside the necking zone is then plotted as a function of
 time. Two linear fits are applied: one to the stable pre-necking regime and one
@@ -227,41 +217,21 @@ of the forming-limit strains.}
 \end{figure}
 \subsection{Merklein Method}
 
-The Merklein method~\cite{Merklein2010} is a time-dependent approach that
-detects necking from the acceleration of the major strain rate at a critical
-point. On the last frame before fracture, the facet with the highest major
-strain value within the necking zone is selected. To reduce scatter, the mean
-major strain within a circle of \SI{2}{\milli\meter} radius around this point is
-tracked over time.
-
-During Nakazima tests, the major strain rate increases approximately linearly
-until the transition from elastic to plastic deformation, after which a mostly
-linear progression of the strain rate is observed until necking begins. A strong
-increase in the time derivative of the strain rate is observed during the final
-stages before fracture. To determine the necking time point, a regression curve
-of the coefficient of determination ($R^2$) is computed for all data points up to
-each candidate time. The maximum of this regression curve indicates the onset of
-necking. The limit strains are the mean values of major and minor strains within
-the \SI{2}{\milli\meter} radius at the identified necking time.
+The Merklein method~\cite{Merklein2010} tracks the mean major strain within a
+small circle around the facet of highest major strain in the necking zone,
+and detects necking from the point of maximum curvature (highest $R^2$ of a
+regression fit) in the time derivative of this strain rate. It is not part of
+the existing identification
+framework and is not applied in this work.
 
 \subsection{Sigvant Method}
 
-The Sigvant method~\cite{Pham2023} detects necking using the coefficient of
-variation (CoV) of the major strain rate within a local region of interest. The
-CoV is defined as
-\begin{equation}
-    \mathrm{CoV} = \frac{\sigma}{\mu},
-\end{equation}
-where $\mu$ and $\sigma$ are the mean and standard deviation of the major strain
-rate within a circle of \SI{5}{\milli\meter} diameter centred on the point of
-highest equivalent plastic strain on the last frame before fracture.
-
-During homogeneous deformation, the mean strain rate increases steadily while the
-standard deviation remains approximately constant, causing the CoV to decrease.
-Once localisation begins, the standard deviation increases sharply, leading to a
-rapid rise in the CoV. The global minimum of the CoV therefore identifies the
-onset of necking. The limit strains are the mean principal strains in the region
-of interest at the frame corresponding to this minimum.
+The Sigvant method~\cite{Pham2023} detects necking from the coefficient of
+variation (CoV), the ratio of standard deviation to mean, of the major strain
+rate within a local region of interest around the point of highest equivalent
+plastic strain. The global minimum of the CoV over time marks the onset of
+necking. Like the Merklein method, it is not part of the existing
+identification framework and is not applied in this work.
 
 \subsection{Min--Stoughton Curvature Method}
 \label{sec:minstoughton_method}
@@ -272,13 +242,10 @@ strictly valid only for proportional loading, since the strain combination at
 the onset of necking depends on the path followed to reach it. In the Nakazima
 test the contact with the hemispherical punch bends the sheet and curves the
 strain path, so a limit point extracted under the assumption of a linear path
-no longer corresponds to a unique material limit. A criterion that detects
-necking directly, from a physical signature of localisation rather than from
-the position of the strain state, is therefore desirable.
-
-To address this need, Min et al.~\cite{Min2017} proposed an improved curvature
-method that detects the onset of localised necking from the evolution of the
-specimen surface geometry rather than from the strain state. The method was
+no longer corresponds to a unique material limit. Min et al.~\cite{Min2017}
+therefore proposed an improved curvature method that detects necking directly
+from a physical signature of localisation, the evolution of the specimen
+surface geometry, rather than from the position of the strain state. The method was
 first developed for the Marciniak test, in which a carrier blank produces a
 nearly flat and almost proportionally loaded region, and was then extended to
 the Nakazima test, where the hemispherical punch bends the sheet and imposes a

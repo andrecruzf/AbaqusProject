@@ -1,17 +1,6 @@
 \chapter{Experimental Campaign}
 \label{chap:experimental_campaign}
 
-\section{Overview}
-
-The experimental campaign constitutes the foundation of the present work and
-aims to generate a comprehensive dataset for the investigation of forming limit
-curves (FLCs). Particular emphasis is placed on assessing the influence of
-specimen geometry, sheet thickness, punch geometry, material orientation, and
-loading path on the experimentally determined forming limits. The resulting
-dataset serves both for the evaluation of forming-limit identification methods
-and for the validation of the numerical simulation framework developed within
-this project.
-
 \section{Experimental Setup}
 
 All experiments were conducted using the high-throughput forming test bench
@@ -19,7 +8,8 @@ available at the Institute of Virtual Manufacturing (IVP). The system combines
 automated specimen handling with DIC measurements, enabling the efficient
 acquisition of strain-field data for a large number of test configurations.
 Figure~\ref{fig:test_bench} shows the test bench used for the experimental
-campaign.
+campaign. For a detailed description of the machine's mechanical design, see
+Groner~\cite{Groner2021}.
 
 \begin{figure}[H]
     \centering
@@ -29,16 +19,37 @@ campaign.
 \end{figure}
 
 Specimen preparation and lubrication follow the established procedure for this
-bench~\cite{Sen2025}. A random black-and-white speckle pattern is applied by
-spray paint after cleaning the surface with alcohol, giving speckles of roughly
-\SIrange{50}{100}{\micro\meter}, comparable to the camera pixel size of about
-\SI{40}{\micro\meter}. To promote a centred apex fracture and limit press
-contamination, the punch side of each blank is lubricated with a self-adhesive
-PTFE foil covered by a thin layer of lanolin. The blank is clamped along its
+bench~\cite{Sen2025}. Each blank is first cleaned with ethanol to remove dust
+deposits accumulated during storage. A random black-and-white speckle pattern
+is then applied by spray paint for the DIC measurement, as shown in
+Figure~\ref{fig:speckle_ptfe}. To reduce punch--blank friction, so that the measured
+strains reflect the pure forming mechanism rather than frictional effects, the
+punch side of each blank is covered with a self-adhesive PTFE film, onto which
+a thin layer of lanolin grease is applied. The blank is clamped along its
 outer edge before the test starts, and each test then drives the punch into the
 clamped blank at constant speed until a sudden drop in punch force marks
 fracture and terminates the run. Table~\ref{tab:test_conditions} summarises the
 key test conditions common to all specimens in the campaign.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/speckle_pattern_W120_A.jpg}
+        \caption{Speckle pattern}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/ptfe_lanolin_W120_A.jpg}
+        \caption{PTFE foil and lanolin lubrication}
+    \end{subfigure}
+    \caption[Speckle pattern and punch-side lubrication]{Speckle pattern on the
+    camera-facing side (a) and PTFE foil with lanolin lubrication on the
+    punch-facing side (b), shown on a fractured \texttt{W120} specimen of
+    thickness A.}
+    \label{fig:speckle_ptfe}
+\end{figure}
 
 \begin{table}[htbp]
 \centering
@@ -50,12 +61,11 @@ Condition & Value \\
 \midrule
 Punch speed & \SI{60}{\milli\meter\per\minute} (\SI{1}{\milli\meter\per\second}) \\
 Blank holder & Outer edge clamped, fixed during the test \\
-Termination criterion & Punch-force drop, confirmed by the crack detector~\cite{Sen2025} \\
+Termination criterion & Punch-force drop, confirmed by the crack detector \\
 DIC acquisition rate & \SI{10}{\hertz}, reduced to \SI{2}{\hertz} for storage \\
 DIC rate near fracture & \SI{40}{\hertz} for the last \SI{3}{\second} before fracture \\
-DIC subset size & 41~px ($\approx\SI{1.6}{\milli\meter}$)~\cite{Sen2025} \\
-DIC step size & 7~px ($\approx\SI{0.28}{\milli\meter}$)~\cite{Sen2025} \\
-Repetitions per configuration & 2 \\
+DIC subset size & 41~px ($\approx\SI{1.6}{\milli\meter}$) \\
+DIC step size & 7~px ($\approx\SI{0.28}{\milli\meter}$) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -63,7 +73,7 @@ Repetitions per configuration & 2 \\
 \section{Material}
 
 All specimens were cut from AA5754 aluminium alloy sheets supplied by
-Constellium. Four sheet thicknesses were delivered, each identified by an
+\textit{Constellium}. Four sheet thicknesses were delivered, each identified by an
 internal code composed of the delivery date and a letter suffix encoding the
 thickness. The sheet dimensions are given with respect to the rolling direction
 (RD) and transverse direction (TD) of the material, which are relevant for the
@@ -99,6 +109,16 @@ FLDs. Seven standard specimen widths are used: \texttt{W020}, \texttt{W050},
 \texttt{W080}, \texttt{W090}, \texttt{W100}, \texttt{W120}, and \texttt{W200}.
 Narrow specimens promote uniaxial deformation, whereas wider specimens
 progressively shift the strain state towards biaxial stretching.
+Figure~\ref{fig:specimen_geometries} shows the full geometry set.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{img/Sen2025_specimen_geometries.png}
+    \caption[Specimen geometry set]{Specimen geometry set used with the automated
+    testing bench, with the grip ears and pin holes required for automated
+    handling and positioning. From Sen~\cite{Sen2025}.}
+    \label{fig:specimen_geometries}
+\end{figure}
 
 The experimental results reported in this work therefore focus on the Nakazima
 subset of the broader project, while Marciniak and Punch-in-Punch configurations
@@ -148,12 +168,11 @@ DIC was used to measure the full-field strain evolution throughout each test.
 Two synchronised cameras mounted above the press record the deforming specimen
 at the acquisition and storage rates given in Table~\ref{tab:test_conditions}.
 The fracture frame is identified automatically from the force drop and a
-neural-network crack detector applied to the last recorded frames~\cite{Sen2025}.
+neural-network crack detector applied to the last recorded frames.
 The recorded strain histories constitute the primary input for the
 forming-limit identification procedures presented in
 Chapter~\ref{chap:identification_framework}. To facilitate comparison with
 numerical simulations, both experimental and numerical datasets are organised
 around the same physical quantities, including major and minor strain histories,
-force--displacement responses, fracture location, and forming-limit points
-within the FLD. The experimental forming limits obtained from this campaign are
+force--displacement responses, fracture location, and forming-limit points within the FLD. The experimental forming limits obtained from this campaign are
 reported in Section~\ref{sec:results_task1}.
