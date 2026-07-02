@@ -11,34 +11,11 @@ project \textit{Towards Robust Forming Limit Curve Identification: Experiments
 and Modeling} by connecting experimental analysis, criterion evaluation, and
 automated numerical simulation.
 
-The experimental part analyses an AA5754 Nakazima campaign across specimen
-widths, sheet thicknesses, punch diameters, and material orientations. The
-rolling and transverse direction forming limits remain within the observed
-repeat scatter, so no systematic orientation dependent shift is identified for
-the investigated material. In contrast, the punch diameter study shows that
-some patterns appear when the standard ISO~12004-2 fitting window is applied to
-nonstandard punch geometries, but exceptions remain. A comparison with Volk
-Hora limits shows related qualitative patterns, also with exceptions. This does
-not confirm a physical punch radius effect on its own, but indicates that
-possible punch radius effects should be considered when applying the ISO
-evaluation procedure.
+The experimental part analyses an AA5754 Nakazima campaign across specimen widths, sheet thicknesses, punch diameters, and material orientations. The forming limits measured in the rolling and transverse directions remain within the observed repeat scatter, indicating that material anisotropy has no measurable influence on the onset of localized necking for the investigated material. In contrast, the punch-diameter study reveals systematic inconsistencies when the standard ISO~12004-2 fitting window is applied to nonstandard punch geometries. For some configurations, an entire FLC is shifted below the expected ordering, suggesting that the deviation is linked to the evaluation procedure rather than to isolated experimental scatter. The Volk–Hora results show broadly similar qualitative trends, but the departures from the expected ordering are limited to individual points rather than complete curves. The systematic ordering of the curves is consistent with the expected punch-diameter effect. This tendency is partially confirmed by the Volk–Hora results and can also be recovered with the ISO method when a geometry-dependent factor is introduced in the fitting-window definition.
 
-The identification framework part examines the integration of a
-Min and Stoughton type curvature criterion. The method is shown to operate on
-laboratory DIC exports and to produce onset frames in the range of established
-criteria, but its sensitivity to matrix length, reference frame choice, and DIC
-coverage prevents its use as a calibrated production criterion at this stage.
+The identification framework part examines the integration of a Min and Stoughton curvature criterion. The method is shown to operate on laboratory DIC exports and to produce onset frames in the range of established criteria, but its sensitivity to matrix length, reference frame choice, and DIC coverage prevents its use as a calibrated production criterion at this stage.
 
-The numerical part develops a parameterised \software{Abaqus/Explicit} pipeline
-for Nakazima, Marciniak, and Punch-in-Punch simulations. The framework automates
-model generation, Euler cluster submission, ODB processing, and structured
-result synchronisation. It exposes specimen width, sheet thickness, punch
-geometry, punch travel, mass scaling, and mesh controls as parameters, while
-maintaining comparable output formats for later experimental and numerical
-comparison. Initial mass scaling and mesh refinement sweeps on a Nakazima
-\texttt{W100} reference case define provisional production settings, but the
-numerical results are presented as framework verification rather than as a
-completed predictive FLC campaign.
+The numerical part develops a parameterised \software{Abaqus/Explicit} pipeline for Nakazima, Marciniak, and Punch-in-Punch simulations. The framework automates model generation, Euler cluster submission, ODB processing, and structured result synchronisation. It exposes specimen width, sheet thickness, punch geometry, punch travel, mass scaling, and mesh controls as parameters, while maintaining comparable output formats for later experimental and numerical comparison. Initial mass scaling and mesh refinement sweeps on a Nakazima \texttt{W100} reference case define provisional production settings, but the numerical results are presented as framework verification rather than as a completed predictive FLC campaign.
 
 \cleardoublepage
 
