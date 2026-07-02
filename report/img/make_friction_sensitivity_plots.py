@@ -15,6 +15,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / "report" / "img" / "results"
+PANEL_FIGSIZE = (5.8, 4.2)
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,7 @@ class Job:
 
 
 FRICTION_SWEEP = [
+    Job(0.00, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_pd32/Naka100_W120_t1p5_ang0_ms1e6_pd32"),
     Job(0.05, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_pd32_fr0p05/Naka100_W120_t1p5_ang0_ms1e6_pd32_fr0p05"),
     Job(0.10, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_pd32_fr0p1/Naka100_W120_t1p5_ang0_ms1e6_pd32_fr0p1"),
     Job(0.15, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_pd32_fr0p15/Naka100_W120_t1p5_ang0_ms1e6_pd32_fr0p15"),
@@ -114,13 +116,13 @@ def _style_axes(ax: plt.Axes, xlabel: str, ylabel: str) -> None:
 def _save(fig: plt.Figure, stem: str) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(OUT_DIR / f"{stem}.png", dpi=300, bbox_inches="tight")
-    fig.savefig(OUT_DIR / f"{stem}.pdf", bbox_inches="tight")
+    fig.savefig(OUT_DIR / f"{stem}.png", dpi=300)
+    fig.savefig(OUT_DIR / f"{stem}.pdf")
     plt.close(fig)
 
 
 def _plot_strain_path() -> None:
-    fig, ax = plt.subplots(figsize=(5.6, 4.2))
+    fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
     for idx, job in enumerate(FRICTION_SWEEP):
         curve = _strain_curve(job)
@@ -148,7 +150,7 @@ def _plot_strain_path() -> None:
 
 
 def _plot_force_displacement() -> None:
-    fig, ax = plt.subplots(figsize=(6.2, 3.8))
+    fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
     for idx, job in enumerate(FRICTION_SWEEP):
         curve = _force_curve(job)

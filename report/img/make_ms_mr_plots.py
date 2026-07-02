@@ -16,6 +16,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / "report" / "img" / "results"
+PANEL_FIGSIZE = (5.8, 4.2)
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,14 @@ MESH_SWEEP = [
     Job("mesh", r"$f_\mathrm{MR}=1$", 1e-5, 1, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e5/Naka100_W100_t1p5_ang0_ms1e5"),
     Job("mesh", r"$f_\mathrm{MR}=2$", 1e-5, 2, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e5_mr2/Naka100_W100_t1p5_ang0_ms1e5_mr2"),
     Job("mesh", r"$f_\mathrm{MR}=3$", 1e-5, 3, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e5_mr3/Naka100_W100_t1p5_ang0_ms1e5_mr3"),
+]
+
+# Confirmation sweep: mesh refinement repeated at the accepted mass-scaling
+# target (MS1, Delta t = 1e-6 s) identified from MASS_SWEEP.
+CONFIRM_SWEEP = [
+    Job("confirm", r"$f_\mathrm{MR}=1$", 1e-6, 1, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6/Naka100_W100_t1p5_ang0_ms1e6"),
+    Job("confirm", r"$f_\mathrm{MR}=2$", 1e-6, 2, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr2/Naka100_W100_t1p5_ang0_ms1e6_mr2"),
+    Job("confirm", r"$f_\mathrm{MR}=3$", 1e-6, 3, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr3/Naka100_W100_t1p5_ang0_ms1e6_mr3"),
 ]
 
 
@@ -109,13 +118,13 @@ def _style_axes(ax: plt.Axes, xlabel: str, ylabel: str) -> None:
 def _save(fig: plt.Figure, stem: str) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(OUT_DIR / f"{stem}.png", dpi=300, bbox_inches="tight")
-    fig.savefig(OUT_DIR / f"{stem}.pdf", bbox_inches="tight")
+    fig.savefig(OUT_DIR / f"{stem}.png", dpi=300)
+    fig.savefig(OUT_DIR / f"{stem}.pdf")
     plt.close(fig)
 
 
 def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
-    fig, ax = plt.subplots(figsize=(5.5, 4.2))
+    fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
     for idx, job in enumerate(jobs):
         curve = _strain_path_curve(job)
@@ -144,7 +153,7 @@ def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
 
 
 def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, float] | None = None) -> None:
-    fig, ax = plt.subplots(figsize=(6.2, 3.7))
+    fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
     max_ratio = 0.0
     for idx, job in enumerate(jobs):
@@ -177,6 +186,11 @@ def _plot_forming_limit_points() -> None:
         if fracture is None:
             continue
         ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="s", color=plt.get_cmap("Oranges")(0.35 + 0.15 * idx), linestyle="None", label=f"MR {int(job.mr)}")
+    for idx, job in enumerate(CONFIRM_SWEEP):
+        fracture = _limit_row(job)
+        if fracture is None:
+            continue
+        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=plt.get_cmap("Greens")(0.35 + 0.15 * idx), linestyle="None", label=f"Confirm MR {int(job.mr)}")
     _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title("Extracted fracture forming-limit points")
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=7)
@@ -185,7 +199,7 @@ def _plot_forming_limit_points() -> None:
 
 def _summary_rows() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for job in MASS_SWEEP + MESH_SWEEP:
+    for job in MASS_SWEEP + MESH_SWEEP + CONFIRM_SWEEP:
         curve = _energy_curve(job).replace([np.inf, -np.inf], np.nan).dropna()
         max_u3 = float(np.nanmax(curve["U3_mm"]))
         curve_after_start = curve[curve["U3_mm"] >= 0.05 * max_u3]
@@ -228,6 +242,9 @@ def main() -> None:
     _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Quasi-staticity overview ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-5}$ s)", ylim=(0.0, 10.0))
+    _plot_strain_path(CONFIRM_SWEEP, "ms_mr_confirm_strain_path", r"Mesh-refinement confirmation ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
+    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy", r"Quasi-staticity overview ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
+    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-6}$ s)", ylim=(0.0, 10.0))
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)

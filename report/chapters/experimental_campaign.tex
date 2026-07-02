@@ -34,9 +34,31 @@ spray paint after cleaning the surface with alcohol, giving speckles of roughly
 \SIrange{50}{100}{\micro\meter}, comparable to the camera pixel size of about
 \SI{40}{\micro\meter}. To promote a centred apex fracture and limit press
 contamination, the punch side of each blank is lubricated with a self-adhesive
-PTFE foil covered by a thin layer of lanolin. Each test drives the punch into
-the clamped blank at constant speed until a sudden drop in punch force marks
-fracture and terminates the run.
+PTFE foil covered by a thin layer of lanolin. The blank is clamped along its
+outer edge before the test starts, and each test then drives the punch into the
+clamped blank at constant speed until a sudden drop in punch force marks
+fracture and terminates the run. Table~\ref{tab:test_conditions} summarises the
+key test conditions common to all specimens in the campaign.
+
+\begin{table}[htbp]
+\centering
+\caption{Test conditions for the Nakazima campaign, common to all specimens.}
+\label{tab:test_conditions}
+\begin{tabular}{ll}
+\toprule
+Condition & Value \\
+\midrule
+Punch speed & \SI{60}{\milli\meter\per\minute} (\SI{1}{\milli\meter\per\second}) \\
+Blank holder & Outer edge clamped, fixed during the test \\
+Termination criterion & Punch-force drop, confirmed by the crack detector~\cite{Sen2025} \\
+DIC acquisition rate & \SI{10}{\hertz}, reduced to \SI{2}{\hertz} for storage \\
+DIC rate near fracture & \SI{40}{\hertz} for the last \SI{3}{\second} before fracture \\
+DIC subset size & 41~px ($\approx\SI{1.6}{\milli\meter}$)~\cite{Sen2025} \\
+DIC step size & 7~px ($\approx\SI{0.28}{\milli\meter}$)~\cite{Sen2025} \\
+Repetitions per configuration & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Material}
 
@@ -123,12 +145,10 @@ assess experimental repeatability.
 \section{Data Acquisition}
 
 DIC was used to measure the full-field strain evolution throughout each test.
-Two synchronised cameras mounted above the press record the deforming specimen.
-Frames are acquired at \SI{10}{\hertz} and stored at a reduced rate of
-\SI{2}{\hertz}, except for the final \SI{3}{\second} before fracture, which are
-retained at \SI{40}{\hertz} to resolve the onset of localisation. The fracture
-frame is identified automatically from the force drop and a neural-network crack
-detector applied to the last recorded frames~\cite{Sen2025}.
+Two synchronised cameras mounted above the press record the deforming specimen
+at the acquisition and storage rates given in Table~\ref{tab:test_conditions}.
+The fracture frame is identified automatically from the force drop and a
+neural-network crack detector applied to the last recorded frames~\cite{Sen2025}.
 The recorded strain histories constitute the primary input for the
 forming-limit identification procedures presented in
 Chapter~\ref{chap:identification_framework}. To facilitate comparison with

@@ -69,6 +69,120 @@ strain to the ISO~12004-2 average is reported per thickness.
 
 \input{chapters/ms_sweep_table}
 
+\section{Per-Thickness Campaign Comparison}
+\label{app:ms_campaign_tables}
+
+Tables~\ref{tab:minstoughton_campaign}--\ref{tab:ms_campaign_D} list the
+width-by-width major and minor limit strains for the ISO~12004-2, Volk--Hora,
+and Min--Stoughton criteria underlying the summary of
+Table~\ref{tab:ms_campaign_summary} in Section~\ref{sec:ms_campaign}. Each
+entry is the mean and standard deviation over the two repetitions of the
+width; widths with a single detected repetition carry no standard deviation.
+The Min--Stoughton results use the standard set $W_Y=\SI{15}{\milli\meter}$,
+$M=0.8$, $n=8$.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~A]{Major and
+    minor limit strains for the three criteria over the class~A
+    ($t=\SI{1.2}{\milli\meter}$) repeat campaign with the
+    \SI{100}{\milli\meter} punch. The biaxial \texttt{W200}
+    curvature onset is detected in only one repetition, so no standard deviation
+    is given there.}
+    \label{tab:minstoughton_campaign}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.302 \pm 0.000$ & $-0.087$ & $0.270 \pm 0.007$ & $-0.083$ & $0.248 \pm 0.072$ & $-0.072$ \\
+        50  & $0.268 \pm 0.006$ & $-0.036$ & $0.249 \pm 0.008$ & $-0.039$ & $0.233 \pm 0.028$ & $-0.033$ \\
+        80  & $0.211 \pm 0.008$ & $0.005$  & $0.229 \pm 0.003$ & $0.005$  & $0.189 \pm 0.004$ & $0.007$ \\
+        90  & $0.207 \pm 0.020$ & $0.016$  & $0.206 \pm 0.000$ & $0.017$  & $0.183 \pm 0.013$ & $0.018$ \\
+        100 & $0.190 \pm 0.020$ & $0.022$  & $0.196 \pm 0.004$ & $0.023$  & $0.211 \pm 0.009$ & $0.022$ \\
+        120 & $0.176 \pm 0.003$ & $0.042$  & $0.186 \pm 0.009$ & $0.048$  & $0.185 \pm 0.014$ & $0.043$ \\
+        200 & $0.382 \pm 0.010$ & $0.342$  & $0.398 \pm 0.018$ & $0.348$  & $0.382$           & $0.318$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~B]{Major and minor limit
+    strains for the three criteria over the class~B ($t=\SI{1.5}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
+    Table~\ref{tab:minstoughton_campaign}.}
+    \label{tab:ms_campaign_B}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.317 \pm 0.002$ & $-0.091$ & $0.287 \pm 0.011$ & $-0.085$ & $0.306 \pm 0.103$ & $-0.087$ \\
+        50  & $0.293 \pm 0.002$ & $-0.039$ & $0.256 \pm 0.003$ & $-0.041$ & $0.323$           & $-0.064$ \\
+        80  & $0.249 \pm 0.021$ & $0.005$  & $0.228 \pm 0.012$ & $0.005$  & $0.248 \pm 0.045$ & $0.005$ \\
+        90  & $0.221 \pm 0.001$ & $0.019$  & $0.229 \pm 0.016$ & $0.019$  & $0.204 \pm 0.008$ & $0.019$ \\
+        100 & $0.203 \pm 0.009$ & $0.025$  & $0.194 \pm 0.013$ & $0.028$  & $0.215 \pm 0.013$ & $0.026$ \\
+        120 & $0.201 \pm 0.001$ & $0.049$  & $0.202 \pm 0.005$ & $0.052$  & $0.220 \pm 0.032$ & $0.046$ \\
+        200 & $0.385 \pm 0.006$ & $0.355$  & $0.389 \pm 0.054$ & $0.347$  & $0.375 \pm 0.095$ & $0.323$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~C]{Major and minor limit
+    strains for the three criteria over the class~C ($t=\SI{2.0}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
+    Table~\ref{tab:minstoughton_campaign}.}
+    \label{tab:ms_campaign_C}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.334 \pm 0.007$ & $-0.087$ & $0.308 \pm 0.000$ & $-0.087$ & $0.305 \pm 0.003$ & $-0.085$ \\
+        50  & $0.308 \pm 0.008$ & $-0.038$ & $0.295 \pm 0.016$ & $-0.046$ & $0.318 \pm 0.058$ & $-0.043$ \\
+        80  & $0.257 \pm 0.004$ & $0.009$  & $0.249 \pm 0.007$ & $0.008$  & $0.230$           & $0.012$ \\
+        90  & $0.242 \pm 0.007$ & $0.021$  & $0.249 \pm 0.016$ & $0.022$  & $0.211 \pm 0.025$ & $0.023$ \\
+        100 & $0.235 \pm 0.011$ & $0.030$  & $0.236 \pm 0.005$ & $0.033$  & $0.202 \pm 0.012$ & $0.032$ \\
+        120 & $0.215 \pm 0.005$ & $0.057$  & $0.243 \pm 0.014$ & $0.057$  & $0.206 \pm 0.004$ & $0.054$ \\
+        200 & $0.380 \pm 0.002$ & $0.355$  & $0.388 \pm 0.015$ & $0.347$  & $0.288$           & $0.278$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption[Min--Stoughton campaign comparison, class~D]{Major and minor limit
+    strains for the three criteria over the class~D ($t=\SI{3.0}{\milli\meter}$)
+    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
+    Table~\ref{tab:minstoughton_campaign}.}
+    \label{tab:ms_campaign_D}
+    \begin{tabular}{c c c c c c c}
+        \toprule
+        Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+        (\si{\milli\meter}) & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ & $\varepsilon_1$ & $\varepsilon_2$ \\
+        \midrule
+        20  & $0.358 \pm 0.004$ & $-0.085$ & $0.336 \pm 0.006$ & $-0.085$ & $0.285 \pm 0.003$ & $-0.064$ \\
+        50  & $0.347 \pm 0.021$ & $-0.031$ & $0.328 \pm 0.004$ & $-0.036$ & $0.277 \pm 0.007$ & $-0.019$ \\
+        80  & $0.307 \pm 0.002$ & $0.014$  & $0.305 \pm 0.014$ & $0.011$  & $0.282 \pm 0.008$ & $0.017$ \\
+        90  & $0.299 \pm 0.007$ & $0.025$  & $0.287 \pm 0.008$ & $0.027$  & $0.246 \pm 0.005$ & $0.030$ \\
+        100 & $0.283 \pm 0.015$ & $0.033$  & $0.275 \pm 0.029$ & $0.038$  & $0.234 \pm 0.020$ & $0.039$ \\
+        120 & $0.271 \pm 0.004$ & $0.047$  & $0.285 \pm 0.026$ & $0.064$  & $0.283 \pm 0.028$ & $0.060$ \\
+        200 & $0.416 \pm 0.004$ & $0.393$  & $0.415 \pm 0.029$ & $0.382$  & $0.375 \pm 0.095$ & $0.342$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 \chapter{Simulation Pipeline}\label{app:pipeline}
 
 \section{Pipeline Architecture}
@@ -177,13 +291,99 @@ $1\times10^{-5}$ \\
 \end{tabular}
 \end{table}
 
+\begin{table}[ht]
+\centering
+\caption{Mesh-refinement confirmation sweep for the scalar Nakazima
+\texttt{W100} study, repeating the mesh-refinement sweep above at the
+mass-scaling target accepted from Table~\ref{tab:mass_scaling_sweep}
+($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$). Results are discussed in
+Section~\ref{sec:selection_numerical_parameters}.}
+\label{tab:mesh_refinement_confirm_sweep}
+\begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
+Run & Confirm MR1 & Confirm MR2 & Confirm MR3 \\ \midrule
+$f_\mathrm{MR}$ & 1 & 2 & 3 \\
+$\Delta t_\mathrm{MS}$ (\si{\second}) &
+$1\times10^{-6}$ &
+$1\times10^{-6}$ &
+$1\times10^{-6}$ \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+
 \section{Numerical Framework Implementation Details}
 \label{app:numerical_implementation}
 
 Chapter~\ref{chap:numerical_model} describes the framework at the level of
 modelling choices and data flow. The implementation-level identifiers, the
-enforced output requests, and the post-processing file catalogue referenced
-there are collected here.
+enforced output requests, the post-processing file catalogue, and the
+mesh-size control examples referenced there are collected here.
+
+\subsection{Mesh-Size Control Examples}
+\label{app:mesh_examples}
+
+Figure~\ref{fig:mesh_mr_sweep} illustrates the global refinement factor of
+Section~\ref{sec:mesh_generation}, which scales all section sizes together and
+preserves the sectioning. Figure~\ref{fig:mesh_growth} illustrates independent
+section sizing, where the per-section target sizes are chosen separately so
+that the coarsening rate from the pole towards the flange can be tuned.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR1_top.png}
+        \caption{Baseline.}
+        \label{fig:mesh_mr1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR2_top.png}
+        \caption{Coarsened (factor 2).}
+        \label{fig:mesh_mr2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_MR4_top.png}
+        \caption{Coarsened (factor 4).}
+        \label{fig:mesh_mr4}
+    \end{subfigure}
+    \caption[Global mesh refinement on the \texttt{W100} Nakazima specimen]{Global mesh refinement on the \texttt{W100} Nakazima specimen (quarter
+model, face-on view). A single factor scales all section sizes together,
+coarsening the mesh uniformly from left to right while preserving the
+sectioning. The meshes are generated automatically without running the solver.}
+    \label{fig:mesh_mr_sweep}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_15.png}
+        \caption{Gentle grading.}
+        \label{fig:mesh_growth_15}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_20.png}
+        \caption{Moderate grading.}
+        \label{fig:mesh_growth_20}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/mesh_W100_growth_30.png}
+        \caption{Steep grading.}
+        \label{fig:mesh_growth_30}
+    \end{subfigure}
+    \caption[Independent section sizing on the \texttt{W100} Nakazima specimen]{Example of independent section sizing on the \texttt{W100} Nakazima specimen
+(quarter model, face-on view). All three meshes share the same fine central
+element size; only the rate at which the elements coarsen towards the flange
+differs, from gentle (left) to steep (right).}
+    \label{fig:mesh_growth}
+\end{figure}
 
 \subsection{Element and Model Identifiers}
 

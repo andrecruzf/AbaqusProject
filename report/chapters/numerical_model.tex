@@ -174,94 +174,24 @@ Flange & Clamped outer zone    & 1.2 \\ \bottomrule[1.5pt]
 \end{tabular}
 \end{table}
 
-\subsubsection{Global Refinement}
+\subsubsection{Global Refinement and Independent Section Sizing}
 
 For routine use and for mesh-convergence studies, the whole mesh is refined or
 coarsened with a single global refinement factor that multiplies all section
 sizes by the same amount, leaving the sectioning unchanged. This makes a
 convergence study straightforward: the factor is stepped through a range and the
 corresponding meshes are produced automatically, without remeshing any model by
-hand. Figure~\ref{fig:mesh_mr_sweep} shows the \texttt{W100} specimen at three increasing
-values of the factor; the sectioning is preserved and every section coarsens by
-the same proportion.
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_MR1_top.png}
-        \caption{Baseline.}
-        \label{fig:mesh_mr1}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_MR2_top.png}
-        \caption{Coarsened (factor 2).}
-        \label{fig:mesh_mr2}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_MR4_top.png}
-        \caption{Coarsened (factor 4).}
-        \label{fig:mesh_mr4}
-    \end{subfigure}
-    \caption[Global mesh refinement on the \texttt{W100} Nakazima specimen]{Global mesh refinement on the \texttt{W100} Nakazima specimen (quarter
-model, face-on view). A single factor scales all section sizes together,
-coarsening the mesh uniformly from left to right while preserving the
-sectioning. The meshes are generated automatically without running the solver.}
-    \label{fig:mesh_mr_sweep}
-\end{figure}
-
-\subsubsection{Independent Section Sizing}
-
-Beyond uniform refinement, the target size of each section can be chosen
-independently. This makes the mesh grading adaptable: the rate at which the
-elements coarsen from the fine pole towards the flange can be tuned to
-concentrate elements where they are most needed. As an example,
-Figure~\ref{fig:mesh_growth} shows three meshes that share the same fine central
-size but coarsen towards the flange at increasingly steep rates. A gentle grading
-keeps a fine mesh across the whole dome at a higher element count, whereas a
-steep grading concentrates the elements near the pole and reduces the overall
-model size at the expense of resolution further out. These gradings are not
-separate settings but particular choices of the per-section sizes, which
-illustrates the flexibility of the sectioned approach.
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_growth_15.png}
-        \caption{Gentle grading.}
-        \label{fig:mesh_growth_15}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_growth_20.png}
-        \caption{Moderate grading.}
-        \label{fig:mesh_growth_20}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/mesh_W100_growth_30.png}
-        \caption{Steep grading.}
-        \label{fig:mesh_growth_30}
-    \end{subfigure}
-    \caption[Independent section sizing on the \texttt{W100} Nakazima specimen]{Example of independent section sizing on the \texttt{W100} Nakazima specimen
-(quarter model, face-on view). All three meshes share the same fine central
-element size; only the rate at which the elements coarsen towards the flange
-differs, from gentle (left) to steep (right).}
-    \label{fig:mesh_growth}
-\end{figure}
+hand. Beyond uniform refinement, the target size of each section can also be
+chosen independently, which makes the mesh grading adaptable: the rate at which
+the elements coarsen from the fine pole towards the flange can be tuned to
+concentrate elements where they are most needed. The global refinement factor is
+recovered as a particular choice within this same set of per-section controls.
+Example meshes illustrating both controls are given in
+Appendix~\ref{app:numerical_implementation}.
 
 The section boundaries and the per-section target sizes can be set either through
 the pipeline web interface or directly in its configuration, so that a mesh can
-be defined interactively or reproduced in a scripted study. The global refinement
-factor and the gradings shown above are recovered as particular choices within
-this same set of controls.
+be defined interactively or reproduced in a scripted study.
 
 \section{Numerical Formulation}
 

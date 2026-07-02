@@ -116,7 +116,7 @@ Table~\ref{tab:ms_constants}.
         \midrule
         \multicolumn{3}{l}{\textit{Read from specimen metadata}}\\
         $r_N$ & Punch radius, used to reconstruct the punch centre & Metadata in \texttt{sample\_ID.xml} and the \software{VIC-3D} project \\
-        $t_0$ & Initial sheet thickness & Metadata in \texttt{sample\_ID.xml} and the \software{VIC-3D} project \\
+        $t_0$ & Initial sheet thickness & Inferred from the campaign code in the \texttt{sample\_ID.xml} \texttt{Test Path}, since the file's numeric thickness field is left at zero \\
         \midrule
         \multicolumn{3}{l}{\textit{Derived from the DIC measurement}}\\
         $d_X,\,d_Y$ & DIC grid spacing across and along the band & Median spacing of adjacent DIC points \\
