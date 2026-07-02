@@ -78,7 +78,7 @@ steps and differ only in how the background curvature is removed.
         box/.style={rectangle, draw, rounded corners, align=center,
             minimum width=6.6cm, minimum height=1cm, font=\small},
         branch/.style={rectangle, draw, rounded corners, align=center,
-            minimum width=3.1cm, minimum height=1.1cm, font=\small},
+            text width=3.3cm, minimum height=1.1cm, font=\footnotesize},
         lbl/.style={font=\scriptsize\itshape, text=black!60},
         arr/.style={-{Latex[length=2mm]}}
     ]
@@ -91,10 +91,12 @@ steps and differ only in how the background curvature is removed.
         \node[box, below=of region] (matrix) {Build curvature matrix\\(track matrix point IDs and field histories across frames)};
         \node[lbl, right=2mm of matrix] {\texttt{curvature\_matrix.py}};
 
-        \node[branch, below=18mm of matrix, xshift=-3.5cm] (marciniak) {Marciniak branch\\$Z' = Z_{\mathrm{def}} - Z_{\mathrm{def}}(M)$\\\scriptsize\texttt{reference\_subtraction.py}};
-        \node[branch, below=18mm of matrix, xshift=3.5cm] (nakazima) {Nakazima branch\\punch-centred $(D, R_{\mathrm{out}})$ transform\\\scriptsize\texttt{nakazima\_transform.py}};
+        \node[branch, below=18mm of matrix, xshift=-2.4cm] (marciniak) {Marciniak branch\\$Z' = Z_{\mathrm{def}} - Z_{\mathrm{def}}(M)$};
+        \node[lbl, left=1mm of marciniak] {\texttt{reference\_subtraction.py}};
+        \node[branch, below=18mm of matrix, xshift=2.4cm] (nakazima) {Nakazima branch\\punch-centred $(D, R_{\mathrm{out}})$ transform};
+        \node[lbl, right=1mm of nakazima] {\texttt{nakazima\_transform.py}};
 
-        \node[box, below=42mm of matrix] (sac) {Apply SAC and build columns\\(superimposed artificial curvature for a well-conditioned circle fit)};
+        \node[box, below=12mm of marciniak, xshift=2.4cm] (sac) {Apply SAC and build columns\\(superimposed artificial curvature for a well-conditioned circle fit)};
         \node[lbl, right=2mm of sac] {\texttt{sac\_preparation.py}};
 
         \node[box, below=of sac] (circle) {Fit circles per column $\to$ curvature signal $C_{pm}(t)$};
@@ -108,10 +110,10 @@ steps and differ only in how the background curvature is removed.
 
         \draw[arr] (load) -- (region);
         \draw[arr] (region) -- (matrix);
-        \draw[arr] (matrix.south) -| (marciniak.north);
-        \draw[arr] (matrix.south) -| (nakazima.north);
-        \draw[arr] (marciniak.south) |- (sac.west);
-        \draw[arr] (nakazima.south) |- (sac.east);
+        \draw[arr] (marciniak |- matrix.south) -- (marciniak.north);
+        \draw[arr] (nakazima |- matrix.south) -- (nakazima.north);
+        \draw[arr] (marciniak.south) -- (marciniak |- sac.north);
+        \draw[arr] (nakazima.south) -- (nakazima |- sac.north);
         \draw[arr] (sac) -- (circle);
         \draw[arr] (circle) -- (onset);
         \draw[arr] (onset) -- (limit);
