@@ -32,8 +32,11 @@ The required \software{VIC-3D} quantities are the measured surface positions and
 displacements $(X,Y,Z,U,V,W)$, the strain fields $(\varepsilon_1,
 \varepsilon_2)$, the crack or localisation location used to place the point
 matrix, and metadata such as punch diameter and sheet thickness. A provisional
-standalone workflow was created to test these data links and to explore the
-Nakazima transformation, but the detected onset remained sensitive to the
+standalone workflow was created to test these data links, implementing both
+the Marciniak and Nakazima branches of Section~\ref{sec:minstoughton_method}.
+Only the Nakazima branch could be assessed against experimental data, since
+the campaign of Chapter~\ref{chap:experimental_campaign} contains no
+Marciniak tests. For this branch, the detected onset remained sensitive to the
 matrix dimensions, reference-frame choice, smoothing, and persistence
 definition. The final integration therefore still requires a validated
 parameter choice and a consistent treatment of decimated \software{VIC-3D}
@@ -42,11 +45,12 @@ frame sequences.
 \subsection{Standalone Nakazima Workflow Used for Assessment}
 \label{sec:minstoughton_workflow_assessment}
 
-The standalone Nakazima implementation was used as an assessment workflow for
-the present report. It does not replace the existing ISO~12004-2 and
-Volk--Hora GUI tools, but it connects the mathematical method of
-Section~\ref{sec:minstoughton_method} to the available laboratory DIC exports.
-The workflow imports the \software{VIC-3D} reference coordinates, displacement
+This section describes the Nakazima branch of the standalone workflow, used
+as an assessment workflow for the present report since only Nakazima
+experimental data were available. It does not replace the existing
+ISO~12004-2 and Volk--Hora GUI tools, but it connects the mathematical method
+of Section~\ref{sec:minstoughton_method} to the available laboratory DIC
+exports. The workflow imports the \software{VIC-3D} reference coordinates, displacement
 fields, and principal strains, reconstructs the deformed surface coordinates,
 and reads the fixed specimen metadata needed for the Nakazima transformation.
 
