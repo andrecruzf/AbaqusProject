@@ -37,40 +37,6 @@ This makes simulation particularly useful for studying size effects and for
 generating consistent data for the evaluation of different FLC identification
 criteria.
 
-\section{Project Context}
-
-This work is part of the project \textit{Towards Robust Forming Limit Curve
-Identification: Experiments and Modeling}. The project outline starts from the
-need for reliable sheet metal formability data and from the observation that
-FLC identification is sensitive to test setup, specimen geometry, sheet
-thickness, material behaviour, and evaluation methodology. It combines high
-throughput testing, DIC strain measurements, identification criteria, and
-numerical simulation to make forming limit assessment more robust and
-reproducible.
-
-The broader project is organised around three tasks. The present report covers
-only the parts of those tasks that were available within this semester project:
-
-\begin{description}
-  \item[Task I] The experimental work is restricted to the AA5754 Nakazima
-  campaign. It analyses the available specimen widths, four sheet thicknesses,
-  four hemispherical punch diameters, and the rolling and transverse material
-  directions. Marciniak experiments, Punch in Punch experiments, additional
-  materials, and the automated specimen loading system are part of the broader
-  project scope but are not experimentally assessed here.
-  \item[Task II] The identification work uses the available FLC workflow to
-  evaluate ISO~12004-2 and Volk Hora results, with emphasis on the sensitivity
-  of the ISO fitting window for nonstandard punch diameters. The additional
-  criterion studied in detail is the Min and Stoughton curvature method. It is
-  assessed on the rolling direction, \SI{100}{\milli\meter} punch subset rather
-  than delivered as a fully calibrated production criterion.
-  \item[Task III] The numerical work develops a parameterised
-  \software{Abaqus/Explicit} workflow for Nakazima, Marciniak, and Punch in
-  Punch model generation, Euler execution, and post processing. The numerical
-  results in this report are limited to framework verification and scalar
-  mass scaling, mesh refinement, and friction checks. They are not yet a
-  completed predictive numerical FLC campaign.
-\end{description}
 
 \section{Objectives}
 
