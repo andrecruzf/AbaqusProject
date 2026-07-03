@@ -1492,15 +1492,52 @@ def _switch_user(new_user, new_host):
 
 
 def _verify_euler_connection(user, host):
+    """Return (ok, reason). BatchMode cannot ask for a password, so classify
+    the failure to tell VPN problems apart from missing key access."""
     try:
         r = subprocess.run(
-            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6",
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
              f"{user}@{host}", "echo ok"],
-            capture_output=True, text=True, timeout=20,
+            capture_output=True, text=True, timeout=15,
         )
-        return r.returncode == 0 and "ok" in r.stdout
+    except subprocess.TimeoutExpired:
+        return False, "timeout"
     except Exception:
-        return False
+        return False, "error"
+    if r.returncode == 0 and "ok" in r.stdout:
+        return True, ""
+    err = (r.stderr or "").lower()
+    if "permission denied" in err:
+        return False, "no-key"
+    if "timed out" in err or "no route" in err or "network is unreachable" in err:
+        return False, "vpn"
+    if "could not resolve" in err:
+        return False, "host"
+    return False, "error"
+
+
+_SSH_FAIL_HINTS = {
+    "no-key": "This machine's SSH key is not authorized for that user. "
+              "Password login is not possible from the app — set up key "
+              "access once in a terminal (see below), then retry.",
+    "vpn":    "Euler is unreachable — connect the ETH VPN and retry.",
+    "timeout": "Euler is unreachable — connect the ETH VPN and retry.",
+    "host":   "Hostname not found — check the Host field.",
+    "error":  "SSH failed — check VPN, hostname and key access.",
+}
+
+
+def _ssh_key_setup_help(user, host):
+    with st.expander("Set up key access for this user (one-time)"):
+        st.markdown(
+            "Run these in a terminal. The second command asks for the "
+            "Euler password once, after that the app connects without it."
+        )
+        st.code(
+            "[ -f ~/.ssh/id_ed25519 ] || ssh-keygen -t ed25519\n"
+            f"ssh-copy-id {user}@{host}",
+            language="bash",
+        )
 
 
 def _login_screen():
@@ -1533,10 +1570,13 @@ def _login_screen():
         if (connect or offline) and pick:
             verify_state = None
             if connect:
-                with st.spinner(f"Connecting {pick}@{host}…"):
-                    ok = _verify_euler_connection(pick, host.strip())
+                with st.spinner(f"Connecting {pick}@{host} (up to ~5 s)…"):
+                    ok, reason = _verify_euler_connection(pick, host.strip())
                 if not ok:
-                    st.error("SSH failed — check VPN and key access for this user.")
+                    st.error(_SSH_FAIL_HINTS.get(reason, _SSH_FAIL_HINTS["error"]))
+                    if reason == "no-key":
+                        _ssh_key_setup_help(pick, host.strip())
+                    st.caption("You can still **Continue offline** to browse local results.")
                     return
                 verify_state = "ok"
             st.session_state["euler_auto_login"] = bool(remember)
@@ -1570,13 +1610,15 @@ with _c_user:
         _c_verify, _c_switch = st.columns(2)
         if _c_verify.button("Verify", key="account_verify", width="stretch",
                             disabled=not _pick):
-            with st.spinner(f"ssh {_pick}@{_host_pick}…"):
-                _ok = _verify_euler_connection(_pick, _host_pick.strip())
+            with st.spinner(f"ssh {_pick}@{_host_pick} (up to ~5 s)…"):
+                _ok, _reason = _verify_euler_connection(_pick, _host_pick.strip())
             st.session_state["euler_verify_status"] = "ok" if _ok else "fail"
             if _ok:
                 st.success(f"Connected as {_pick}@{_host_pick}")
             else:
-                st.error("SSH failed — check VPN and key access for this user.")
+                st.error(_SSH_FAIL_HINTS.get(_reason, _SSH_FAIL_HINTS["error"]))
+                if _reason == "no-key":
+                    _ssh_key_setup_help(_pick, _host_pick.strip())
         if _c_switch.button("Switch user", type="primary", key="account_switch",
                             width="stretch", disabled=not _pick,
                             help="Re-points results directory, Euler paths and "
@@ -5845,8 +5887,12 @@ def _page_results():
             filter_args.append(f"--include={pattern}")
         filter_args.append("--exclude=*")
 
+        # Fail fast instead of hanging ~75 s when Euler is unreachable.
+        _ssh_opt = ["-e", "ssh -o BatchMode=yes -o ConnectTimeout=8"]
+
         if scope_rel_dirs is None:
-            sync_cmd = ["rsync", "-av", "--whole-file", "--prune-empty-dirs", *filter_args]
+            sync_cmd = ["rsync", "-av", *_ssh_opt,
+                        "--whole-file", "--prune-empty-dirs", *filter_args]
             if delete_stale:
                 sync_cmd.append("--delete")
             sync_cmd += [euler_src, results_dir + "/"]
@@ -5857,7 +5903,8 @@ def _page_results():
             # the remote shell, giving one connection for all directories.
             sources = " ".join(f"{remote_base}/./{rel}" for rel in scope_rel_dirs)
             sync_cmd = [
-                "rsync", "-av", "--whole-file", "--prune-empty-dirs", "--relative",
+                "rsync", "-av", *_ssh_opt,
+                "--whole-file", "--prune-empty-dirs", "--relative",
                 *filter_args, f"{remote_spec}:{sources}", results_dir + "/",
             ]
             scope_desc = f"{len(scope_rel_dirs)} director{'y' if len(scope_rel_dirs) == 1 else 'ies'}"
