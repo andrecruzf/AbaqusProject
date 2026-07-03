@@ -11,9 +11,10 @@ _mpl_dir = FEM_GUI_DIR / ".cache" / "matplotlib"
 _mpl_dir.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(_mpl_dir))
 
-import matplotlib.pyplot as plt
+import matplotlib
 import matplotlib.ticker as ticker
 import pandas as pd
+from matplotlib.figure import Figure
 
 
 FIG_WIDTH = 6.4
@@ -78,8 +79,10 @@ def method_marker(method: str) -> tuple[str, float, str]:
 
 
 def new_figure(title: str | None = None):
-    plt.rcParams["font.family"] = FONT
-    fig = plt.figure(figsize=[FIG_WIDTH, FIG_HEIGHT])
+    matplotlib.rcParams["font.family"] = FONT
+    # Plain Figure, not plt.figure(): pyplot would spawn a managed GUI window
+    # and is unsafe from the background task threads that render these plots.
+    fig = Figure(figsize=[FIG_WIDTH, FIG_HEIGHT])
     ax = fig.subplots()
     if title:
         ax.set_title(title, fontsize=16, fontweight="bold")
