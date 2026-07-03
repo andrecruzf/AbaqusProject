@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import collections
 import io
 import json
 import math
@@ -1464,17 +1465,14 @@ for k, v in defaults.items():
 # ─────────────────────────────────────────────────────────────────────────────
 st.title("⚙️ Abaqus Pipeline")
 
-page = st.radio(
-    "Page",
-    ["Submit Job", "Job Status", "Results"],
-    horizontal=True,
-    label_visibility="collapsed",
-)
+# Pages are plain functions handed to st.navigation (top bar) at the end of
+# this file. Navigation state lives in the URL, so refresh and back/forward
+# keep the current page.
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Submit Job
 # ══════════════════════════════════════════════════════════════════════════════
-if page == "Submit Job":
+def _page_submit_job():
 
     st.subheader("Submit Job")
 
@@ -1958,7 +1956,7 @@ if page == "Submit Job":
 # ══════════════════════════════════════════════════════════════════════════════
 # Job Status
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "Job Status":
+def _page_job_status():
 
     st.subheader("Euler Queue")
 
@@ -2104,7 +2102,19 @@ elif page == "Job Status":
 # ══════════════════════════════════════════════════════════════════════════════
 # Results
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "Results":
+def _page_results():
+
+    # Deep-linking: restore view/job/panel from the URL once per session, so a
+    # copied link (or an app restart with the same URL) reopens the same spot.
+    if not st.session_state.get("_results_qp_restored"):
+        st.session_state["_results_qp_restored"] = True
+        _qp = st.query_params
+        if _qp.get("view"):
+            st.session_state["results_view_mode"] = _qp["view"]
+        if _qp.get("job"):
+            st.session_state["results_single_job"] = _qp["job"]
+        if _qp.get("panel"):
+            st.session_state["results_panel_single"] = _qp["panel"]
 
     def _line_fit(x, y):
         n = len(x)
@@ -5491,15 +5501,24 @@ elif page == "Results":
             return None, None
         return spec, path
 
-    def _fetch_remote_job_index(spec, base):
-        """List remote job dirs with mtimes via one ssh find call.
+    _JOB_INDEX_MARKERS = ("global.csv", "forming_limits.csv")
 
-        Metadata only — nothing is downloaded. Newest first.
+    def _fmt_bytes(n):
+        for unit in ("B", "kB", "MB", "GB"):
+            if n < 1024 or unit == "GB":
+                return f"{n:.0f} {unit}" if unit in ("B", "kB") else f"{n:.1f} {unit}"
+            n /= 1024.0
+        return f"{n:.1f} GB"
+
+    def _fetch_remote_job_index(spec, base):
+        """List remote job dirs via one ssh find call — metadata only.
+
+        Returns [(rel_dir, newest_marker_mtime, total_bytes), ...] newest
+        first. total_bytes counts every file in the dir (all profiles), so the
+        preview size is an upper bound before profile filtering.
         """
         find_cmd = (
-            f"find {base} -mindepth 2 -maxdepth 3 -type f "
-            "\\( -name global.csv -o -name forming_limits.csv \\) "
-            "-printf '%T@\\t%h\\n'"
+            f"find {base} -mindepth 2 -maxdepth 3 -type f -printf '%T@\\t%s\\t%P\\n'"
         )
         result = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", spec, find_cmd],
@@ -5507,21 +5526,45 @@ elif page == "Results":
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip() or "ssh find failed")
-        newest = {}
+        newest, sizes, job_rel_dirs = {}, {}, set()
         for line in result.stdout.splitlines():
-            ts_str, _, path = line.partition("\t")
-            if not path:
+            parts = line.split("\t", 2)
+            if len(parts) != 3:
                 continue
             try:
-                ts = float(ts_str)
+                ts = float(parts[0])
+                size = int(parts[1])
             except ValueError:
                 continue
-            rel = os.path.relpath(path, base)
-            if rel.startswith(".."):
+            rel_dir, _, fname = parts[2].rpartition("/")
+            if not rel_dir:
                 continue
-            if ts > newest.get(rel, 0.0):
-                newest[rel] = ts
-        return sorted(newest.items(), key=lambda kv: kv[1], reverse=True)
+            sizes[rel_dir] = sizes.get(rel_dir, 0) + size
+            if fname in _JOB_INDEX_MARKERS:
+                job_rel_dirs.add(rel_dir)
+                if ts > newest.get(rel_dir, 0.0):
+                    newest[rel_dir] = ts
+        return sorted(
+            ((rel, newest[rel], sizes.get(rel, 0)) for rel in job_rel_dirs),
+            key=lambda item: item[1], reverse=True,
+        )
+
+    _LAST_SYNC_PATH = os.path.join(PROJECT_DIR, ".streamlit", "last_sync.json")
+
+    def _read_last_sync():
+        try:
+            with open(_LAST_SYNC_PATH, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (OSError, ValueError):
+            return None
+
+    def _write_last_sync(info):
+        try:
+            os.makedirs(os.path.dirname(_LAST_SYNC_PATH), exist_ok=True)
+            with open(_LAST_SYNC_PATH, "w", encoding="utf-8") as fh:
+                json.dump(info, fh)
+        except OSError:
+            pass
 
     @st.fragment
     def _euler_sync_controls():
@@ -5583,15 +5626,21 @@ elif page == "Results":
                     scope_problem = "List remote jobs first — one ssh call, nothing is downloaded."
 
         if sync_scope == "Latest jobs only" and remote_index and not scope_problem:
-            scope_rel_dirs = [rel for rel, _ts in remote_index[1][:int(n_latest)]]
+            scope_rel_dirs = [rel for rel, _ts, _sz in remote_index[1][:int(n_latest)]]
             if not scope_rel_dirs:
                 scope_problem = "No job directories found on Euler."
 
         elif sync_scope == "Selected jobs only" and remote_index and not scope_problem:
             rel_by_label = {}
-            for rel, ts in remote_index[1]:
+            for rel, ts, sz in remote_index[1]:
                 stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
-                rel_by_label[f"{rel}   ({stamp})"] = rel
+                rel_by_label[f"{rel}   ({stamp} · {_fmt_bytes(sz)})"] = rel
+            # Drop stale selections whose labels changed with a fresh listing.
+            _ms_key = "results_sync_selected_jobs"
+            if st.session_state.get(_ms_key):
+                st.session_state[_ms_key] = [
+                    v for v in st.session_state[_ms_key] if v in rel_by_label
+                ]
             chosen = st.multiselect(
                 "Remote jobs to pull",
                 list(rel_by_label.keys()),
@@ -5620,15 +5669,31 @@ elif page == "Results":
                     scope_problem = ("No current selection — open a job or an FLC source "
                                      "below first, then sync it here.")
 
+        def _scope_size_bytes(rel_dirs):
+            """Upper-bound size from the remote index (all file types)."""
+            if not remote_index:
+                return None
+            targets = set(rel_dirs)
+            total = 0
+            for rel, _ts, sz in remote_index[1]:
+                if rel in targets or rel.split("/", 1)[0] in targets:
+                    total += sz
+            return total
+
         if scope_problem:
             st.caption(f"⚠️ {scope_problem}")
         elif scope_rel_dirs is None:
             st.caption(f"Full mirror of `{euler_src}` → `{results_dir}` · {sync_profile}")
         else:
             n_dirs = len(scope_rel_dirs)
+            size_est = _scope_size_bytes(scope_rel_dirs)
+            size_txt = (
+                f" · ≤ {_fmt_bytes(size_est)} before profile filtering"
+                if size_est else ""
+            )
             st.caption(
                 f"Will pull {n_dirs} director{'y' if n_dirs == 1 else 'ies'} "
-                f"→ `{results_dir}` · {sync_profile}"
+                f"→ `{results_dir}` · {sync_profile}{size_txt}"
             )
             with st.expander("Directories to pull"):
                 st.code("\n".join(scope_rel_dirs))
@@ -5650,6 +5715,12 @@ elif page == "Results":
                 key="results_sync_delete_stale",
                 help="Only offered for full syncs so a scoped pull can never "
                      "delete other local jobs.",
+            )
+
+        _last = _read_last_sync()
+        if _last:
+            st.caption(
+                f"Last sync: {_last.get('when', '?')} · {_last.get('desc', '')}"
             )
 
         if not do_sync:
@@ -5678,25 +5749,49 @@ elif page == "Results":
             ]
             scope_desc = f"{len(scope_rel_dirs)} director{'y' if len(scope_rel_dirs) == 1 else 'ies'}"
 
-        with st.spinner(f"Syncing from Euler — {scope_desc}, {sync_profile}…"):
-            result = subprocess.run(sync_cmd, capture_output=True, text=True)
+        # Stream rsync output into a live status box, so long syncs show
+        # progress (current file, running count) instead of a frozen spinner.
+        _skip_prefixes = ("sending ", "receiving ", "sent ", "total ", "building ")
+        n_files = 0
+        with st.status(f"Syncing from Euler — {scope_desc}, {sync_profile}",
+                       expanded=False) as status:
+            # stderr is merged into stdout so a flood of errors cannot fill the
+            # stderr pipe and deadlock the stdout read loop.
+            proc = subprocess.Popen(
+                sync_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+            )
+            tail = collections.deque(maxlen=30)
+            for line in proc.stdout:
+                line = line.rstrip()
+                if not line:
+                    continue
+                tail.append(line)
+                if line.endswith("/") or line.startswith(_skip_prefixes):
+                    continue
+                n_files += 1
+                if n_files % 5 == 1:
+                    status.update(
+                        label=f"Syncing — {n_files} files · {line[-70:]}"
+                    )
+            rc = proc.wait()
+            if rc != 0:
+                status.update(label="Sync failed", state="error")
+                st.error("rsync failed")
+                if tail:
+                    st.code("\n".join(tail))
+                return
+            status.update(
+                label=f"Sync complete — {n_files} files updated", state="complete"
+            )
 
-        if result.returncode != 0:
-            st.error(result.stderr.strip() or "rsync failed")
-            if result.stdout.strip():
-                with st.expander("rsync output"):
-                    st.code(result.stdout[-3000:])
-            return
-
-        n_files = sum(
-            1 for line in result.stdout.splitlines()
-            if line and not line.endswith("/")
-            and not line.startswith(("sending ", "receiving ", "sent ", "total ", "building "))
-        )
         _invalidate_results_caches()
-        st.session_state["_results_last_sync_toast"] = (
-            f"Sync complete — {n_files} files updated ({scope_desc}, {sync_profile})"
-        )
+        desc = f"{n_files} files · {scope_desc} · {sync_profile}"
+        _write_last_sync({
+            "when": time.strftime("%Y-%m-%d %H:%M"),
+            "desc": desc,
+        })
+        st.session_state["_results_last_sync_toast"] = f"Sync complete — {desc}"
         st.rerun(scope="app")
 
     _euler_sync_controls()
@@ -5737,6 +5832,8 @@ elif page == "Results":
         default=st.session_state["results_view_mode"],
         key="results_view_mode",
     )
+    if view_mode and st.query_params.get("view") != view_mode:
+        st.query_params["view"] = view_mode
 
     if job_dirs:
         _sort_col, _ = st.columns([3, 5])
@@ -5797,6 +5894,9 @@ elif page == "Results":
             sections,
             key=panel_key,
         )
+        if (panel and panel_state_key == "results_panel_single"
+                and st.query_params.get("panel") != panel):
+            st.query_params["panel"] = panel
 
         if panel == "Force-Disp.":
             fig_fd = _figure_memo(
@@ -6097,12 +6197,128 @@ elif page == "Results":
     # ══════════════════════════════════════════════════════════════════════════
     if view_mode == "Single Job":
 
+        @st.cache_data(show_spinner=False)
+        def _job_table_df(job_items, token):
+            """Overview table: one row per job with validity and media flags."""
+            rows = []
+            for name, path in job_items:
+                ft, valid = "", ""
+                fl = os.path.join(path, "forming_limits.csv")
+                if os.path.exists(fl):
+                    try:
+                        df = pd.read_csv(fl)
+                        r = df[df["method"] == "fracture"]
+                        if not r.empty:
+                            ft = str(r.iloc[0].get("fracture_type", "") or "")
+                            valid = "✓" if ft == "dome" else "✗"
+                    except Exception:
+                        pass
+                try:
+                    has_movies = any(f.endswith(".webm") for f in os.listdir(path))
+                except OSError:
+                    has_movies = False
+                rows.append({
+                    "Job": name,
+                    "Modified": time.strftime(
+                        "%Y-%m-%d %H:%M", time.localtime(_job_mtime(path))),
+                    "Fracture": ft or "—",
+                    "Valid": valid or "—",
+                    "Movies": "🎬" if has_movies else "",
+                })
+            return pd.DataFrame(rows)
+
+        def _job_badges(job_dir):
+            """Validity chips: fracture zone, quasi-static check, stored V&H."""
+            badges = []
+            _u3, ft = _fracture_u3(job_dir)
+            if ft:
+                badges.append(
+                    ":green-badge[dome fracture]" if ft == "dome"
+                    else f":red-badge[⚠ {ft} fracture]"
+                )
+            for fname in ("global.csv", "energy_data.csv"):
+                fp = os.path.join(job_dir, fname)
+                if not os.path.exists(fp):
+                    continue
+                try:
+                    df = _load_csv(fp)
+                except Exception:
+                    break
+                if "ALLKE" not in df.columns or "ALLIE" not in df.columns:
+                    continue
+                d = df[df["ALLIE"] > 0]
+                d = d.iloc[max(1, int(len(d) * 0.02)):]
+                if not d.empty:
+                    peak = float((d["ALLKE"] / d["ALLIE"]).max())
+                    badges.append(
+                        f":green-badge[KE/IE {peak:.3f}]" if peak <= 0.05
+                        else f":orange-badge[KE/IE {peak:.3f} > 5%]"
+                    )
+                break
+            fl = os.path.join(job_dir, "forming_limits.csv")
+            if os.path.exists(fl):
+                try:
+                    df = _load_csv(fl)
+                    if "method" in df.columns and (df["method"] == "volk_hora").any():
+                        badges.append(":blue-badge[V&H stored]")
+                except Exception:
+                    pass
+            return badges
+
         @st.fragment
         def _single_job_view():
-            sel = _persisted_choice("Job", list(job_dirs.keys()), "results_single_job")
+            job_options = list(job_dirs.keys())
+
+            # Optional sortable table browser. It sits above the selectbox so a
+            # row click can still set the selectbox state in the same run.
+            if st.toggle(
+                "Browse jobs as table",
+                key="results_job_table_toggle",
+                help="Sortable overview with modification date, fracture validity "
+                     "and movie availability. Click a row to open the job.",
+            ):
+                tbl = _job_table_df(
+                    tuple(sorted(job_dirs.items())),
+                    st.session_state.get("results_scan_token", 0),
+                )
+                ev = st.dataframe(
+                    tbl, use_container_width=True, hide_index=True, height=300,
+                    on_select="rerun", selection_mode="single-row",
+                    key="results_job_table",
+                )
+                rows = ev.selection.rows if ev is not None else []
+                if rows:
+                    picked = str(tbl.iloc[rows[0]]["Job"])
+                    # Apply only when the row pick changed, so a stale table
+                    # selection cannot fight the prev/next arrows.
+                    if picked in job_dirs and \
+                            st.session_state.get("_job_table_last_pick") != picked:
+                        st.session_state["_job_table_last_pick"] = picked
+                        st.session_state["results_single_job"] = picked
+
+            def _shift_job(delta):
+                cur = st.session_state.get("results_single_job")
+                if cur in job_options:
+                    idx = (job_options.index(cur) + delta) % len(job_options)
+                    st.session_state["results_single_job"] = job_options[idx]
+
+            c_prev, c_sel, c_next = st.columns([0.6, 8, 0.6], vertical_alignment="bottom")
+            c_prev.button("◀", key="results_job_prev", width="stretch",
+                          help="Previous job", on_click=_shift_job, args=(-1,))
+            c_next.button("▶", key="results_job_next", width="stretch",
+                          help="Next job", on_click=_shift_job, args=(1,))
+            with c_sel:
+                sel = _persisted_choice("Job", job_options, "results_single_job")
             if sel is None:
                 return
             job_dir = job_dirs[sel]
+            if st.query_params.get("job") != sel:
+                st.query_params["job"] = sel
+
+            badges = _job_badges(job_dir)
+            if badges:
+                st.markdown(" ".join(badges))
+
             # Remember the enclosing top-level folder for scoped Euler sync.
             _rel = os.path.relpath(os.path.abspath(job_dir), os.path.abspath(results_dir))
             if not _rel.startswith(".."):
@@ -7019,3 +7235,20 @@ elif page == "Results":
                     f"Δthin = max thinning deviation from reference "
                     f"(mr={int(ref_mr)}, dt={ref_ms:.0e}).  ○ = partial run."
                 )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Navigation (top bar)
+# ══════════════════════════════════════════════════════════════════════════════
+_nav = st.navigation(
+    [
+        st.Page(_page_submit_job, title="Submit Job", icon="🚀",
+                url_path="submit", default=True),
+        st.Page(_page_job_status, title="Job Status", icon="📊",
+                url_path="status"),
+        st.Page(_page_results, title="Results", icon="📈",
+                url_path="results"),
+    ],
+    position="top",
+)
+_nav.run()
