@@ -1423,6 +1423,7 @@ def _load_user_settings():
         "username": current,
         "host": data.get("host") or EULER_HOST,
         "known_users": users,
+        "auto_login": bool(data.get("auto_login")),
     }
 
 
@@ -1434,6 +1435,7 @@ def _save_user_settings():
                 "username": st.session_state["euler_user"],
                 "host": st.session_state["euler_host"],
                 "known_users": st.session_state["euler_known_users"],
+                "auto_login": bool(st.session_state.get("euler_auto_login")),
             }, fh, indent=2)
             fh.write("\n")
     except OSError:
@@ -1445,6 +1447,9 @@ if "euler_user" not in st.session_state:
     st.session_state["euler_user"] = _us["username"]
     st.session_state["euler_host"] = _us["host"]
     st.session_state["euler_known_users"] = _us["known_users"]
+    st.session_state["euler_auto_login"] = _us["auto_login"]
+    # "Remember me" skips the login screen for the saved user.
+    st.session_state.setdefault("euler_logged_in", _us["auto_login"])
 
 
 def _current_user():
@@ -1498,6 +1503,54 @@ def _verify_euler_connection(user, host):
         return False
 
 
+def _login_screen():
+    _, mid, _ = st.columns([1, 1.3, 1])
+    with mid:
+        st.title("⚙️ Abaqus Pipeline")
+        st.caption("Sign in to ETH Euler")
+        known = st.session_state["euler_known_users"]
+        pick = st.selectbox(
+            "ETH user",
+            known + ["New user…"],
+            index=known.index(_current_user()),
+        )
+        if pick == "New user…":
+            pick = st.text_input("New ETH username", key="login_new_user").strip()
+        host = st.text_input("Host", value=_current_host(), key="login_host")
+        remember = st.checkbox(
+            "Remember me — skip this screen next time",
+            value=bool(st.session_state.get("euler_auto_login")),
+            key="login_remember",
+        )
+        c_go, c_off = st.columns(2)
+        connect = c_go.button("Connect", type="primary", width="stretch",
+                              disabled=not pick)
+        offline = c_off.button("Continue offline", width="stretch",
+                               disabled=not pick,
+                               help="Skip the SSH check (e.g. no VPN). Local "
+                                    "results work; sync and job monitoring "
+                                    "need a connection.")
+        if (connect or offline) and pick:
+            verify_state = None
+            if connect:
+                with st.spinner(f"Connecting {pick}@{host}…"):
+                    ok = _verify_euler_connection(pick, host.strip())
+                if not ok:
+                    st.error("SSH failed — check VPN and key access for this user.")
+                    return
+                verify_state = "ok"
+            st.session_state["euler_auto_login"] = bool(remember)
+            _switch_user(pick, host.strip() or EULER_HOST)
+            st.session_state["euler_verify_status"] = verify_state
+            st.session_state["euler_logged_in"] = True
+            st.rerun()
+
+
+if not st.session_state.get("euler_logged_in"):
+    _login_screen()
+    st.stop()
+
+
 _c_title, _c_user = st.columns([4, 1.3], vertical_alignment="center")
 with _c_title:
     st.title("⚙️ Abaqus Pipeline")
@@ -1530,6 +1583,13 @@ with _c_user:
                                  "job monitoring to this user."):
             _switch_user(_pick, _host_pick.strip() or EULER_HOST)
             st.session_state["euler_verify_status"] = None
+            st.rerun()
+        if st.button("Log out", key="account_logout", width="stretch",
+                     help="Back to the sign-in screen; disables auto sign-in."):
+            st.session_state["euler_logged_in"] = False
+            st.session_state["euler_auto_login"] = False
+            st.session_state["euler_verify_status"] = None
+            _save_user_settings()
             st.rerun()
         if _current_user() != EULER_USER:
             st.caption(f"Local mirror: `{os.path.basename(_default_results_dir())}`")

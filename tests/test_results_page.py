@@ -24,6 +24,7 @@ RESULTS_PAGE_HASH = calc_md5("results")
 
 def render_results(seed=None):
     at = AppTest.from_file(APP, default_timeout=180)
+    at.session_state["euler_logged_in"] = True
     if seed:
         for k, v in seed.items():
             at.session_state[k] = v
@@ -31,6 +32,19 @@ def render_results(seed=None):
     at.run()
     assert not at.exception, f"results page: {[e.value for e in at.exception]}"
     return at
+
+
+def test_login_gate():
+    """Without a session login (and no auto-login), only the sign-in screen shows."""
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.session_state["euler_logged_in"] = False
+    at._page_hash = RESULTS_PAGE_HASH
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    labels = [b.label for b in at.button]
+    assert "Connect" in labels and "Continue offline" in labels, labels
+    assert not [s for s in at.selectbox if s.key == "results_sync_scope"], \
+        "app content leaked past the login gate"
 
 
 def job_options():
@@ -105,6 +119,8 @@ def test_full_scope_shows_delete_stale():
 
 
 if __name__ == "__main__":
+    test_login_gate()
+    print("0. login gate OK")
     test_single_job_view_loads()
     print("1. single job view OK")
     test_each_panel_renders()
