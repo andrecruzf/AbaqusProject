@@ -65,25 +65,46 @@ class ResultsBrowserPage(BasePage):
     def _build_controls(self) -> None:
         controls = ctk.CTkFrame(self, **self.theme.frame_kwargs())
         controls.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
-        controls.grid_columnconfigure(3, weight=1)
-        ctk.CTkLabel(controls, text="Results dir").grid(row=0, column=0, sticky="w", padx=(12, 4), pady=10)
-        ctk.CTkEntry(controls, textvariable=self.results_dir_var, width=280).grid(
-            row=0, column=1, sticky="w", padx=4, pady=10
+        controls.grid_columnconfigure(2, weight=1)
+        ctk.CTkLabel(controls, text="Results dir").grid(row=0, column=0, sticky="w", padx=(12, 4), pady=(8, 2))
+        ctk.CTkEntry(controls, textvariable=self.results_dir_var, width=340).grid(
+            row=0, column=1, sticky="w", padx=4, pady=(8, 2)
         )
         ctk.CTkButton(controls, text="Browse", width=70, command=self.browse_dir, **self.theme.button_kwargs()).grid(
-            row=0, column=2, padx=4, pady=10
+            row=0, column=2, sticky="w", padx=4, pady=(8, 2)
         )
-        self.job_strip = ctk.CTkScrollableFrame(
-            controls, orientation="horizontal", height=40, fg_color=self.theme.colors.panel_alt
-        )
-        self.job_strip.grid(row=0, column=3, sticky="ew", padx=8, pady=6)
         ctk.CTkButton(
             controls, text="Sync results", width=100, command=self.sync_results, **self.theme.button_kwargs(primary=True)
-        ).grid(row=0, column=4, padx=(4, 4), pady=10)
+        ).grid(row=0, column=3, padx=4, pady=(8, 2))
         self.sync_status_label = ctk.CTkLabel(
             controls, textvariable=self.sync_status_var, width=60, text_color=self.theme.colors.text_muted
         )
-        self.sync_status_label.grid(row=0, column=5, sticky="w", padx=(0, 12), pady=10)
+        self.sync_status_label.grid(row=0, column=4, sticky="w", padx=(0, 12), pady=(8, 2))
+        self.job_strip = ctk.CTkScrollableFrame(
+            controls, orientation="horizontal", height=34, fg_color=self.theme.colors.panel_alt
+        )
+        self.job_strip.grid(row=1, column=0, columnspan=5, sticky="ew", padx=10, pady=(2, 8))
+        # CTk only maps Shift+wheel to horizontal scroll; make the plain wheel roll the strip too.
+        canvas = getattr(self.job_strip, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.bind("<MouseWheel>", self._on_strip_wheel, add="+")
+
+    def _on_strip_wheel(self, event) -> None:
+        canvas = getattr(self.job_strip, "_parent_canvas", None)
+        if canvas is not None and canvas.xview() != (0.0, 1.0):
+            canvas.xview("scroll", -event.delta, "units")
+
+    def _scroll_strip_to_selection(self) -> None:
+        button = self.job_buttons.get(self.selected_job or "")
+        canvas = getattr(self.job_strip, "_parent_canvas", None)
+        if button is None or canvas is None:
+            return
+        self.job_strip.update_idletasks()
+        bbox = canvas.bbox("all")
+        if not bbox or bbox[2] <= 0:
+            return
+        fraction = max(0.0, (button.winfo_x() - 40) / bbox[2])
+        canvas.xview_moveto(fraction)
 
     def _build_viewer(self) -> None:
         main = ctk.CTkFrame(self, fg_color="transparent")
@@ -131,7 +152,7 @@ class ResultsBrowserPage(BasePage):
         )
         self.video_frame_label.grid(row=0, column=2, sticky="e", padx=(10, 0))
 
-        self.mesh_column = ctk.CTkScrollableFrame(media, width=250, height=300, **self.theme.frame_kwargs(alt=True))
+        self.mesh_column = ctk.CTkScrollableFrame(media, width=250, height=230, **self.theme.frame_kwargs(alt=True))
         self.mesh_column.grid(row=1, column=2, rowspan=2, sticky="nsew", padx=(4, 12), pady=(2, 10))
 
     def _movie_panel(self, master: ctk.CTkFrame, title: str, column: int) -> dict[str, ctk.CTkLabel]:
@@ -140,7 +161,7 @@ class ResultsBrowserPage(BasePage):
         panel.grid_columnconfigure(0, weight=1)
         heading = ctk.CTkLabel(panel, text=title, text_color=self.theme.colors.text_muted)
         heading.grid(row=0, column=0, sticky="w", padx=10, pady=(6, 0))
-        image_label = ctk.CTkLabel(panel, text="No movie", text_color=self.theme.colors.text_muted, height=260)
+        image_label = ctk.CTkLabel(panel, text="No movie", text_color=self.theme.colors.text_muted, height=200)
         image_label.grid(row=1, column=0, sticky="nsew", padx=10, pady=(2, 8))
         image_label.bind("<Double-Button-1>", lambda _e, t=title: self._open_panel_video(t))
         return {"heading": heading, "image": image_label}
@@ -262,17 +283,19 @@ class ResultsBrowserPage(BasePage):
             button = ctk.CTkButton(
                 self.job_strip,
                 text=Path(path).name,
-                height=26,
+                height=24,
                 width=0,
                 command=lambda n=name: self.select_job(n),
                 **self.theme.button_kwargs(),
             )
-            button.pack(side="left", padx=3, pady=2)
+            button.pack(side="left", padx=3, pady=1)
+            button.bind("<MouseWheel>", self._on_strip_wheel)
             ToolTip(button, name)
             self.job_buttons[name] = button
         if self.selected_job not in self.jobs:
             self.selected_job = next(iter(self.jobs))
         self.select_job(self.selected_job)
+        self.after(80, self._scroll_strip_to_selection)
 
     def select_job(self, name: str) -> None:
         if name not in self.jobs:
@@ -387,7 +410,7 @@ class ResultsBrowserPage(BasePage):
             if image is None:
                 panel["image"].configure(image=None, text=f"Could not decode {path.name}")
                 continue
-            thumb = self._ctk_image(image, max_width=520, max_height=280)
+            thumb = self._ctk_image(image, max_width=480, max_height=200)
             self.video_frame_images.append(thumb)
             panel["image"].configure(image=thumb, text="")
 
@@ -428,14 +451,19 @@ class ResultsBrowserPage(BasePage):
                 image = Image.open(png).copy()
             except Exception:
                 continue
-            thumb = self._ctk_image(image, max_width=230, max_height=180)
+            thumb = self._ctk_image(image, max_width=220, max_height=130)
             self.media_images.append(thumb)
             label = ctk.CTkLabel(self.mesh_column, image=thumb, text="")
             label.pack(anchor="w", padx=4, pady=(4, 0))
             label.bind("<Double-Button-1>", lambda _e, p=png: self.app.open_path(p))
-            ctk.CTkLabel(self.mesh_column, text=png.name, text_color=self.theme.colors.text_muted).pack(
-                anchor="w", padx=6, pady=(0, 4)
-            )
+            ctk.CTkLabel(
+                self.mesh_column,
+                text=png.name,
+                text_color=self.theme.colors.text_muted,
+                wraplength=210,
+                justify="left",
+                font=ctk.CTkFont(size=10),
+            ).pack(anchor="w", padx=6, pady=(0, 4))
 
     @staticmethod
     def _scaled_size(image: Image.Image, max_width: int, max_height: int) -> tuple[int, int]:

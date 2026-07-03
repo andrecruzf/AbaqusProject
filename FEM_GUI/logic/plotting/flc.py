@@ -135,7 +135,10 @@ def fld_for_jobs(
     if not all_e1:
         return None, "No usable forming-limit data found"
     apply_fld_axes(ax, all_e1, all_e2, "Forming Limit Diagram", legend_items=max(legend_items, 1))
-    bottom_legend(fig, frameon=True, ncol=4)
+    # In-axes legend: the bottom figure legend needs vertical room the embedded
+    # viewer does not have.
+    ax.legend(loc="best", fontsize=8, frameon=True, edgecolor="k", fancybox=False)
+    fig.subplots_adjust(bottom=0.12)
     return fig, ""
 
 

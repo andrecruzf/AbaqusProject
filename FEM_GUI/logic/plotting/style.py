@@ -85,7 +85,7 @@ def new_figure(title: str | None = None):
     fig = Figure(figsize=[FIG_WIDTH, FIG_HEIGHT])
     ax = fig.subplots()
     if title:
-        ax.set_title(title, fontsize=16, fontweight="bold")
+        ax.set_title(title, fontsize=12, fontweight="bold")
     return fig, ax
 
 
@@ -94,13 +94,13 @@ def apply_standard_axes(ax, xlabel: str, ylabel: str, title: str | None = None, 
     ax.set_xlabel(xlabel, fontsize=10)
     ax.set_ylabel(ylabel, fontsize=10)
     if title:
-        ax.set_title(title, fontsize=16, fontweight="bold")
+        ax.set_title(title, fontsize=12, fontweight="bold")
     if zero_x:
         ax.axvline(0, linewidth=0.8, color="silver", zorder=0)
     if zero_y:
         ax.axhline(0, linewidth=0.8, color="silver", zorder=0)
     ax.grid(**GRID_STYLE)
-    ax.figure.subplots_adjust(bottom=0.15, left=0.13, right=0.96, top=0.88)
+    ax.figure.subplots_adjust(bottom=0.15, left=0.13, right=0.96, top=0.86)
 
 
 def apply_fld_axes(ax, e1_values, e2_values, title: str = "Forming Limit Curve", legend_items: int = 4):
@@ -119,14 +119,14 @@ def apply_fld_axes(ax, e1_values, e2_values, title: str = "Forming Limit Curve",
     ax.set_ylim(bottom=0, top=round_up(e1_max + 0.025, 0.05))
     ax.set_xlim(left=round_down(e2_min - 0.05, 0.05), right=round_up(e2_max + 0.025, 0.05))
     ax.grid(**GRID_STYLE)
-    ax.set_title(title, fontsize=16, fontweight="bold")
+    ax.set_title(title, fontsize=12, fontweight="bold")
     adjust_fld_margins(ax.figure, legend_items)
 
 
 def adjust_fld_margins(fig, legend_items: int) -> None:
     lines_legend = round_up(max(1, legend_items) / 4, 1)
     marg_min = 0.14
-    h_title = 0.30
+    h_title = 0.36
     h_legend_line = 0.21
     h_xticklabel = 0.25
     h_xlabel = 0.19

@@ -22,23 +22,30 @@ class PlotViewer(ctk.CTkFrame):
     def __init__(self, master, theme) -> None:
         super().__init__(master, **theme.frame_kwargs())
         self.theme = theme
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.current_figure = None
         self.canvas: FigureCanvasTkAgg | None = None
         self.toolbar: NavigationToolbar2Tk | None = None
 
-        actions = ctk.CTkFrame(self, fg_color="transparent")
-        actions.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 0))
-        ctk.CTkButton(actions, text="Export", width=82, command=self.export, **theme.button_kwargs()).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(actions, text="Copy", width=82, command=self.copy_snapshot, **theme.button_kwargs()).pack(side="left", padx=6)
-        self.status = ctk.CTkLabel(actions, text="No plot loaded", text_color=theme.colors.text_muted)
-        self.status.pack(side="left", padx=10)
-
         self.canvas_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.canvas_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=8)
+        self.canvas_frame.grid(row=0, column=0, sticky="nsew", padx=8, pady=(8, 0))
         self.canvas_frame.grid_rowconfigure(0, weight=1)
         self.canvas_frame.grid_columnconfigure(0, weight=1)
+
+        # Single bottom row: navigation toolbar (per figure) + status + actions.
+        self.bottom = ctk.CTkFrame(self, fg_color="transparent")
+        self.bottom.grid(row=1, column=0, sticky="ew", padx=8, pady=(2, 6))
+        self.toolbar_slot = ctk.CTkFrame(self.bottom, fg_color="transparent")
+        self.toolbar_slot.pack(side="left")
+        ctk.CTkButton(self.bottom, text="Copy", width=70, command=self.copy_snapshot, **theme.button_kwargs()).pack(
+            side="right", padx=(6, 0)
+        )
+        ctk.CTkButton(self.bottom, text="Export", width=70, command=self.export, **theme.button_kwargs()).pack(
+            side="right", padx=6
+        )
+        self.status = ctk.CTkLabel(self.bottom, text="No plot loaded", text_color=theme.colors.text_muted)
+        self.status.pack(side="right", padx=10)
         self.show_message("No plot selected")
 
     def show_message(self, message: str) -> None:
@@ -53,13 +60,26 @@ class PlotViewer(ctk.CTkFrame):
         self.current_figure = fig
         self.canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
         self.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
-        toolbar_frame = ctk.CTkFrame(self.canvas_frame, fg_color="transparent")
-        toolbar_frame.grid(row=1, column=0, sticky="ew")
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame, pack_toolbar=False)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self.toolbar_slot, pack_toolbar=False)
         self.toolbar.update()
-        self.toolbar.pack(side="left", fill="x")
+        self.toolbar.pack(side="left")
         self.canvas.draw_idle()
         self.status.configure(text=title or "Plot loaded")
+
+        # Figure margins are fractions tuned for full-size figures; on a small
+        # embedded canvas the title area shrinks below the title height. Reserve
+        # an absolute ~30 px at the top once the widget knows its real size.
+        widget = self.canvas.get_tk_widget()
+
+        def _fit_title() -> None:
+            if self.canvas is None or self.current_figure is not fig:
+                return
+            height = widget.winfo_height()
+            if height > 80 and fig.get_axes():
+                fig.subplots_adjust(top=max(0.7, 1.0 - 30.0 / height))
+                self.canvas.draw_idle()
+
+        widget.after(80, _fit_title)
 
     def export(self) -> None:
         if self.current_figure is None:
@@ -97,6 +117,8 @@ class PlotViewer(ctk.CTkFrame):
     def clear_canvas(self) -> None:
         for child in self.canvas_frame.winfo_children():
             child.destroy()
+        if self.toolbar is not None:
+            self.toolbar.destroy()
         self.current_figure = None
         self.canvas = None
         self.toolbar = None
