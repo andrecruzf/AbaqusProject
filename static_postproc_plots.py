@@ -473,6 +473,84 @@ def _volk_hora_fit(t: list[float], rate: list[float]):
     }
 
 
+def _dic_instable_index(t_values: list[float], t_cross: float) -> int | None:
+    if not math.isfinite(t_cross):
+        return None
+    upper = next((idx for idx, value in enumerate(t_values) if value > t_cross), None)
+    if upper is None or upper <= 0:
+        return None
+    dt = t_values[upper] - t_values[upper - 1]
+    if dt <= 0:
+        return None
+    threshold = t_cross + 0.5 * dt
+    index = None
+    for idx, value in enumerate(t_values):
+        if value < threshold:
+            index = idx
+    if index is None or index <= 0:
+        return None
+    return index
+
+
+def _stored_vh_settings(job_dir: str) -> dict[str, object]:
+    """User-saved V&H fit settings from the app's Overwrite button.
+
+    The Streamlit app persists the adjusted fit windows into the volk_hora row
+    of forming_limits.csv; when present they override the automatic fit so the
+    batch PDF reproduces the user-approved fit.
+    """
+    rows = _read_rows(os.path.join(job_dir, "forming_limits.csv"))
+    for row in rows:
+        if str(row.get("method", "")).strip() != "volk_hora":
+            continue
+        stable = (_to_float(row.get("vh_stable_t0")), _to_float(row.get("vh_stable_t1")))
+        unstable = (_to_float(row.get("vh_unstable_t0")), _to_float(row.get("vh_unstable_t1")))
+        if not all(math.isfinite(v) for v in stable + unstable):
+            return {}
+        smoothing = _to_float(row.get("vh_smoothing_window"), 1.0)
+        return {
+            "stable_range": stable,
+            "unstable_range": unstable,
+            "smoothing_window": int(smoothing) if math.isfinite(smoothing) else 1,
+        }
+    return {}
+
+
+def _vh_fit_from_ranges(t: list[float], rate: list[float],
+                        stable_range: tuple[float, float],
+                        unstable_range: tuple[float, float]):
+    ts0, ts1 = stable_range
+    tu0, tu1 = unstable_range
+    min_stable = max(2, _cfg_int("vh_min_stable_points", 20))
+    min_unstable = max(2, _cfg_int("vh_min_unstable_points", 4))
+    stable_idx = [i for i in range(len(t)) if ts0 <= t[i] <= ts1]
+    unstable_idx = [i for i in range(len(t)) if tu0 <= t[i] <= tu1]
+    if len(stable_idx) < min_stable or len(unstable_idx) < min_unstable:
+        return None
+    stable_fit = _line_fit([t[i] for i in stable_idx], [rate[i] for i in stable_idx])
+    unstable_fit = _line_fit([t[i] for i in unstable_idx], [rate[i] for i in unstable_idx])
+    if not stable_fit or not unstable_fit:
+        return None
+    ss, si, _ = stable_fit
+    us, ui, _ = unstable_fit
+    denom = ss - us
+    if abs(denom) < 1e-20:
+        return None
+    t_cross = (ui - si) / denom
+    kcrit = _dic_instable_index(t, t_cross)
+    if kcrit is None or kcrit <= 0:
+        return None
+    return {
+        "t_cross": t_cross,
+        "kcrit": kcrit,
+        "kstable": kcrit - 1,
+        "stable": {"slope": ss, "intercept": si, "count": len(stable_idx), "mse": 0.0},
+        "unstable": {"slope": us, "intercept": ui, "count": len(unstable_idx), "mse": 0.0},
+        "t_fit_start": min(ts0, tu0),
+        "t_fit_end": max(ts1, tu1),
+    }
+
+
 def build_force_displacement_figure(job_dir: str, job_name: str | None = None):
     rows, _ = _read_csv_with_required(job_dir, ("global.csv", "punch_fd.csv"), ("U3_mm", "RF3_N"))
     if not rows:
@@ -601,13 +679,24 @@ def build_vh_figure(job_dir: str, job_name: str | None = None):
     fit = None
     used_rate = rate
     smoothing_used = 1
-    for window in (1, 5, 11, 21):
-        candidate = _moving_average(rate, window)
-        fit = _volk_hora_fit(t, candidate)
+    fit_saved = False
+    stored = _stored_vh_settings(job_dir)
+    if stored:
+        smoothing_used = max(1, int(stored.get("smoothing_window", 1)))
+        candidate = _moving_average(rate, smoothing_used)
+        fit = _vh_fit_from_ranges(t, candidate, stored["stable_range"], stored["unstable_range"])
         if fit is not None:
             used_rate = candidate
-            smoothing_used = window
-            break
+            fit_saved = True
+    if fit is None:
+        smoothing_used = 1
+        for window in (1, 5, 11, 21):
+            candidate = _moving_average(rate, window)
+            fit = _volk_hora_fit(t, candidate)
+            if fit is not None:
+                used_rate = candidate
+                smoothing_used = window
+                break
     _style_rc()
     fig, axes = plt.subplots(1, 2, figsize=(9.8, 4.2))
     fig.patch.set_facecolor("white")
@@ -624,8 +713,9 @@ def build_vh_figure(job_dir: str, job_name: str | None = None):
         ys = [stable["slope"] * tv + stable["intercept"] for tv in ts]
         tu = [fit["t_cross"], fit["t_fit_end"]]
         yu = [unstable["slope"] * tv + unstable["intercept"] for tv in tu]
-        ax.plot(ts, ys, color="#77AC30", linewidth=1.4, label="Stable fit")
-        ax.plot(tu, yu, color="#A2142F", linewidth=1.4, label="Unstable fit")
+        fit_suffix = " (saved)" if fit_saved else ""
+        ax.plot(ts, ys, color="#77AC30", linewidth=1.4, label="Stable fit" + fit_suffix)
+        ax.plot(tu, yu, color="#A2142F", linewidth=1.4, label="Unstable fit" + fit_suffix)
         z_ts = [max(zoom_start, fit["t_fit_start"]), max(zoom_start, fit["t_cross"])]
         z_tu = [max(zoom_start, fit["t_cross"]), fit["t_fit_end"]]
         if z_ts[1] > z_ts[0]:
