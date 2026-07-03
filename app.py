@@ -305,70 +305,8 @@ def _bm_mesh_zone_diagram_html():
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
-def _install_scroll_keeper():
-    st_components.html(
-        """
-<script>
-(function () {
-  const key = "abaqus_streamlit_scroll:" + window.parent.location.pathname;
-
-  function scrollTarget() {
-    const doc = window.parent.document;
-    const candidates = [
-      doc.querySelector('[data-testid="stAppViewContainer"]'),
-      doc.querySelector('section.main'),
-      doc.scrollingElement,
-      doc.documentElement
-    ].filter(Boolean);
-    for (const el of candidates) {
-      if (el.scrollHeight > el.clientHeight + 20) return el;
-    }
-    return window.parent;
-  }
-
-  function getY(target) {
-    if (target === window.parent) return window.parent.scrollY || 0;
-    return target.scrollTop || 0;
-  }
-
-  function setY(target, y) {
-    if (target === window.parent) window.parent.scrollTo(0, y);
-    else target.scrollTop = y;
-  }
-
-  const target = scrollTarget();
-  let last = Number(window.parent.sessionStorage.getItem(key) || "0");
-
-  function save() {
-    last = getY(target);
-    window.parent.sessionStorage.setItem(key, String(last));
-  }
-
-  function restore() {
-    const y = Number(window.parent.sessionStorage.getItem(key) || "0");
-    if (!Number.isFinite(y) || y <= 0) return;
-    setY(target, y);
-  }
-
-  target.addEventListener ? target.addEventListener("scroll", save, {passive: true}) :
-    window.parent.addEventListener("scroll", save, {passive: true});
-  window.parent.addEventListener("beforeunload", save);
-  window.parent.addEventListener("pagehide", save);
-  window.parent.document.addEventListener("visibilitychange", save);
-  window.parent.addEventListener("focus", restore);
-  window.parent.addEventListener("pageshow", restore);
-
-  [50, 150, 350, 700, 1200].forEach((delay) => {
-    window.setTimeout(restore, delay);
-  });
-})();
-</script>
-        """,
-        height=0,
-    )
-
-
-_install_scroll_keeper()
+# The old JS scroll-keeper was removed: fragments now stop full-page reruns,
+# and its focus-triggered restore caused stale upward scroll jumps.
 
 
 # ── Results page: shared constants & cached filesystem/CSV helpers ────────────
@@ -611,7 +549,6 @@ def _display_job_videos(job_dir):
         help="Movies are intentionally lazy-loaded because embedding them makes Streamlit reruns slow.",
     )
     if not load_movies:
-        st.caption("Movies are available locally but are not loaded. Enable this only when you need playback.")
         return
 
     if movie_file and cut_file:
@@ -1796,11 +1733,12 @@ def _page_submit_job():
 
     ccomp1, ccomp2 = st.columns(2)
     with ccomp1:
+        # No value= here: state is seeded above, and passing both triggers
+        # Streamlit's yellow "default value + Session State" warning in-app.
         solver_cpus = st.number_input(
             "Solver CPUs",
             min_value=1,
             max_value=64,
-            value=int(st.session_state["solver_cpus"]),
             step=1,
             key="solver_cpus",
             help="Used both for Abaqus/Explicit threads and SLURM cpus-per-task.",
@@ -1809,7 +1747,6 @@ def _page_submit_job():
             "Abaqus memory (%)",
             min_value=50,
             max_value=95,
-            value=int(st.session_state["abaqus_memory_percent"]),
             step=1,
             key="abaqus_memory_percent",
         )
@@ -1817,7 +1754,6 @@ def _page_submit_job():
         slurm_mem_per_cpu_gb = st.number_input(
             "SLURM memory per CPU (GB)",
             min_value=1.0,
-            value=float(st.session_state["slurm_mem_per_cpu_gb"]),
             step=1.0,
             key="slurm_mem_per_cpu_gb",
         )
@@ -1825,7 +1761,6 @@ def _page_submit_job():
             "SLURM wall time (h)",
             min_value=1,
             max_value=168,
-            value=int(st.session_state["slurm_time_hours"]),
             step=1,
             key="slurm_time_hours",
         )
@@ -5453,22 +5388,8 @@ def _page_results():
                 st.session_state[export_key] = {"target": target}
                 st.toast(f"Saved to {target}", icon="💾")
 
-    st.subheader("Results Viewer")
-
-    c_dir, c_src = st.columns([2, 3])
-    with c_dir:
-        results_dir = st.text_input(
-            "Local results directory",
-            value=os.path.join(PROJECT_DIR, "FLC_output"),
-            key="results_local_dir",
-        )
-    with c_src:
-        euler_src = st.text_input(
-            "Euler source path",
-            value=f"{EULER_USER}@{EULER_HOST}:/cluster/home/{EULER_USER}/AbaqusProject/FLC_output/",
-            key="results_euler_src",
-            help="Narrowing this to FLC_output avoids walking the whole remote AbaqusProject tree.",
-        )
+    # Sync UI (paths, scope, profile) lives in one collapsed expander further
+    # down; results_dir/euler_src are assigned there before anything uses them.
 
     core_csv_files = [
         "global.csv",
@@ -5794,7 +5715,26 @@ def _page_results():
         st.session_state["_results_last_sync_toast"] = f"Sync complete — {desc}"
         st.rerun(scope="app")
 
-    _euler_sync_controls()
+    _last_sync_info = _read_last_sync()
+    _sync_label = "🔄 Euler sync"
+    if _last_sync_info:
+        _sync_label += f" · last: {_last_sync_info.get('when', '?')}"
+    with st.expander(_sync_label, expanded=False):
+        c_dir, c_src = st.columns([2, 3])
+        with c_dir:
+            results_dir = st.text_input(
+                "Local results directory",
+                value=os.path.join(PROJECT_DIR, "FLC_output"),
+                key="results_local_dir",
+            )
+        with c_src:
+            euler_src = st.text_input(
+                "Euler source path",
+                value=f"{EULER_USER}@{EULER_HOST}:/cluster/home/{EULER_USER}/AbaqusProject/FLC_output/",
+                key="results_euler_src",
+                help="Narrowing this to FLC_output avoids walking the whole remote AbaqusProject tree.",
+            )
+        _euler_sync_controls()
 
     if not os.path.isdir(results_dir):
         st.info("No local results yet — click **Sync from Euler** to pull them.")
@@ -5829,7 +5769,6 @@ def _page_results():
     view_mode = st.segmented_control(
         "View",
         modes,
-        default=st.session_state["results_view_mode"],
         key="results_view_mode",
     )
     if view_mode and st.query_params.get("view") != view_mode:
@@ -5994,12 +5933,15 @@ def _page_results():
                                 _nearest_index(_t_all, _u1),
                             )
 
+                        # Seed state, then create the sliders without value=
+                        # (both together trigger the yellow Streamlit warning).
+                        st.session_state.setdefault(_stable_key, _def_stable)
+                        st.session_state.setdefault(_unstable_key, _def_unstable)
                         _c1, _c2 = st.columns(2)
                         with _c1:
                             _is0, _is1 = st.slider(
                                 "Stable fit window",
                                 min_value=0, max_value=_n - 1,
-                                value=st.session_state.get(_stable_key, _def_stable),
                                 key=_stable_key,
                                 help="Green region — data used for the stable (pre-necking) line.",
                             )
@@ -6008,7 +5950,6 @@ def _page_results():
                             _iu0, _iu1 = st.slider(
                                 "Unstable fit window",
                                 min_value=0, max_value=_n - 1,
-                                value=st.session_state.get(_unstable_key, _def_unstable),
                                 key=_unstable_key,
                                 help="Red region — data used for the unstable (post-necking) line.",
                             )
