@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 import base64
+import io
 import json
 import math
 import os
 import re
 import subprocess
 import time
-import anthropic
+import zipfile
+os.environ.setdefault("MPLCONFIGDIR", os.path.join("/tmp", "abaqusproject-matplotlib"))
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -76,72 +81,6 @@ def _vh_eval_index(n_points):
     if n_points <= 1:
         return 0
     return max(1, min(n_points - 1, n_points - 1 - VH_EVAL_BACK_FRAMES))
-
-
-def _path_toggle_switch(path_indices):
-    """iOS-style toggle rendered as a zero-rerun HTML component.
-    Directly calls Plotly.restyle() on the preceding chart in the DOM."""
-    if not path_indices:
-        return
-    import json as _json
-    _idx = _json.dumps(path_indices)
-    st_components.html(f"""
-<style>
-* {{ box-sizing:border-box; margin:0; padding:0; }}
-body {{ background:transparent; overflow:hidden; }}
-.row {{
-    display:flex; align-items:center; gap:8px;
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    font-size:13px; font-weight:500; color:#94a3b8;
-    padding:4px 0; width:fit-content;
-}}
-.sw {{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }}
-.sw input {{ opacity:0; width:0; height:0; }}
-.track {{
-    position:absolute; inset:0;
-    background:#475569; border-radius:11px; cursor:pointer;
-    transition:background .18s;
-}}
-.track:before {{
-    content:""; position:absolute;
-    width:16px; height:16px; left:3px; top:3px;
-    background:#fff; border-radius:50%;
-    transition:transform .18s;
-    box-shadow:0 1px 3px rgba(0,0,0,.3);
-}}
-input:checked ~ .track {{ background:#2563eb; }}
-input:checked ~ .track:before {{ transform:translateX(18px); }}
-.row.on {{ color:#93c5fd; }}
-</style>
-<div class="row" id="row">
-  <label class="sw">
-    <input type="checkbox" id="cb" onchange="go(this.checked)">
-    <span class="track"></span>
-  </label>
-  <span>Strain paths</span>
-</div>
-<script>
-const IDX = {_idx};
-const row = document.getElementById('row');
-function findChart() {{
-    try {{
-        const iframes = Array.from(window.parent.document.querySelectorAll('iframe'));
-        const me = iframes.find(f => {{ try {{ return f.contentWindow===window; }} catch(e) {{ return false; }} }});
-        const charts = Array.from(window.parent.document.querySelectorAll('.js-plotly-plot'));
-        if (me && charts.length) {{
-            return charts.slice().reverse().find(c => me.compareDocumentPosition(c) & 2) || charts[charts.length-1];
-        }}
-        return charts.length ? charts[charts.length-1] : null;
-    }} catch(e) {{ return null; }}
-}}
-function go(on) {{
-    const chart = findChart();
-    const P = window.parent.Plotly;
-    if (chart && P) P.restyle(chart, {{visible: on}}, IDX);
-    row.className = on ? 'row on' : 'row';
-}}
-</script>
-""", height=32)
 
 
 def _plot_theme():
@@ -464,9 +403,13 @@ def _has_flc_children(d):
     return False
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=300)
 def _scan(base):
-    """Return (flc_dirs, job_dirs) as label→path dicts. Cached for 30 s."""
+    """Return (flc_dirs, job_dirs) as label→path dicts. Cached for 300 s.
+
+    The cache is cleared explicitly after a sync or a manual rescan, so the
+    long TTL only matters for files changed outside the app.
+    """
     flc, jobs = {}, {}
     try:
         for e in sorted(os.scandir(base), key=lambda x: x.name):
@@ -487,7 +430,7 @@ def _scan(base):
                     pass
     except PermissionError:
         pass
-    return flc, jobs
+    return flc, _dedupe_jobs_by_parameters(jobs)
 
 
 def _job_mtime(path):
@@ -508,10 +451,110 @@ def _job_mtime(path):
     return best
 
 
-@st.cache_data(ttl=120)
-def _load_csv(path):
-    """Read a postproc CSV and cache the result for 120 s."""
+def _job_parameter_key(name_or_path):
+    """Canonical job identity for deduplication; non-separator tokens are ignored."""
+    text = os.path.basename(os.path.normpath(str(name_or_path)))
+    text = text[4:] if text.startswith("FLC_") else text
+    lower = text.lower()
+
+    if "marc" in lower:
+        test_type = "marciniak"
+    elif "pip" in lower:
+        test_type = "pip"
+    elif "naka" in lower or "nakazima" in lower:
+        test_type = "nakazima"
+    else:
+        test_type = lower.split("_")[0] if lower else "job"
+
+    punch = ""
+    punch_match = re.search(r"(?:^|_)(?:naka|marc)(\d+)", text, flags=re.I)
+    if punch_match:
+        punch = f"p{punch_match.group(1).lower()}"
+    else:
+        pip_match = re.search(r"(?:^|_)p(\d+)(?=_|$)", text, flags=re.I)
+        if pip_match:
+            punch = f"p{pip_match.group(1).lower()}"
+
+    def _token(pattern, default=""):
+        match = re.search(pattern, text, flags=re.I)
+        return match.group(1).lower() if match else default
+
+    width = _token(r"(?:^|_)W(\d+)(?=_|$)")
+    thickness = _token(r"(?:^|_)t([\dp]+)(?=_|$)")
+    angle = _token(r"(?:^|_)ang(\d+)(?=_|$)")
+    mass_scaling = _token(r"(?:^|_)ms(\d+e\d+)(?=_|$)")
+    mesh_refinement = _token(r"(?:^|_)mr([\dp]+)(?=_|$)", "1")
+    nt = _token(r"(?:^|_)nt(\d+)(?=_|$)")
+
+    return (
+        test_type,
+        punch,
+        width,
+        thickness,
+        angle,
+        mass_scaling,
+        f"mr{mesh_refinement}" if mesh_refinement else "",
+        f"nt{nt}" if nt else "",
+    )
+
+
+def _dedupe_jobs_by_parameters(jobs):
+    """Keep the most recently written job when canonical parameters are identical."""
+    latest = {}
+    for label, path in jobs.items():
+        key = _job_parameter_key(label or path)
+        mtime = _job_mtime(path)
+        existing = latest.get(key)
+        if existing is None or (mtime, str(label)) > (existing[2], str(existing[0])):
+            latest[key] = (label, path, mtime)
+    return {
+        label: path
+        for label, path, _ in sorted(latest.values(), key=lambda item: str(item[0]))
+    }
+
+
+def _job_campaign_key(name_or_path):
+    """Job identity for FLD campaigns: same setup, different specimen width."""
+    test_type, punch, _width, thickness, angle, mass_scaling, mesh_refinement, nt = (
+        _job_parameter_key(name_or_path)
+    )
+    return (
+        test_type,
+        punch,
+        thickness,
+        angle,
+        mass_scaling,
+        mesh_refinement,
+        nt,
+    )
+
+
+@st.cache_data(show_spinner=False, max_entries=256)
+def _load_csv_cached(path, mtime):
     return pd.read_csv(path)
+
+
+def _load_csv(path):
+    """Read a postproc CSV, cached by (path, mtime) so file changes invalidate."""
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        mtime = None
+    return _load_csv_cached(path, mtime)
+
+
+_load_csv.clear = _load_csv_cached.clear
+
+
+def _invalidate_results_caches():
+    """Drop every Results-page cache after a sync or manual rescan."""
+    _scan.clear()
+    _load_csv.clear()
+    st.session_state.pop("_results_fig_memo", None)
+    st.session_state.pop("_flc_source_options_memo", None)
+    st.session_state["results_scan_token"] = (
+        st.session_state.get("results_scan_token", 0) + 1
+    )
 
 
 def _resolve_job_file(job_dir, filename):
@@ -534,7 +577,10 @@ def _resolve_job_file(job_dir, filename):
     return direct
 
 
+@st.fragment
 def _display_job_videos(job_dir):
+    """Movies live in their own fragment: toggling "Load movies" reruns only
+    this block, so the surrounding plots and selectors never rebuild."""
     all_webms = sorted(f for f in os.listdir(job_dir) if f.endswith(".webm"))
     webms = sorted(
         f for f in all_webms
@@ -555,6 +601,18 @@ def _display_job_videos(job_dir):
     video_kwargs = dict(autoplay=True, loop=True, muted=True)
 
     st.markdown("#### Movies")
+    total_mb = sum(os.path.getsize(os.path.join(job_dir, f)) for f in webms) / (1024.0 * 1024.0)
+    video_key = re.sub(r"[^A-Za-z0-9_]+", "_", os.path.abspath(job_dir))
+    load_movies = st.checkbox(
+        f"Load movies ({len(webms)} file{'s' if len(webms) != 1 else ''}, {total_mb:.1f} MB)",
+        value=False,
+        key=f"load_movies_{video_key}",
+        help="Movies are intentionally lazy-loaded because embedding them makes Streamlit reruns slow.",
+    )
+    if not load_movies:
+        st.caption("Movies are available locally but are not loaded. Enable this only when you need playback.")
+        return
+
     if movie_file and cut_file:
         def _b64(path):
             mtime = os.path.getmtime(path)
@@ -1163,9 +1221,9 @@ def _parse_float_token(token: str) -> float | None:
         return None
 
 
-def _strip_punch_travel_token(text: str) -> str:
-    """Remove _pdXX from result grouping labels without changing real paths."""
-    cleaned = re.sub(r'(^|_)pd[\dp]+(?=_|$)', '', str(text))
+def _clean_result_suffix(text: str) -> str:
+    """Normalize result-label suffixes without dropping real job-name tokens."""
+    cleaned = str(text)
     cleaned = re.sub(r'__+', '_', cleaned).strip('_')
     return cleaned
 
@@ -1408,7 +1466,7 @@ st.title("⚙️ Abaqus Pipeline")
 
 page = st.radio(
     "Page",
-    ["Submit Job", "Job Status", "Results", "AI Assistant"],
+    ["Submit Job", "Job Status", "Results"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -2155,6 +2213,33 @@ elif page == "Results":
     def _plotly_chart(fig, *args, **kwargs):
         kwargs.setdefault("theme", None)
         st.plotly_chart(_strip_plot_descriptions(fig), *args, **kwargs)
+
+    def _figure_memo(name, job_dir, files, builder, params=()):
+        """Session-scoped memo for built figures.
+
+        Keyed by the source-file mtimes and the active theme, so a re-synced
+        CSV or a theme switch rebuilds the figure while plain reruns reuse it.
+        """
+        sig = []
+        for fname in files:
+            fp = _resolve_job_file(job_dir, fname)
+            try:
+                sig.append((fname, os.path.getmtime(fp)))
+            except OSError:
+                sig.append((fname, None))
+        memo = st.session_state.setdefault("_results_fig_memo", {})
+        key = (
+            name,
+            os.path.abspath(job_dir),
+            tuple(sig),
+            _plot_theme()["base"],
+            tuple(params),
+        )
+        if key not in memo:
+            if len(memo) >= 48:
+                memo.clear()
+            memo[key] = builder()
+        return memo[key]
 
     def _volk_hora_rate_fig(job_dir, smoothing_window=20, override_stable_range=None, override_unstable_range=None):
         fp = os.path.join(job_dir, "strain_path.csv")
@@ -4549,54 +4634,1072 @@ elif page == "Results":
                 return df[c1].tolist(), df[c2].tolist()
         return None, None
 
+    def _strain_path_quick_fig(job_dir):
+        e1_path, e2_path = _job_strain_path(job_dir)
+        if not e1_path or not e2_path:
+            return None, "strain_path.csv not found"
+        theme = _plot_theme()
+        plot_style = _streamlit_plot_style(theme)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=e2_path,
+            y=e1_path,
+            mode="lines",
+            name="Strain path",
+            line=dict(color="#0072BD", width=2.2),
+            hovertemplate="ε₂=%{x:.4f}<br>ε₁=%{y:.4f}<extra></extra>",
+        ))
+        fig.update_xaxes(
+            tickfont=dict(color=plot_style["axis"]),
+            title_font=dict(color=plot_style["axis"]),
+            linecolor=plot_style["axis"],
+            gridcolor=plot_style["grid"],
+            zerolinecolor=plot_style["grid"],
+        )
+        fig.update_yaxes(
+            tickfont=dict(color=plot_style["axis"]),
+            title_font=dict(color=plot_style["axis"]),
+            linecolor=plot_style["axis"],
+            gridcolor=plot_style["grid"],
+            zerolinecolor=plot_style["grid"],
+        )
+        fig.update_layout(
+            title="Strain Path",
+            xaxis_title="ε₂ minor strain (-)",
+            yaxis_title="ε₁ major strain (-)",
+            template=theme["template"],
+            height=470,
+            paper_bgcolor=plot_style["transparent"],
+            plot_bgcolor=plot_style["transparent"],
+            font=dict(color=plot_style["axis"]),
+        )
+        fig.add_vline(x=0, line_width=0.6, line_dash="dot", line_color=plot_style["guide"])
+        fig.add_hline(y=0, line_width=0.6, line_dash="dot", line_color=plot_style["guide"])
+        return _strip_plot_descriptions(fig), None
+
+    # ── Downloadable Matlab-style graph files ────────────────────────────────
+
+    _MATLAB_COLORS = [
+        "#0072BD", "#D95319", "#EDB120", "#7E2F8E",
+        "#77AC30", "#4DBEEE", "#A2142F",
+    ]
+
+    def _safe_filename(name):
+        cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(name)).strip("._")
+        return cleaned or "plot"
+
+    def _short_plot_label(label, max_len=64):
+        label = str(label)
+        return label if len(label) <= max_len else label[:max_len - 3] + "..."
+
+    def _read_export_csv(job_dir, filenames, required=()):
+        for fname in filenames:
+            fp = _resolve_job_file(job_dir, fname)
+            if not os.path.exists(fp):
+                continue
+            try:
+                df = _load_csv(fp).copy()
+            except Exception:
+                continue
+            if all(col in df.columns for col in required):
+                return df, fname
+        return None, None
+
+    def _numeric_columns(df, columns):
+        out = df.copy()
+        for col in columns:
+            if col in out.columns:
+                out[col] = pd.to_numeric(out[col], errors="coerce")
+        return out
+
+    def _new_export_figure(nrows=1, figsize=(6.9, 4.4), sharex=False):
+        plt.rcParams.update({
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            "axes.edgecolor": "black",
+            "axes.linewidth": 0.8,
+            "axes.labelsize": 10,
+            "axes.titlesize": 11,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+            "legend.fontsize": 8,
+            "savefig.facecolor": "white",
+        })
+        fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=figsize, sharex=sharex)
+        fig.patch.set_facecolor("white")
+        if nrows == 1:
+            axes = [axes]
+        return fig, axes
+
+    def _style_export_axis(ax, xlabel=None, ylabel=None, title=None):
+        ax.set_facecolor("white")
+        ax.grid(
+            which="major",
+            axis="both",
+            linestyle="--",
+            color="gray",
+            linewidth=0.5,
+            alpha=0.5,
+            zorder=0,
+        )
+        for spine in ax.spines.values():
+            spine.set_color("black")
+            spine.set_linewidth(0.8)
+        ax.tick_params(axis="both", colors="black", direction="out")
+        if xlabel:
+            ax.set_xlabel(xlabel)
+        if ylabel:
+            ax.set_ylabel(ylabel)
+        if title:
+            ax.set_title(title, pad=8)
+
+    def _style_export_legend(ax, loc="best", ncol=1, bbox_to_anchor=None):
+        handles, labels = ax.get_legend_handles_labels()
+        labels = [label for label in labels if not label.startswith("_")]
+        if not labels:
+            return
+        legend = ax.legend(
+            loc=loc,
+            ncol=ncol,
+            bbox_to_anchor=bbox_to_anchor,
+            frameon=True,
+            edgecolor="black",
+            fancybox=False,
+        )
+        if legend:
+            legend.get_frame().set_facecolor("white")
+
+    def _write_figure_pair(zf, fig, stem):
+        stem = _safe_filename(stem)
+        written = []
+        for fmt in ("png", "pdf"):
+            buf = io.BytesIO()
+            save_kwargs = {
+                "format": fmt,
+                "bbox_inches": "tight",
+                "facecolor": "white",
+            }
+            if fmt == "png":
+                save_kwargs["dpi"] = 300
+            fig.savefig(buf, **save_kwargs)
+            zf.writestr(f"{stem}.{fmt}", buf.getvalue())
+            written.append(f"{stem}.{fmt}")
+        plt.close(fig)
+        return written
+
+    def _forming_limit_point(job_name, job_dir, method):
+        fp = _resolve_job_file(job_dir, "forming_limits.csv")
+        if not os.path.exists(fp):
+            return None
+        try:
+            df = _load_csv(fp).copy()
+        except Exception:
+            return None
+        if "method" not in df.columns:
+            return None
+        rows = df[df["method"].astype(str) == method]
+        if rows.empty:
+            return None
+        r = rows.iloc[0]
+        e1 = pd.to_numeric(r.get("eps1_major"), errors="coerce")
+        e2 = pd.to_numeric(r.get("eps2_minor"), errors="coerce")
+        if pd.isna(e1) or pd.isna(e2):
+            return None
+        fracture_type = r.get("fracture_type", "dome")
+        fracture_type = "dome" if pd.isna(fracture_type) else str(fracture_type)
+        time_s = pd.to_numeric(r.get("time_s"), errors="coerce")
+        u3_mm = pd.to_numeric(r.get("U3_mm"), errors="coerce")
+        return {
+            "name": job_name,
+            "dir": job_dir,
+            "method": method,
+            "e1": float(e1),
+            "e2": float(e2),
+            "time": float(time_s) if pd.notna(time_s) else None,
+            "u3": float(u3_mm) if pd.notna(u3_mm) else None,
+            "fracture_type": fracture_type,
+            "valid": fracture_type == "dome",
+        }
+
+    def _forming_limit_points(jobs, method):
+        points = []
+        for job_name, job_dir in jobs.items():
+            point = _forming_limit_point(job_name, job_dir, method)
+            if point is not None:
+                points.append(point)
+        points.sort(key=lambda p: (p["e2"], _width_from_job(p["name"]) or 0, p["name"]))
+        return points
+
+    def _export_force_displacement_fig(job_name, job_dir):
+        df, _ = _read_export_csv(job_dir, ("global.csv", "punch_fd.csv"), required=("U3_mm", "RF3_N"))
+        if df is None:
+            return None
+        df = _numeric_columns(df, ("U3_mm", "RF3_N")).dropna(subset=["U3_mm", "RF3_N"])
+        if df.empty:
+            return None
+        df = df.sort_values("U3_mm")
+
+        fig, axes = _new_export_figure(figsize=(6.9, 4.2))
+        ax = axes[0]
+        ax.plot(df["U3_mm"], df["RF3_N"], color=_MATLAB_COLORS[0], linewidth=1.7, label="Punch force")
+        u3_frac, fracture_type = _fracture_u3(job_dir)
+        if u3_frac is not None:
+            label = f"Fracture ({fracture_type})" if fracture_type else "Fracture"
+            ax.axvline(float(u3_frac), color="#A2142F", linestyle="--", linewidth=1.1, label=label)
+        _style_export_axis(
+            ax,
+            xlabel="Punch displacement U3 [mm]",
+            ylabel="Punch force RF3 [N]",
+            title=f"Force-displacement - {_short_plot_label(os.path.basename(str(job_name)))}",
+        )
+        _style_export_legend(ax)
+        fig.tight_layout()
+        return fig
+
+    def _time_or_displacement_axis(df, job_dir):
+        if "U3_mm" in df.columns and df["U3_mm"].notna().any():
+            return df["U3_mm"], "Punch displacement U3 [mm]", "u3"
+        time_col = "total_time_s" if "total_time_s" in df.columns else "time_s"
+        if time_col not in df.columns:
+            return None, None, None
+        if time_col == "total_time_s":
+            fd, _ = _read_export_csv(job_dir, ("punch_fd.csv", "global.csv"), required=("total_time_s", "U3_mm"))
+            if fd is not None:
+                fd = _numeric_columns(fd, ("total_time_s", "U3_mm")).dropna(subset=["total_time_s", "U3_mm"])
+                if len(fd) >= 2:
+                    fd = fd.sort_values("total_time_s")
+                    u3 = np.interp(df[time_col].to_numpy(), fd["total_time_s"].to_numpy(), fd["U3_mm"].to_numpy())
+                    return pd.Series(u3, index=df.index), "Punch displacement U3 [mm]", "u3"
+        return df[time_col], "Time [s]", "time"
+
+    def _export_energy_history_fig(job_name, job_dir):
+        df, _ = _read_export_csv(job_dir, ("global.csv", "energy_data.csv"), required=("ALLKE", "ALLIE"))
+        if df is None:
+            return None
+        numeric = [c for c in ("time_s", "total_time_s", "U3_mm", "ALLKE", "ALLIE") if c in df.columns]
+        df = _numeric_columns(df, numeric).dropna(subset=["ALLKE", "ALLIE"])
+        df = df[df["ALLIE"].abs() > 1e-12].copy()
+        if df.empty:
+            return None
+        if len(df) > 10:
+            df = df.iloc[max(1, int(0.02 * len(df))):].copy()
+        x, xlabel, axis_kind = _time_or_displacement_axis(df, job_dir)
+        if x is None:
+            return None
+        ratio_pct = 100.0 * df["ALLKE"] / df["ALLIE"]
+
+        fig, axes = _new_export_figure(nrows=2, figsize=(6.9, 5.4), sharex=True)
+        axes[0].plot(x, df["ALLKE"], color=_MATLAB_COLORS[0], linewidth=1.5, label="ALLKE")
+        axes[0].plot(x, df["ALLIE"], color=_MATLAB_COLORS[1], linewidth=1.5, label="ALLIE")
+        _style_export_axis(
+            axes[0],
+            ylabel="Energy",
+            title=f"Energy history - {_short_plot_label(os.path.basename(str(job_name)))}",
+        )
+        _style_export_legend(axes[0])
+
+        axes[1].plot(x, ratio_pct, color=_MATLAB_COLORS[2], linewidth=1.5, label="ALLKE / ALLIE")
+        axes[1].axhline(5.0, color="black", linestyle="--", linewidth=1.0, label="5% limit")
+        if axis_kind == "u3":
+            u3_frac, _ = _fracture_u3(job_dir)
+            if u3_frac is not None:
+                axes[1].axvline(float(u3_frac), color="#A2142F", linestyle="--", linewidth=1.0, label="Fracture")
+        _style_export_axis(axes[1], xlabel=xlabel, ylabel="ALLKE / ALLIE [%]")
+        _style_export_legend(axes[1])
+        fig.tight_layout()
+        return fig
+
+    def _strain_path_frame(job_dir):
+        df, _ = _read_export_csv(
+            job_dir,
+            ("strain_path.csv",),
+            required=("time_s", "eps1_major", "eps2_minor"),
+        )
+        if df is None:
+            return None
+        cols = [c for c in ("time_s", "eps1_major", "eps2_minor", "EQPS", "TRIAX", "D", "thinning_rate") if c in df.columns]
+        df = _numeric_columns(df, cols).dropna(subset=["time_s", "eps1_major", "eps2_minor"])
+        if df.empty:
+            return None
+        group_cols = [c for c in cols if c in df.columns and c != "time_s"]
+        df = df.groupby("time_s", as_index=False)[group_cols].mean().sort_values("time_s")
+        return df
+
+    def _thinning_rate(df):
+        if "thinning_rate" in df.columns and df["thinning_rate"].notna().any():
+            return df["thinning_rate"].to_numpy()
+        thinning = (df["eps1_major"] + df["eps2_minor"]).to_numpy()
+        time_s = df["time_s"].to_numpy()
+        if len(df) < 2:
+            return np.zeros(len(df))
+        return np.gradient(thinning, time_s, edge_order=1)
+
+    def _nearest_index(values, target):
+        return min(range(len(values)), key=lambda i: abs(float(values[i]) - float(target)))
+
+    def _vh_fit_from_ranges(t, rate_for_fit, stable_range, unstable_range):
+        ts0, ts1 = stable_range
+        tu0, tu1 = unstable_range
+        stable_idx = [i for i in range(len(t)) if ts0 <= t[i] <= ts1]
+        unstable_idx = [i for i in range(len(t)) if tu0 <= t[i] <= tu1]
+        if len(stable_idx) < VH_MIN_STABLE_POINTS or len(unstable_idx) < VH_MIN_UNSTABLE_POINTS:
+            return None
+        xs = [t[i] for i in stable_idx]
+        ys = [rate_for_fit[i] for i in stable_idx]
+        xu = [t[i] for i in unstable_idx]
+        yu = [rate_for_fit[i] for i in unstable_idx]
+        stable_fit = _line_fit(xs, ys)
+        unstable_fit = _line_fit(xu, yu)
+        if not stable_fit or not unstable_fit:
+            return None
+        ss, si, _ = stable_fit
+        us, ui, _ = unstable_fit
+        denom = ss - us
+        if denom >= 0:
+            return None
+        tc = (ui - si) / denom
+        kc = next((i for i, tv in enumerate(t) if tv >= tc), None)
+        if kc is None or kc <= 0:
+            return None
+        return {
+            "t_fit_start": min(ts0, tu0),
+            "t_fit_end": max(ts1, tu1),
+            "t_cross": tc,
+            "y_cross": ss * tc + si,
+            "kcrit": kc,
+            "kstable": kc - 1,
+            "stable": {"slope": ss, "intercept": si, "count": len(stable_idx), "mse": 0},
+            "unstable": {"slope": us, "intercept": ui, "count": len(unstable_idx), "mse": 0},
+            "stable_range": (float(ts0), float(ts1)),
+            "unstable_range": (float(tu0), float(tu1)),
+        }
+
+    def _vh_ranges_from_fit(fit, t_values):
+        if not fit:
+            return None, None
+        if "stable_range" in fit and "unstable_range" in fit:
+            return fit["stable_range"], fit["unstable_range"]
+        window = [float(tv) for tv in t_values if fit["t_fit_start"] <= float(tv) <= fit["t_fit_end"]]
+        if not window:
+            return None, None
+        stable_count = int(fit.get("stable", {}).get("count", 0))
+        unstable_count = int(fit.get("unstable", {}).get("count", 0))
+        if stable_count <= 0 or unstable_count <= 0:
+            return None, None
+        stable_end = min(stable_count - 1, len(window) - 1)
+        unstable_start = max(0, len(window) - unstable_count)
+        return (window[0], window[stable_end]), (window[unstable_start], window[-1])
+
+    def _stored_vh_settings(job_dir):
+        fp = _resolve_job_file(job_dir, "forming_limits.csv")
+        if not os.path.exists(fp):
+            return {}
+        try:
+            df = _load_csv(fp)
+        except Exception:
+            return {}
+        if "method" not in df.columns:
+            return {}
+        rows = df[df["method"].astype(str) == "volk_hora"]
+        if rows.empty:
+            return {}
+        row = rows.iloc[0]
+
+        def _num(col):
+            if col not in row.index:
+                return None
+            val = pd.to_numeric(row.get(col), errors="coerce")
+            return float(val) if pd.notna(val) else None
+
+        settings = {
+            "time_s": _num("time_s"),
+            "vh_smoothing_window": _num("vh_smoothing_window"),
+        }
+        stable = (_num("vh_stable_t0"), _num("vh_stable_t1"))
+        unstable = (_num("vh_unstable_t0"), _num("vh_unstable_t1"))
+        if all(v is not None for v in stable + unstable):
+            settings["stable_range"] = stable
+            settings["unstable_range"] = unstable
+        return settings
+
+    def _export_vh_curves_fig(job_name, job_dir):
+        df = _strain_path_frame(job_dir)
+        if df is None or len(df) < 2:
+            return None
+        t = df["time_s"].to_numpy(dtype=float)
+        raw_rate = _thinning_rate(df)
+        rate = raw_rate
+        fit = None
+        smoothing_used = 1
+        stored_vh = _stored_vh_settings(job_dir)
+        if "stable_range" in stored_vh and "unstable_range" in stored_vh:
+            smoothing_used = int(stored_vh.get("vh_smoothing_window") or 1)
+            candidate = _moving_average(raw_rate.tolist(), smoothing_used)
+            fit = _vh_fit_from_ranges(
+                t.tolist(),
+                candidate,
+                stored_vh["stable_range"],
+                stored_vh["unstable_range"],
+            )
+            rate = np.asarray(candidate, dtype=float)
+        if fit is None:
+            for smoothing_window in (1, 5, 11, 21):
+                candidate = _moving_average(raw_rate.tolist(), smoothing_window)
+                fit = _volk_hora_fit(t.tolist(), candidate)
+                if fit is not None:
+                    rate = np.asarray(candidate, dtype=float)
+                    smoothing_used = smoothing_window
+                    break
+
+        fig, axes = _new_export_figure(figsize=(6.9, 4.2))
+        ax = axes[0]
+        rate_label = "Thinning rate" if smoothing_used == 1 else f"Thinning rate ({smoothing_used} pt mean)"
+        ax.plot(t, rate, color=_MATLAB_COLORS[0], linewidth=1.5, label=rate_label)
+        if fit is not None:
+            stable = fit["stable"]
+            unstable = fit["unstable"]
+            ts = [fit["t_fit_start"], fit["t_cross"]]
+            ys = [stable["slope"] * tv + stable["intercept"] for tv in ts]
+            tu = [fit["t_cross"], fit["t_fit_end"]]
+            yu = [unstable["slope"] * tv + unstable["intercept"] for tv in tu]
+            ax.plot(ts, ys, color="#77AC30", linewidth=1.4, label="Stable fit")
+            ax.plot(tu, yu, color="#A2142F", linewidth=1.4, label="Unstable fit")
+        _style_export_axis(
+            ax,
+            xlabel="Time [s]",
+            ylabel=r"$d(e_1+e_2)/dt$ [1/s]",
+            title=f"V&H thinning rate - {_short_plot_label(os.path.basename(str(job_name)))}",
+        )
+        _style_export_legend(ax)
+        fig.tight_layout()
+        return fig
+
+    def _export_triaxiality_fig(job_name, job_dir):
+        df = _strain_path_frame(job_dir)
+        if df is None or "TRIAX" not in df.columns:
+            return None
+        if "EQPS" in df.columns and df["EQPS"].notna().any():
+            df = df.dropna(subset=["EQPS", "TRIAX"])
+            x = df["EQPS"]
+            xlabel = "Equivalent plastic strain EQPS [-]"
+        else:
+            df = df.dropna(subset=["time_s", "TRIAX"])
+            x = df["time_s"]
+            xlabel = "Time [s]"
+        if df.empty:
+            return None
+        fig, axes = _new_export_figure(figsize=(6.9, 4.2))
+        ax = axes[0]
+        ax.plot(x, df["TRIAX"], color=_MATLAB_COLORS[0], linewidth=1.5, label=r"Triaxiality $\eta$")
+        for eta, label in [
+            (1.0 / 3.0, r"Uniaxial $\eta=1/3$"),
+            (0.577, r"Plane strain $\eta\approx0.577$"),
+            (2.0 / 3.0, r"Equibiaxial $\eta=2/3$"),
+        ]:
+            ax.axhline(eta, color="gray", linestyle="--", linewidth=0.8, alpha=0.7, label=label)
+        _style_export_axis(
+            ax,
+            xlabel=xlabel,
+            ylabel=r"Triaxiality $\eta$ [$-$]",
+            title=f"Stress-state path - {_short_plot_label(os.path.basename(str(job_name)))}",
+        )
+        _style_export_legend(ax)
+        fig.tight_layout()
+        return fig
+
+    def _campaign_key(job_name):
+        return _job_campaign_key(job_name)
+
+    def _matching_campaign_jobs(selected_name, selected_dir, all_job_dirs):
+        target = _campaign_key(selected_name or selected_dir)
+        matches = {}
+
+        def _add_match(label, path):
+            if not _is_job_dir(path):
+                return
+            if _campaign_key(label) != target and _campaign_key(path) != target:
+                return
+            display = os.path.basename(os.path.normpath(path))
+            if display in matches and os.path.abspath(matches[display]) != os.path.abspath(path):
+                display = os.path.relpath(path, results_dir)
+            matches[display] = path
+
+        def _scan_job_tree(root, max_depth=3):
+            root = os.path.abspath(root)
+            stack = [(root, 0)]
+            seen = set()
+            while stack:
+                path, depth = stack.pop()
+                if path in seen:
+                    continue
+                seen.add(path)
+                if _is_job_dir(path):
+                    _add_match(os.path.basename(os.path.normpath(path)), path)
+                    continue
+                if depth >= max_depth:
+                    continue
+                try:
+                    entries = list(os.scandir(path))
+                except (OSError, PermissionError):
+                    continue
+                for entry in entries:
+                    if entry.is_dir():
+                        stack.append((entry.path, depth + 1))
+
+        parent = os.path.dirname(os.path.abspath(selected_dir))
+        try:
+            for entry in os.scandir(parent):
+                if entry.is_dir():
+                    _add_match(entry.name, entry.path)
+        except (OSError, PermissionError):
+            pass
+
+        for label, path in all_job_dirs.items():
+            _add_match(label, path)
+
+        try:
+            _scan_job_tree(results_dir)
+        except NameError:
+            pass
+
+        if not matches:
+            matches[os.path.basename(os.path.normpath(selected_dir))] = selected_dir
+
+        matches = _dedupe_jobs_by_parameters(matches)
+        return dict(sorted(
+            matches.items(),
+            key=lambda kv: (_width_from_job(kv[0]) if _width_from_job(kv[0]) is not None else 10**9, kv[0]),
+        ))
+
+    def _plot_test_type_label(text):
+        text = str(text).lower()
+        if "marc" in text:
+            return "Marciniak"
+        if "pip" in text:
+            return "PiP"
+        if "naka" in text or "nakazima" in text:
+            return "Nakazima"
+        return "Test"
+
+    def _plot_separator_meta(text, assume_default_mr=False):
+        text = os.path.basename(os.path.normpath(str(text)))
+        text = text[4:] if text.startswith("FLC_") else text
+        test_type = _plot_test_type_label(text)
+        punch_match = re.search(r"(?:^|_)(?:Naka|Marc)(\d+)", text, flags=re.I)
+        if not punch_match:
+            punch_match = re.search(r"_pdia([\dp]+)", text, flags=re.I)
+        mass_match = re.search(r"_ms(\d+e\d+)(?=_|$)", text, flags=re.I)
+        mesh_match = re.search(r"_mr([\dp]+)(?=_|$)", text, flags=re.I)
+        nt_match = re.search(r"_nt(\d+)(?=_|$)", text, flags=re.I)
+        return {
+            "test_type": test_type,
+            "punch": f"P{punch_match.group(1)}" if punch_match else "",
+            "ms": f"ms{mass_match.group(1)}" if mass_match else "",
+            "mr": f"mr{mesh_match.group(1)}" if mesh_match else ("mr1" if assume_default_mr else ""),
+            "nt": f"nt{nt_match.group(1)}" if nt_match else "",
+        }
+
+    def _plot_separator_key(text):
+        meta = _plot_separator_meta(text, assume_default_mr=True)
+        return "|".join(meta[k] for k in ("test_type", "punch", "ms", "mr", "nt") if meta[k])
+
+    def _plot_separator_label(text, assume_default_mr=False):
+        meta = _plot_separator_meta(text, assume_default_mr=assume_default_mr)
+        parts = [meta[k] for k in ("punch", "ms", "mr", "nt") if meta[k]]
+        return " > ".join(parts)
+
+    def _fld_export_title(source_jobs):
+        names = []
+        for source_label, jobs in source_jobs:
+            if source_label and source_label != "matching geometries":
+                names.append(source_label)
+            names.extend(jobs.keys())
+        joined = " ".join(names)
+        test_type = _plot_test_type_label(joined)
+        separators = []
+        for name in names:
+            separator = _plot_separator_label(name)
+            if separator and separator not in separators:
+                separators.append(separator)
+        title = f"FLD - {test_type}"
+        if separators:
+            title += " > " + ", ".join(separators[:3])
+            if len(separators) > 3:
+                title += f", +{len(separators) - 3}"
+        return title
+
+    def _export_fld_fig(source_jobs, include_vh=True, title=None, show_paths=True):
+        fig, axes = _new_export_figure(figsize=(7.2, 4.8))
+        ax = axes[0]
+        all_e1 = []
+        all_e2 = []
+        plotted = False
+
+        for i, (source_label, jobs) in enumerate(source_jobs):
+            color = _MATLAB_COLORS[i % len(_MATLAB_COLORS)]
+            if show_paths:
+                for job_name, job_dir in jobs.items():
+                    e1_path, e2_path = _job_strain_path(job_dir)
+                    if e1_path and e2_path:
+                        all_e1.extend(e1_path)
+                        all_e2.extend(e2_path)
+                        ax.plot(
+                            e2_path,
+                            e1_path,
+                            linestyle=":",
+                            color=color,
+                            linewidth=0.7,
+                            alpha=0.35,
+                            label="_strain_path",
+                        )
+
+            fflc_points = _forming_limit_points(jobs, "fracture")
+            valid_fflc = [p for p in fflc_points if p["valid"]]
+            invalid_fflc = [p for p in fflc_points if not p["valid"]]
+            if valid_fflc:
+                all_e1.extend(p["e1"] for p in valid_fflc)
+                all_e2.extend(p["e2"] for p in valid_fflc)
+                label = "FFLC" if len(source_jobs) == 1 else f"{_short_plot_label(source_label)} FFLC"
+                ax.plot(
+                    [p["e2"] for p in valid_fflc],
+                    [p["e1"] for p in valid_fflc],
+                    "-o",
+                    color=color,
+                    linewidth=1.6,
+                    markersize=4.5,
+                    label=label,
+                )
+                plotted = True
+            if invalid_fflc:
+                all_e1.extend(p["e1"] for p in invalid_fflc)
+                all_e2.extend(p["e2"] for p in invalid_fflc)
+                label = "FFLC diagnostics" if len(source_jobs) == 1 else f"{_short_plot_label(source_label)} diagnostics"
+                ax.plot(
+                    [p["e2"] for p in invalid_fflc],
+                    [p["e1"] for p in invalid_fflc],
+                    linestyle="None",
+                    marker="x",
+                    color=color,
+                    markersize=6,
+                    label=label,
+                )
+                plotted = True
+
+            if include_vh:
+                vh_points = [p for p in _forming_limit_points(jobs, "volk_hora") if p["valid"]]
+                if vh_points:
+                    all_e1.extend(p["e1"] for p in vh_points)
+                    all_e2.extend(p["e2"] for p in vh_points)
+                    label = "FLC V&H" if len(source_jobs) == 1 else f"{_short_plot_label(source_label)} V&H"
+                    ax.plot(
+                        [p["e2"] for p in vh_points],
+                        [p["e1"] for p in vh_points],
+                        "--D",
+                        color=color,
+                        linewidth=1.2,
+                        markersize=4,
+                        label=label,
+                    )
+                    plotted = True
+
+        if not plotted:
+            plt.close(fig)
+            return None
+
+        x_min = min(all_e2)
+        x_max = max(all_e2)
+        y_min = min(all_e1)
+        y_max = max(all_e1)
+        x_span = max(x_max - x_min, 0.15)
+        y_span = max(y_max - y_min, 0.15)
+        x0 = min(x_min - 0.18 * x_span, -0.05)
+        x1 = max(x_max + 0.18 * x_span, 0.05)
+        y0 = min(0.0, y_min - 0.18 * y_span)
+        y1 = y_max + 0.18 * y_span
+
+        ax.plot([x0, 0.0], [-2.0 * x0, 0.0], color="silver", linestyle="-.", linewidth=0.9, label="_uniaxial")
+        ax.plot([0.0, x1], [0.0, x1], color="silver", linestyle="--", linewidth=0.9, label="_equibiaxial")
+        ax.axvline(0, linewidth=0.8, color="silver", zorder=0)
+        ax.axhline(0, linewidth=0.8, color="silver", zorder=0)
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y0, y1)
+        _style_export_axis(
+            ax,
+            xlabel=r"Minor strain $e_2$ [$-$]",
+            ylabel=r"Major strain $e_1$ [$-$]",
+            title=title or _fld_export_title(source_jobs),
+        )
+        legend_cols = min(4, max(1, len(source_jobs) * (2 if include_vh else 1)))
+        _style_export_legend(ax, loc="lower center", ncol=legend_cols, bbox_to_anchor=(0.5, -0.33))
+        fig.subplots_adjust(bottom=0.28)
+        return fig
+
+    def _bundle_single_job_graphs(job_name, job_dir, all_job_dirs):
+        job_stem = _safe_filename(os.path.basename(os.path.normpath(str(job_name))))
+        generated = []
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            plot_specs = [
+                ("force displacement", f"{job_stem}_force_displacement", _export_force_displacement_fig(job_name, job_dir)),
+                ("energy history", f"{job_stem}_energy_history", _export_energy_history_fig(job_name, job_dir)),
+                ("V_and_H curves", f"{job_stem}_VH_curves", _export_vh_curves_fig(job_name, job_dir)),
+                ("triaxiality", f"{job_stem}_triaxiality", _export_triaxiality_fig(job_name, job_dir)),
+            ]
+            for label, stem, fig in plot_specs:
+                if fig is None:
+                    continue
+                _write_figure_pair(zf, fig, stem)
+                generated.append(label)
+
+            campaign_jobs = _matching_campaign_jobs(job_name, job_dir, all_job_dirs)
+            fld_fig = _export_fld_fig(
+                [("matching geometries", campaign_jobs)],
+                include_vh=True,
+            )
+            if fld_fig is not None:
+                _write_figure_pair(zf, fld_fig, f"{job_stem}_FLD_matching_geometries")
+                generated.append("FLD")
+
+        if not generated:
+            return None, []
+        return buf.getvalue(), generated
+
+    def _bundle_fld_graphs(selected_sources, source_options):
+        source_jobs = [
+            (source_label, source_options[source_label]["jobs"])
+            for source_label in selected_sources
+            if source_label in source_options
+        ]
+        if not source_jobs:
+            return None, []
+        stem = "FLD_" + _safe_filename("_".join(selected_sources[:3]))
+        if len(selected_sources) > 3:
+            stem += f"_plus_{len(selected_sources) - 3}"
+
+        buf = io.BytesIO()
+        generated = []
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            fig = _export_fld_fig(source_jobs, include_vh=True)
+            if fig is not None:
+                _write_figure_pair(zf, fig, stem)
+                generated.append("FLD")
+        if not generated:
+            return None, []
+        return buf.getvalue(), generated
+
+    def _downloads_directory():
+        return os.path.join(os.path.expanduser("~"), "Downloads")
+
+    def _unique_download_path(file_name):
+        downloads_dir = _downloads_directory()
+        os.makedirs(downloads_dir, exist_ok=True)
+        root, ext = os.path.splitext(_safe_filename(file_name))
+        candidate = os.path.join(downloads_dir, root + ext)
+        idx = 2
+        while os.path.exists(candidate):
+            candidate = os.path.join(downloads_dir, f"{root}_{idx}{ext}")
+            idx += 1
+        return candidate
+
+    def _write_post_processing_plots_to_downloads(data, file_name):
+        target = _unique_download_path(file_name)
+        with open(target, "wb") as fh:
+            fh.write(data)
+        return target
+
+    def _render_single_graph_download(job_name, job_dir, all_job_dirs, key_prefix):
+        export_key = f"{key_prefix}_graph_bundle"
+        if st.button("Download Post-processing plots", type="primary", key=f"{export_key}_btn"):
+            data, _generated = _bundle_single_job_graphs(job_name, job_dir, all_job_dirs)
+            if data is None:
+                st.warning("No graph CSV data found for this job.")
+                st.session_state.pop(export_key, None)
+            else:
+                file_name = f"{_safe_filename(os.path.basename(os.path.normpath(str(job_name))))}_post_processing_plots.zip"
+                try:
+                    target = _write_post_processing_plots_to_downloads(data, file_name)
+                except OSError as exc:
+                    st.error(f"Could not write to Downloads: {exc}")
+                    st.session_state.pop(export_key, None)
+                    return
+                st.session_state[export_key] = {"target": target}
+                st.toast(f"Saved to {target}", icon="💾")
+
+    def _render_fld_graph_download(selected_sources, source_options, key_prefix):
+        export_key = f"{key_prefix}_fld_bundle"
+        if st.button("Download Post-processing plots", type="primary", key=f"{export_key}_btn"):
+            data, _generated = _bundle_fld_graphs(selected_sources, source_options)
+            if data is None:
+                st.warning("No forming-limit CSV data found for the selected source.")
+                st.session_state.pop(export_key, None)
+            else:
+                file_name = f"{_safe_filename('_'.join(selected_sources[:2]))}_post_processing_plots.zip"
+                try:
+                    target = _write_post_processing_plots_to_downloads(data, file_name)
+                except OSError as exc:
+                    st.error(f"Could not write to Downloads: {exc}")
+                    st.session_state.pop(export_key, None)
+                    return
+                st.session_state[export_key] = {"target": target}
+                st.toast(f"Saved to {target}", icon="💾")
+
     st.subheader("Results Viewer")
 
     c_dir, c_src = st.columns([2, 3])
     with c_dir:
         results_dir = st.text_input(
-            "Local results directory", value=os.path.join(PROJECT_DIR, "FLC_output")
+            "Local results directory",
+            value=os.path.join(PROJECT_DIR, "FLC_output"),
+            key="results_local_dir",
         )
     with c_src:
         euler_src = st.text_input(
             "Euler source path",
-            value=f"{EULER_USER}@{EULER_HOST}:/cluster/home/{EULER_USER}/AbaqusProject/",
+            value=f"{EULER_USER}@{EULER_HOST}:/cluster/home/{EULER_USER}/AbaqusProject/FLC_output/",
+            key="results_euler_src",
+            help="Narrowing this to FLC_output avoids walking the whole remote AbaqusProject tree.",
         )
 
-    col_sync, col_del = st.columns([1, 4])
-    with col_sync:
-        do_sync = st.button("Sync from Euler", type="primary")
-    with col_del:
-        delete_stale = st.checkbox("Delete local files removed on Euler", value=False)
+    core_csv_files = [
+        "global.csv",
+        "punch_fd.csv",
+        "energy_data.csv",
+        "forming_limits.csv",
+        "strain_path.csv",
+        "specimen_outline.csv",
+        "strain_cluster_faces.csv",
+        "flc_points.csv",
+    ]
+    sync_profiles = {
+        "Post-processing plots (fast)": core_csv_files + ["*.pdf", "*.png"],
+        "Core CSV only (fastest)": core_csv_files,
+        "Diagnostics CSVs (slower)": core_csv_files + ["strain_cluster.csv", "elout.csv"],
+        "Full raw results incl. movies": ["*.csv", "*.pdf", "*.png", "*.webm", "*.mp4"],
+    }
+    _SYNC_SCOPES = [
+        "Latest jobs only",
+        "Selected jobs only",
+        "Current FLC/source only",
+        "Full results directory",
+    ]
 
-    if do_sync:
+    def _parse_remote_src(src):
+        """Split 'user@host:/path/' into ('user@host', '/path')."""
+        spec, sep, path = str(src).partition(":")
+        path = path.rstrip("/")
+        if not sep or not spec or not path:
+            return None, None
+        return spec, path
+
+    def _fetch_remote_job_index(spec, base):
+        """List remote job dirs with mtimes via one ssh find call.
+
+        Metadata only — nothing is downloaded. Newest first.
+        """
+        find_cmd = (
+            f"find {base} -mindepth 2 -maxdepth 3 -type f "
+            "\\( -name global.csv -o -name forming_limits.csv \\) "
+            "-printf '%T@\\t%h\\n'"
+        )
+        result = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", spec, find_cmd],
+            capture_output=True, text=True, timeout=90,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "ssh find failed")
+        newest = {}
+        for line in result.stdout.splitlines():
+            ts_str, _, path = line.partition("\t")
+            if not path:
+                continue
+            try:
+                ts = float(ts_str)
+            except ValueError:
+                continue
+            rel = os.path.relpath(path, base)
+            if rel.startswith(".."):
+                continue
+            if ts > newest.get(rel, 0.0):
+                newest[rel] = ts
+        return sorted(newest.items(), key=lambda kv: kv[1], reverse=True)
+
+    @st.fragment
+    def _euler_sync_controls():
+        _toast = st.session_state.pop("_results_last_sync_toast", None)
+        if _toast:
+            st.toast(_toast, icon="✅")
+
+        c_scope, c_n, c_profile = st.columns([1.8, 0.8, 2.4])
+        with c_scope:
+            sync_scope = st.selectbox(
+                "Sync scope", _SYNC_SCOPES, index=0, key="results_sync_scope",
+                help="Latest/Selected pull only the chosen job folders. Only "
+                     "'Full results directory' walks the whole Euler tree.",
+            )
+        with c_n:
+            n_latest = st.selectbox(
+                "Jobs", [5, 10, 20, 50], index=0, key="results_sync_n_latest",
+                disabled=sync_scope != "Latest jobs only",
+            )
+        with c_profile:
+            sync_profile = st.selectbox(
+                "Sync profile",
+                list(sync_profiles.keys()),
+                index=0,
+                key="results_sync_profile",
+                help=(
+                    "Default skips raw extraction CSVs such as strain_dome.csv and "
+                    "strain_neighborhood.csv, which dominate transfer time. Use Full only "
+                    "when you explicitly need every raw CSV or movie."
+                ),
+            )
+
+        remote_spec, remote_base = _parse_remote_src(euler_src)
+        scope_rel_dirs = None      # None → full remote tree
+        scope_problem = None
+
+        need_remote_index = sync_scope in ("Latest jobs only", "Selected jobs only")
+        remote_index = st.session_state.get("_remote_job_index")
+        if need_remote_index:
+            if remote_spec is None:
+                scope_problem = "Euler source must look like user@host:/path for scoped syncs."
+            else:
+                c_list, c_age = st.columns([1.4, 3.6], vertical_alignment="center")
+                list_label = "Refresh remote job list" if remote_index else "List remote jobs"
+                if c_list.button(list_label, key="results_sync_list_remote"):
+                    try:
+                        with st.spinner("Listing remote job directories (ssh, metadata only)…"):
+                            jobs = _fetch_remote_job_index(remote_spec, remote_base)
+                        st.session_state["_remote_job_index"] = (time.time(), jobs)
+                        remote_index = st.session_state["_remote_job_index"]
+                    except Exception as exc:
+                        st.error(f"Could not list remote jobs: {exc}")
+                if remote_index:
+                    c_age.caption(
+                        f"{len(remote_index[1])} remote job folders · listed at "
+                        f"{time.strftime('%H:%M:%S', time.localtime(remote_index[0]))}"
+                    )
+                elif scope_problem is None:
+                    scope_problem = "List remote jobs first — one ssh call, nothing is downloaded."
+
+        if sync_scope == "Latest jobs only" and remote_index and not scope_problem:
+            scope_rel_dirs = [rel for rel, _ts in remote_index[1][:int(n_latest)]]
+            if not scope_rel_dirs:
+                scope_problem = "No job directories found on Euler."
+
+        elif sync_scope == "Selected jobs only" and remote_index and not scope_problem:
+            rel_by_label = {}
+            for rel, ts in remote_index[1]:
+                stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+                rel_by_label[f"{rel}   ({stamp})"] = rel
+            chosen = st.multiselect(
+                "Remote jobs to pull",
+                list(rel_by_label.keys()),
+                key="results_sync_selected_jobs",
+            )
+            include_siblings = st.checkbox(
+                "Include sibling specimens (pull the whole FLC folder)",
+                value=True,
+                key="results_sync_include_siblings",
+                help="FLD plots need the sibling widths of the same campaign, "
+                     "so pulling the parent FLC folder is the safe default.",
+            )
+            rels = [rel_by_label[c] for c in chosen]
+            if include_siblings:
+                rels = [rel.split("/", 1)[0] for rel in rels]
+            scope_rel_dirs = sorted(set(rels))
+            if not scope_rel_dirs:
+                scope_problem = "Select at least one remote job."
+
+        elif sync_scope == "Current FLC/source only":
+            if remote_spec is None:
+                scope_problem = "Euler source must look like user@host:/path for scoped syncs."
+            else:
+                scope_rel_dirs = sorted(set(st.session_state.get("_results_sync_scope_dirs") or []))
+                if not scope_rel_dirs:
+                    scope_problem = ("No current selection — open a job or an FLC source "
+                                     "below first, then sync it here.")
+
+        if scope_problem:
+            st.caption(f"⚠️ {scope_problem}")
+        elif scope_rel_dirs is None:
+            st.caption(f"Full mirror of `{euler_src}` → `{results_dir}` · {sync_profile}")
+        else:
+            n_dirs = len(scope_rel_dirs)
+            st.caption(
+                f"Will pull {n_dirs} director{'y' if n_dirs == 1 else 'ies'} "
+                f"→ `{results_dir}` · {sync_profile}"
+            )
+            with st.expander("Directories to pull"):
+                st.code("\n".join(scope_rel_dirs))
+
+        c_sync, c_rescan, c_extra = st.columns([1.2, 1.2, 2.6], vertical_alignment="center")
+        do_sync = c_sync.button(
+            "Sync from Euler", type="primary", width="stretch",
+            disabled=bool(scope_problem),
+        )
+        if c_rescan.button("Rescan local results", width="stretch",
+                           key="results_rescan_local",
+                           help="Re-read the local results directory without syncing."):
+            _invalidate_results_caches()
+            st.rerun(scope="app")
+        delete_stale = False
+        if sync_scope == "Full results directory":
+            delete_stale = c_extra.checkbox(
+                "Delete local files removed on Euler", value=False,
+                key="results_sync_delete_stale",
+                help="Only offered for full syncs so a scoped pull can never "
+                     "delete other local jobs.",
+            )
+
+        if not do_sync:
+            return
+
         os.makedirs(results_dir, exist_ok=True)
-        sync_cmd = [
-            "rsync", "-av", "--prune-empty-dirs",
-            "--include=*/",
-            "--include=*.csv",
-            "--include=*.pdf",
-            "--include=*.png",
-            "--include=*.webm",
-            "--exclude=*",
-        ]
-        if delete_stale:
-            sync_cmd.append("--delete")
-        sync_cmd += [euler_src, results_dir + "/"]
+        filter_args = ["--include=*/"]
+        for pattern in sync_profiles[sync_profile]:
+            filter_args.append(f"--include={pattern}")
+        filter_args.append("--exclude=*")
 
-        with st.spinner("Syncing from Euler…"):
+        if scope_rel_dirs is None:
+            sync_cmd = ["rsync", "-av", "--whole-file", "--prune-empty-dirs", *filter_args]
+            if delete_stale:
+                sync_cmd.append("--delete")
+            sync_cmd += [euler_src, results_dir + "/"]
+            scope_desc = "full directory"
+        else:
+            # -R keeps the path after each /./ pivot, so FLC_x/job lands in
+            # FLC_x/job locally; the space-separated sources are expanded by
+            # the remote shell, giving one connection for all directories.
+            sources = " ".join(f"{remote_base}/./{rel}" for rel in scope_rel_dirs)
+            sync_cmd = [
+                "rsync", "-av", "--whole-file", "--prune-empty-dirs", "--relative",
+                *filter_args, f"{remote_spec}:{sources}", results_dir + "/",
+            ]
+            scope_desc = f"{len(scope_rel_dirs)} director{'y' if len(scope_rel_dirs) == 1 else 'ies'}"
+
+        with st.spinner(f"Syncing from Euler — {scope_desc}, {sync_profile}…"):
             result = subprocess.run(sync_cmd, capture_output=True, text=True)
 
-        if result.returncode == 0:
-            st.success("Sync complete")
-            _scan.clear()
-            _load_csv.clear()
-            preview = result.stdout.strip()
-            if preview:
+        if result.returncode != 0:
+            st.error(result.stderr.strip() or "rsync failed")
+            if result.stdout.strip():
                 with st.expander("rsync output"):
-                    st.code(preview[-3000:] if len(preview) > 3000 else preview)
-            st.rerun()
-        else:
-            st.error(result.stderr or "rsync failed")
+                    st.code(result.stdout[-3000:])
+            return
+
+        n_files = sum(
+            1 for line in result.stdout.splitlines()
+            if line and not line.endswith("/")
+            and not line.startswith(("sending ", "receiving ", "sent ", "total ", "building "))
+        )
+        _invalidate_results_caches()
+        st.session_state["_results_last_sync_toast"] = (
+            f"Sync complete — {n_files} files updated ({scope_desc}, {sync_profile})"
+        )
+        st.rerun(scope="app")
+
+    _euler_sync_controls()
 
     if not os.path.isdir(results_dir):
         st.info("No local results yet — click **Sync from Euler** to pull them.")
@@ -4616,8 +5719,6 @@ elif page == "Results":
         modes.append("FLC")
     elif job_dirs:
         modes.append("FLC")
-    if job_dirs:
-        modes.append("Sensitivity")
 
     def _persisted_choice(label, options, key, default=None, **kwargs):
         options = list(options)
@@ -4665,7 +5766,10 @@ elif page == "Results":
         _display_job_videos(job_dir)
 
     def _render_pdf_downloads(job_dir, key_prefix):
-        pdfs = sorted(f for f in os.listdir(job_dir) if f.endswith(".pdf"))
+        pdfs = sorted(
+            f for f in os.listdir(job_dir)
+            if f.endswith(".pdf") and f != "postproc_plots.pdf"
+        )
         if not pdfs:
             return
         st.markdown("---")
@@ -4677,56 +5781,90 @@ elif page == "Results":
                     mime="application/pdf", key=f"{key_prefix}_dl_{pdf}",
                 )
 
-    def _render_job_tabs(job_dir, key_prefix):
-        (tab_fd, tab_en, tab_sp,
-         tab_vh,
-         tab_fl, tab_loc, tab_diag) = st.tabs([
-         "Force-Disp.", "Energy", "Strain Path",
-            "V&H",
+    @st.fragment
+    def _render_job_tabs(job_dir, key_prefix, panel_state_key="results_panel"):
+        sections = [
+            "Force-Disp.", "Energy", "Strain Path", "V&H",
             "Forming Limits", "Cluster Location", "Diagnostics",
-        ])
+        ]
+        # One shared panel key per view: the selected panel stays put when the
+        # user switches jobs, and switching panels reruns only this fragment.
+        panel_key = panel_state_key
+        if st.session_state.get(panel_key) not in sections:
+            st.session_state[panel_key] = sections[0]
+        panel = st.segmented_control(
+            "Result panel",
+            sections,
+            key=panel_key,
+        )
 
-        with tab_fd:
-            fig_fd = _fd_with_fracture_fig(job_dir)
+        if panel == "Force-Disp.":
+            fig_fd = _figure_memo(
+                "fd", job_dir,
+                ("global.csv", "punch_fd.csv", "forming_limits.csv", "strain_path.csv"),
+                lambda: _fd_with_fracture_fig(job_dir),
+            )
             if fig_fd is not None:
                 _plotly_chart(fig_fd, use_container_width=True, key=f"{key_prefix}_fd")
             else:
                 st.info("Force–displacement data unavailable")
 
-        with tab_en:
-            fig_en = _energy_fig_v2(job_dir)
+        elif panel == "Energy":
+            fig_en = _figure_memo(
+                "energy", job_dir,
+                ("global.csv", "energy_data.csv", "punch_fd.csv", "forming_limits.csv"),
+                lambda: _energy_fig_v2(job_dir),
+            )
             if fig_en is not None:
                 _plotly_chart(fig_en, use_container_width=True, key=f"{key_prefix}_en")
             else:
                 st.info("Energy data unavailable")
 
-        with tab_sp:
-            # Show cluster paths + V&H representative overlay; fall back to plain cluster
-            fig, reason = _strain_path_compare_fig(job_dir)
-            if fig is None:
-                fig, reason = _strain_cluster_fig(job_dir)
+        elif panel == "Strain Path":
+            fig, reason = _figure_memo(
+                "sp_quick", job_dir,
+                ("strain_path.csv", "elout.csv"),
+                lambda: _strain_path_quick_fig(job_dir),
+            )
             if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_sp")
+                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_sp_quick")
             else:
                 st.info(reason or "Strain-path data unavailable")
-            fig_extras = _strain_path_extras_fig(job_dir)
+            fig_extras = _figure_memo(
+                "sp_extras", job_dir,
+                ("strain_path.csv",),
+                lambda: _strain_path_extras_fig(job_dir),
+            )
             if fig_extras is not None:
                 _plotly_chart(fig_extras, use_container_width=True, key=f"{key_prefix}_sp_extras")
+            if st.checkbox(
+                "Load cluster strain paths (large diagnostics CSV)",
+                value=False,
+                key=f"{key_prefix}_load_cluster_paths",
+                help="Reads strain_cluster.csv. This can be slow for large jobs.",
+            ):
+                cluster_fig, cluster_reason = _strain_path_compare_fig(job_dir)
+                if cluster_fig is None:
+                    cluster_fig, cluster_reason = _strain_cluster_fig(job_dir)
+                if cluster_fig is not None:
+                    _plotly_chart(cluster_fig, use_container_width=True, key=f"{key_prefix}_sp_cluster")
+                else:
+                    st.info(cluster_reason or "Cluster strain-path data unavailable")
 
-        with tab_vh:
+        elif panel == "V&H":
             @st.fragment
             def _vh_content(_job_dir=job_dir, _kp=key_prefix):
+                _stored_vh = _stored_vh_settings(_job_dir)
+                _sw_default = int(_stored_vh.get("vh_smoothing_window") or 1)
                 sw = st.number_input(
-                    "V&H fit smoothing", min_value=1, max_value=101, value=1, step=2,
+                    "V&H fit smoothing", min_value=1, max_value=101, value=_sw_default, step=2,
                     key=f"{_kp}_vh_smoothing",
                 )
 
-                # ── Auto-fit (always run first; gives correct defaults) ────
                 fig_auto, reason_auto, _vh_data_auto = _volk_hora_dome_rate_fig(
                     _job_dir, smoothing_window=int(sw),
                 )
 
-                # ── Range sliders (defaults from real auto-fit) ────────────
                 _stable_range = None
                 _unstable_range = None
                 _def_stable = _def_unstable = None
@@ -4739,17 +5877,30 @@ elif page == "Results":
                         _fit_auto = _vh_data_auto["fit"]
                         _nsc = _fit_auto["stable"]["count"] if _fit_auto else max(VH_MIN_STABLE_POINTS, len(_win) // 2)
                         _nsc = min(max(_nsc, VH_MIN_STABLE_POINTS), len(_win) - VH_MIN_UNSTABLE_POINTS)
-                        # default windows: stable = first _nsc pts of fit window; unstable = rest
-                        _def_stable   = (_win[0], _win[_nsc - 1])          # (idx_start, idx_end)
+                        _def_stable = (_win[0], _win[_nsc - 1])
                         _def_unstable = (_win[_nsc], _win[-1])
+                        _stable_key = f"{_kp}_vh_stable_range"
+                        _unstable_key = f"{_kp}_vh_unstable_range"
+                        if "stable_range" in _stored_vh and _stable_key not in st.session_state:
+                            _s0, _s1 = _stored_vh["stable_range"]
+                            st.session_state[_stable_key] = (
+                                _nearest_index(_t_all, _s0),
+                                _nearest_index(_t_all, _s1),
+                            )
+                        if "unstable_range" in _stored_vh and _unstable_key not in st.session_state:
+                            _u0, _u1 = _stored_vh["unstable_range"]
+                            st.session_state[_unstable_key] = (
+                                _nearest_index(_t_all, _u0),
+                                _nearest_index(_t_all, _u1),
+                            )
 
                         _c1, _c2 = st.columns(2)
                         with _c1:
                             _is0, _is1 = st.slider(
                                 "Stable fit window",
                                 min_value=0, max_value=_n - 1,
-                                value=_def_stable,
-                                key=f"{_kp}_vh_stable_range",
+                                value=st.session_state.get(_stable_key, _def_stable),
+                                key=_stable_key,
                                 help="Green region — data used for the stable (pre-necking) line.",
                             )
                             _stable_range = (_t_all[_is0], _t_all[_is1])
@@ -4757,13 +5908,12 @@ elif page == "Results":
                             _iu0, _iu1 = st.slider(
                                 "Unstable fit window",
                                 min_value=0, max_value=_n - 1,
-                                value=_def_unstable,
-                                key=f"{_kp}_vh_unstable_range",
+                                value=st.session_state.get(_unstable_key, _def_unstable),
+                                key=_unstable_key,
                                 help="Red region — data used for the unstable (post-necking) line.",
                             )
                             _unstable_range = (_t_all[_iu0], _t_all[_iu1])
 
-                # ── Chart: reuse auto-fit result unless sliders were moved ──
                 _using_auto = (
                     _stable_range is None
                     or (
@@ -4785,23 +5935,28 @@ elif page == "Results":
                 else:
                     st.info(reason or "V&H dome rate unavailable")
 
-                anchor_points, _ = _fracture_cluster_anchor(_job_dir)
-                if anchor_points:
-                    zone_fig, zone_reason = _volk_hora_zone_location_fig(
-                        os.path.join(_job_dir, "strain_cluster.csv"),
-                        "V&H Zone Location",
-                        prefer_fracture_center=True,
-                        anchor_points=anchor_points,
-                        anchor_name="fracture cluster",
-                    )
-                else:
-                    zone_fig, zone_reason = None, "Fracture cluster not found — rerun postprocessing"
-                if zone_fig is not None:
-                    _plotly_chart(zone_fig, use_container_width=True, key=f"{_kp}_vh_zone")
-                else:
-                    st.info(zone_reason)
+                if st.checkbox(
+                    "Load V&H zone map (large diagnostics CSV)",
+                    value=False,
+                    key=f"{_kp}_vh_zone_load",
+                    help="Reads strain_cluster.csv. Leave this off for responsive browsing.",
+                ):
+                    anchor_points, _ = _fracture_cluster_anchor(_job_dir)
+                    if anchor_points:
+                        zone_fig, zone_reason = _volk_hora_zone_location_fig(
+                            os.path.join(_job_dir, "strain_cluster.csv"),
+                            "V&H Zone Location",
+                            prefer_fracture_center=True,
+                            anchor_points=anchor_points,
+                            anchor_name="fracture cluster",
+                        )
+                    else:
+                        zone_fig, zone_reason = None, "Fracture cluster not found — rerun postprocessing"
+                    if zone_fig is not None:
+                        _plotly_chart(zone_fig, use_container_width=True, key=f"{_kp}_vh_zone")
+                    else:
+                        st.info(zone_reason)
 
-                # ── Write button ──────────────────────────────────────────
                 with st.expander("Overwrite VH forming limit"):
                     fl_path = os.path.join(_job_dir, "forming_limits.csv")
                     if _vh_data is None or _vh_data["fit"] is None or not os.path.exists(fl_path):
@@ -4809,13 +5964,13 @@ elif page == "Results":
                     else:
                         _fit = _vh_data["fit"]
                         _data = _vh_data["data"]
-                        _tc   = _fit["t_cross"]
-                        _ks   = _fit["kstable"]
-                        _rr   = _data.iloc[_ks]
-                        _e1   = float(_rr["eps1_major"])
-                        _e2   = float(_rr["eps2_minor"])
+                        _tc = _fit["t_cross"]
+                        _ks = _fit["kstable"]
+                        _rr = _data.iloc[_ks]
+                        _e1 = float(_rr["eps1_major"])
+                        _e2 = float(_rr["eps2_minor"])
                         _eqps = float(_rr["EQPS"]) if "EQPS" in _rr.index else float("nan")
-                        _d    = float(_rr["D"])    if "D"    in _rr.index else float("nan")
+                        _d = float(_rr["D"]) if "D" in _rr.index else float("nan")
 
                         fl_df = _load_csv(fl_path).copy()
                         fl_df["time_s"] = pd.to_numeric(fl_df["time_s"], errors="coerce")
@@ -4836,7 +5991,7 @@ elif page == "Results":
                         if os.path.exists(_gl):
                             _gdf = _load_csv(_gl).copy()
                             _gdf["time_s"] = pd.to_numeric(_gdf["time_s"], errors="coerce")
-                            _gdf["U3_mm"]  = pd.to_numeric(_gdf["U3_mm"],  errors="coerce")
+                            _gdf["U3_mm"] = pd.to_numeric(_gdf["U3_mm"], errors="coerce")
                             _gdf = _gdf.dropna(subset=["time_s"])
                             if not _gdf.empty:
                                 _u3 = float(_gdf.iloc[(_gdf["time_s"] - _tc).abs().argmin()]["U3_mm"])
@@ -4846,9 +6001,23 @@ elif page == "Results":
                             _fw = _load_csv(fl_path).copy()
                             _mask = _fw["method"] == "volk_hora"
                             _upd = {"time_s": _tc, "eps1_major": _e1, "eps2_minor": _e2}
-                            if not math.isnan(_u3):                               _upd["U3_mm"] = _u3
-                            if not math.isnan(_eqps) and "EQPS" in _fw.columns:  _upd["EQPS"]  = _eqps
-                            if not math.isnan(_d)    and "D"    in _fw.columns:   _upd["D"]     = _d
+                            _saved_stable, _saved_unstable = _vh_ranges_from_fit(_fit, _vh_data["t"])
+                            _upd["vh_smoothing_window"] = int(sw)
+                            if _saved_stable is not None:
+                                _upd["vh_stable_t0"] = float(_saved_stable[0])
+                                _upd["vh_stable_t1"] = float(_saved_stable[1])
+                            if _saved_unstable is not None:
+                                _upd["vh_unstable_t0"] = float(_saved_unstable[0])
+                                _upd["vh_unstable_t1"] = float(_saved_unstable[1])
+                            if not math.isnan(_u3):
+                                _upd["U3_mm"] = _u3
+                            if not math.isnan(_eqps) and "EQPS" in _fw.columns:
+                                _upd["EQPS"] = _eqps
+                            if not math.isnan(_d) and "D" in _fw.columns:
+                                _upd["D"] = _d
+                            for _col in _upd:
+                                if _col not in _fw.columns:
+                                    _fw[_col] = ""
                             if _mask.any():
                                 for _col, _val in _upd.items():
                                     if _col in _fw.columns:
@@ -4863,42 +6032,42 @@ elif page == "Results":
                             st.success(f"Written → t = {_tc:.4f} s  ε₁ = {_e1:.4f}  ε₂ = {_e2:.4f}")
             _vh_content()
 
-        with tab_fl:
+        elif panel == "Forming Limits":
             fp = os.path.join(job_dir, "forming_limits.csv")
             if not os.path.exists(fp):
                 st.info("forming_limits.csv not found")
             else:
                 raw = _load_csv(fp)
                 _METHOD_LABEL = {
-                    "fracture":     "Fracture",
-                    "volk_hora":    "Volk-Hora",
-                    "sdv6":         "SDV6/damage",
+                    "fracture": "Fracture",
+                    "volk_hora": "Volk-Hora",
+                    "sdv6": "SDV6/damage",
                 }
                 _PATH_LABEL = {
-                    "critical_element":                       "Single element",
-                    "volk_hora_selected_region":              "V&H zone",
-                    "fracture_neighborhood_selected_region":  "Fracture neighbourhood",
+                    "critical_element": "Single element",
+                    "volk_hora_selected_region": "V&H zone",
+                    "fracture_neighborhood_selected_region": "Fracture neighbourhood",
                 }
                 rows = []
                 for _, r in raw.iterrows():
-                    method   = str(r.get("method", ""))
-                    ft       = str(r.get("fracture_type", "—"))
-                    ps_raw   = str(r.get("path_source", ""))
-                    ps       = next((v for k, v in _PATH_LABEL.items() if ps_raw.startswith(k)), ps_raw)
-                    valid    = ft == "dome"
-                    e1       = pd.to_numeric(r.get("eps1_major"), errors="coerce")
-                    e2       = pd.to_numeric(r.get("eps2_minor"), errors="coerce")
-                    t        = pd.to_numeric(r.get("time_s"),     errors="coerce")
-                    u3       = pd.to_numeric(r.get("U3_mm"),      errors="coerce")
+                    method = str(r.get("method", ""))
+                    ft = str(r.get("fracture_type", "—"))
+                    ps_raw = str(r.get("path_source", ""))
+                    ps = next((v for k, v in _PATH_LABEL.items() if ps_raw.startswith(k)), ps_raw)
+                    valid = ft == "dome"
+                    e1 = pd.to_numeric(r.get("eps1_major"), errors="coerce")
+                    e2 = pd.to_numeric(r.get("eps2_minor"), errors="coerce")
+                    t = pd.to_numeric(r.get("time_s"), errors="coerce")
+                    u3 = pd.to_numeric(r.get("U3_mm"), errors="coerce")
                     rows.append({
-                        "Criterion":      _METHOD_LABEL.get(method, method),
-                        "ε₁ major":       round(float(e1), 4) if pd.notna(e1) else "—",
-                        "ε₂ minor":       round(float(e2), 4) if pd.notna(e2) else "—",
-                        "Time [s]":       round(float(t),  4) if pd.notna(t)  else "—",
-                        "U3 [mm]":        round(float(u3), 2) if pd.notna(u3) else "—",
-                        "Fracture zone":  ft,
-                        "Path source":    ps,
-                        "Valid":          "✓" if valid else "✗",
+                        "Criterion": _METHOD_LABEL.get(method, method),
+                        "ε₁ major": round(float(e1), 4) if pd.notna(e1) else "—",
+                        "ε₂ minor": round(float(e2), 4) if pd.notna(e2) else "—",
+                        "Time [s]": round(float(t), 4) if pd.notna(t) else "—",
+                        "U3 [mm]": round(float(u3), 2) if pd.notna(u3) else "—",
+                        "Fracture zone": ft,
+                        "Path source": ps,
+                        "Valid": "✓" if valid else "✗",
                     })
                 summary = pd.DataFrame(rows)
 
@@ -4912,14 +6081,15 @@ elif page == "Results":
                     hide_index=True,
                 )
 
-        with tab_loc:
+        elif panel == "Cluster Location":
+            st.caption("This diagnostic reads strain_cluster.csv and can be slow for large jobs.")
             fig, reason = _cluster_location_fig(job_dir)
             if fig is not None:
                 _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_loc")
             else:
                 st.info(reason or "Cluster location unavailable")
 
-        with tab_diag:
+        elif panel == "Diagnostics":
             _diagnostics_render(job_dir, key_prefix=f"{key_prefix}_diag")
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -4927,12 +6097,24 @@ elif page == "Results":
     # ══════════════════════════════════════════════════════════════════════════
     if view_mode == "Single Job":
 
-        sel = _persisted_choice("Job", list(job_dirs.keys()), "results_single_job")
-        job_dir = job_dirs[sel]
+        @st.fragment
+        def _single_job_view():
+            sel = _persisted_choice("Job", list(job_dirs.keys()), "results_single_job")
+            if sel is None:
+                return
+            job_dir = job_dirs[sel]
+            # Remember the enclosing top-level folder for scoped Euler sync.
+            _rel = os.path.relpath(os.path.abspath(job_dir), os.path.abspath(results_dir))
+            if not _rel.startswith(".."):
+                st.session_state["_results_sync_scope_dirs"] = [_rel.split(os.sep)[0]]
 
-        _render_job_media(job_dir)
-        _render_job_tabs(job_dir, key_prefix=f"single_{sel}")
-        _render_pdf_downloads(job_dir, key_prefix=f"single_{sel}")
+            _render_single_graph_download(sel, job_dir, job_dirs, key_prefix=f"single_{_safe_filename(sel)}")
+            _render_job_media(job_dir)
+            _render_job_tabs(job_dir, key_prefix=f"single_{sel}",
+                             panel_state_key="results_panel_single")
+            _render_pdf_downloads(job_dir, key_prefix=f"single_{sel}")
+
+        _single_job_view()
 
     # ══════════════════════════════════════════════════════════════════════════
     # Unified FLC view
@@ -4960,17 +6142,19 @@ elif page == "Results":
             test = m.group(1).capitalize()
             thickness = m.group(2).replace("p", ".")
             angle = m.group(3)
-            suffix = _strip_punch_travel_token(m.group(4).lstrip("_"))
             label = f"{test}  t = {thickness} mm"
             if angle != "0":
                 label += f"  {angle}°"
-            if suffix:
-                label += f"  ({suffix})"
             return label
 
         def _job_variant_name(name):
-            m = re.search(r"_ang\d+_(.*)", name)
-            return _strip_punch_travel_token(m.group(1)) if m else ""
+            return _plot_separator_key(name)
+
+        def _job_variant_label(variant_key):
+            parts = str(variant_key).split("|")
+            if parts and parts[0] in ("Nakazima", "Marciniak", "PiP", "Test"):
+                parts = parts[1:]
+            return " > ".join(p for p in parts if p)
 
         def _sub_jobs_for_flc_dir(flc_dir, variant=None):
             out = {}
@@ -4984,7 +6168,7 @@ elif page == "Results":
                 if variant is not None and _job_variant_name(entry.name) != variant:
                     continue
                 out[entry.name] = entry.path
-            return out
+            return _dedupe_jobs_by_parameters(out)
 
         def _has_forming_limits(jobs):
             return any(os.path.exists(os.path.join(path, "forming_limits.csv"))
@@ -4992,17 +6176,64 @@ elif page == "Results":
 
         def _flc_source_options():
             options = {}
+
+            def _is_under_flc_dir(path):
+                abs_path = os.path.abspath(path)
+                for flc_path in flc_dirs.values():
+                    abs_flc = os.path.abspath(flc_path)
+                    if abs_path == abs_flc:
+                        continue
+                    try:
+                        if os.path.commonpath([abs_path, abs_flc]) == abs_flc:
+                            return True
+                    except ValueError:
+                        continue
+                return False
+
+            def _sort_flc_jobs(jobs):
+                deduped = _dedupe_jobs_by_parameters(jobs)
+                return dict(sorted(deduped.items(), key=lambda kv: (_flc_w(kv[0]), kv[0])))
+
+            def _merge_jobs(existing_jobs, new_jobs):
+                merged = dict(existing_jobs)
+                for job_label, job_path in new_jobs.items():
+                    label = job_label
+                    if label in merged and os.path.abspath(merged[label]) != os.path.abspath(job_path):
+                        label = os.path.relpath(job_path, results_dir)
+                    merged[label] = job_path
+                return _sort_flc_jobs(merged)
+
+            def _source_mtime(option):
+                mtimes = [_job_mtime(path) for path in option.get("jobs", {}).values()]
+                if mtimes:
+                    return max(mtimes)
+                return _job_mtime(option.get("path", ""))
+
+            def _put_source(label, option):
+                option = dict(option)
+                option["jobs"] = _sort_flc_jobs(option.get("jobs", {}))
+                if label in options:
+                    existing = dict(options[label])
+                    existing["jobs"] = _merge_jobs(existing.get("jobs", {}), option["jobs"])
+                    if _source_mtime(option) >= _source_mtime(existing):
+                        for key in ("kind", "path", "variant"):
+                            if key in option:
+                                existing[key] = option[key]
+                    options[label] = existing
+                else:
+                    options[label] = option
+
             if job_dirs:
                 direct_jobs = {
                     name: path
                     for name, path in job_dirs.items()
-                    if _is_job_dir(path)
+                    if _is_job_dir(path) and not _is_under_flc_dir(path)
                 }
                 if direct_jobs:
-                    options["Direct completed jobs"] = {
+                    _put_source("Direct completed jobs", {
                         "kind": "direct",
-                        "jobs": dict(sorted(direct_jobs.items(), key=lambda kv: (_flc_w(kv[0]), kv[0]))),
-                    }
+                        "jobs": direct_jobs,
+                    })
 
             for name, path in flc_dirs.items():
                 jobs_all = _sub_jobs_for_flc_dir(path)
@@ -5015,24 +6246,26 @@ elif page == "Results":
                         jobs = _sub_jobs_for_flc_dir(path, variant=variant)
                         if not _has_forming_limits(jobs):
                             continue
-                        label = f"{base_label}  ({variant})" if variant else base_label
-                        options[label] = {
+                        variant_label = _job_variant_label(variant)
+                        label = f"{base_label}  ({variant_label})" if variant_label else base_label
+                        _put_source(label, {
                             "kind": "set",
                             "path": path,
                             "variant": variant,
-                            "jobs": dict(sorted(jobs.items(), key=lambda kv: _flc_w(kv[0]))),
-                        }
+                            "jobs": jobs,
+                        })
                 else:
                     variant = variants[0] if variants else None
                     if not _has_forming_limits(jobs_all):
                         continue
-                    label = f"{base_label}  ({variant})" if variant else base_label
-                    options[label] = {
+                    variant_label = _job_variant_label(variant) if variant else ""
+                    label = f"{base_label}  ({variant_label})" if variant_label else base_label
+                    _put_source(label, {
                         "kind": "set",
                         "path": path,
                         "variant": variant,
-                        "jobs": dict(sorted(jobs_all.items(), key=lambda kv: _flc_w(kv[0]))),
-                    }
+                        "jobs": jobs_all,
+                    })
             return options
 
         def _limit_point(job_name, job_dir, method):
@@ -5120,7 +6353,7 @@ elif page == "Results":
                             path_indices.append(len(fig.data))
                             fig.add_trace(go.Scatter(
                                 x=e2_path, y=e1_path, mode="lines",
-                                visible=False, showlegend=False, hoverinfo="skip",
+                                visible=True, showlegend=False, hoverinfo="skip",
                                 line=dict(color=color, width=1, dash="dot"),
                                 opacity=0.35,
                             ))
@@ -5185,7 +6418,7 @@ elif page == "Results":
                             path_indices.append(len(fig.data))
                             fig.add_trace(go.Scatter(
                                 x=p["path_e2"], y=p["path_e1"], mode="lines",
-                                visible=False, showlegend=False, hoverinfo="skip",
+                                visible=True, showlegend=False, hoverinfo="skip",
                                 line=dict(color=color, width=1.2),
                                 opacity=0.35,
                             ))
@@ -5277,101 +6510,138 @@ elif page == "Results":
             fig.add_hline(y=0, line_width=0.6, line_dash="dot", line_color=style["guide"])
             return fig, path_indices, no_data, no_optional
 
-        source_options = _flc_source_options()
-        if not source_options:
-            st.info("No FLC data found. Sync from Euler or run post-processing first.")
-            st.stop()
-
-        default_sources = list(source_options.keys())[:min(4, len(source_options))]
-        previous_sources = st.session_state.get("results_flc_sources", [])
-        if any(source not in source_options for source in previous_sources):
-            st.session_state["results_flc_sources"] = default_sources
-        selected_sources = st.multiselect(
-            "FLC source",
-            list(source_options.keys()),
-            default=default_sources,
-            key="results_flc_sources",
-        )
-        if not selected_sources:
-            st.info("Select at least one FLC source.")
-            st.stop()
-
-        c_flc, c_paths = st.columns([3, 1])
-        with c_flc:
-            show_vh_flc = st.checkbox(
-                "Show optional FLC from V&H tab source",
-                value=True,
-                help="Uses the stored method='volk_hora' row in forming_limits.csv. "
-                     "The V&H tab's Overwrite button updates this exact source.",
-                key="results_flc_show_vh_overlay",
+        def _flc_source_options_cached():
+            """Memoize the source scan — it does one scandir/listdir per FLC dir
+            and per job, which is too slow to repeat on every widget rerun."""
+            key = (
+                results_dir,
+                st.session_state.get("results_scan_token", 0),
+                tuple(sorted(flc_dirs.items())),
+                tuple(sorted(job_dirs.items())),
             )
-        with c_paths:
-            show_paths = st.checkbox(
-                "Paths",
-                value=False,
-                help="Add strain paths hidden by default; use the switch below the plot to show them.",
-                key="results_flc_show_paths",
+            cached = st.session_state.get("_flc_source_options_memo")
+            if cached is not None and cached[0] == key:
+                return cached[1]
+            options = _flc_source_options()
+            st.session_state["_flc_source_options_memo"] = (key, options)
+            return options
+
+        @st.fragment
+        def _flc_view():
+            source_options = _flc_source_options_cached()
+            if not source_options:
+                st.info("No FLC data found. Sync from Euler or run post-processing first.")
+                return
+
+            selected_sources = st.multiselect(
+                "FLC source",
+                list(source_options.keys()),
+                default=[],
+                key="results_flc_sources_empty_default",
             )
+            if not selected_sources:
+                st.info("Select at least one FLC source.")
+                return
 
-        flc_fig, path_indices, no_data, no_optional = _build_unified_flc_fig(
-            selected_sources, source_options, show_vh_flc, show_paths,
-        )
-        _plotly_chart(flc_fig, use_container_width=True)
-        _path_toggle_switch(path_indices)
-        if no_data:
-            st.caption("No usable forming-limit CSV data for: " + ", ".join(no_data))
-        if no_optional and show_vh_flc:
-            st.caption("No optional FLC overlay data for: " + ", ".join(no_optional))
+            # Remember the FLC folders behind the current selection for scoped sync.
+            _scope_dirs = []
+            for _lbl in selected_sources:
+                _src = source_options[_lbl]
+                if _src.get("kind") == "set" and _src.get("path"):
+                    _rel = os.path.relpath(os.path.abspath(_src["path"]),
+                                           os.path.abspath(results_dir))
+                else:
+                    _rel = None
+                if _rel and not _rel.startswith(".."):
+                    _scope_dirs.append(_rel.split(os.sep)[0])
+                else:
+                    for _jd in _src.get("jobs", {}).values():
+                        _jrel = os.path.relpath(os.path.abspath(_jd),
+                                                os.path.abspath(results_dir))
+                        if not _jrel.startswith(".."):
+                            _scope_dirs.append(_jrel.split(os.sep)[0])
+            if _scope_dirs:
+                st.session_state["_results_sync_scope_dirs"] = sorted(set(_scope_dirs))
 
-        with st.expander("Export plot"):
-            import plotly.io as _pio
-            c_name, c_scale, c_fmt = st.columns([3, 1, 1])
-            with c_name:
-                fname = st.text_input("Filename", value="FLC")
-            with c_scale:
-                scale = st.selectbox(
-                    "Resolution", [1, 2, 3, 4],
-                    index=1,
-                    format_func=lambda s: f"{s}x ({s*1200}x{s*500}px)",
+            c_flc, c_paths = st.columns([3, 1])
+            with c_flc:
+                show_vh_flc = st.checkbox(
+                    "Show optional FLC from V&H tab source",
+                    value=True,
+                    help="Uses the stored method='volk_hora' row in forming_limits.csv. "
+                         "The V&H tab's Overwrite button updates this exact source.",
+                    key="results_flc_show_vh_overlay",
                 )
-            with c_fmt:
-                fmt = st.selectbox("Format", ["png", "pdf", "svg"])
-            if st.button("Render & download", type="primary", key="flc_unified_export"):
-                with st.spinner("Rendering..."):
-                    img_bytes = _pio.to_image(
-                        flc_fig, format=fmt, width=1200, height=500, scale=scale,
-                    )
-                st.download_button(
-                    label=f"Download {fname}.{fmt}",
-                    data=img_bytes,
-                    file_name=f"{fname}.{fmt}",
-                    mime=f"image/{fmt}" if fmt != "pdf" else "application/pdf",
-                    key="flc_unified_download",
+            with c_paths:
+                show_paths = st.checkbox(
+                    "Show strain paths",
+                    value=False,
+                    help="Add strain paths directly to the FLD plot.",
+                    key="results_flc_show_paths",
                 )
 
-        if len(selected_sources) == 1:
-            source_label = selected_sources[0]
-            source = source_options[source_label]
-            jobs = source["jobs"]
-            if jobs:
-                st.markdown("---")
-                st.subheader("Individual Job")
-                selected_job = _persisted_choice(
-                    "Job",
-                    list(jobs.keys()),
-                    "results_flc_job",
+            # Memoize the unified FLD figure on the underlying CSV mtimes.
+            _sig = []
+            for _lbl in selected_sources:
+                for _jd in source_options[_lbl]["jobs"].values():
+                    for _f in ("forming_limits.csv", "strain_path.csv", "elout.csv"):
+                        _fp = os.path.join(_jd, _f)
+                        try:
+                            _sig.append((_fp, os.path.getmtime(_fp)))
+                        except OSError:
+                            _sig.append((_fp, None))
+            _memo = st.session_state.setdefault("_results_fig_memo", {})
+            _key = (
+                "fld_unified", tuple(selected_sources), bool(show_vh_flc),
+                bool(show_paths), tuple(_sig), _plot_theme()["base"],
+            )
+            if _key not in _memo:
+                if len(_memo) >= 48:
+                    _memo.clear()
+                _memo[_key] = _build_unified_flc_fig(
+                    selected_sources, source_options, show_vh_flc, show_paths,
                 )
-                if selected_job:
-                    job_dir = jobs[selected_job]
-                    _render_job_media(job_dir)
-                    _render_job_tabs(
-                        job_dir,
-                        key_prefix=f"flc_unified_{source_label}_{selected_job}",
+            flc_fig, path_indices, no_data, no_optional = _memo[_key]
+            _plotly_chart(flc_fig, use_container_width=True)
+            if no_data:
+                st.caption("No usable forming-limit CSV data for: " + ", ".join(no_data))
+            if no_optional and show_vh_flc:
+                st.caption("No optional FLC overlay data for: " + ", ".join(no_optional))
+
+            _render_fld_graph_download(selected_sources, source_options, key_prefix="flc_unified")
+
+            if len(selected_sources) == 1:
+                source_label = selected_sources[0]
+                source = source_options[source_label]
+                jobs = source["jobs"]
+                if jobs:
+                    st.markdown("---")
+                    st.subheader("Individual Job")
+                    selected_job = _persisted_choice(
+                        "Job",
+                        list(jobs.keys()),
+                        "results_flc_job",
                     )
-                    _render_pdf_downloads(
-                        job_dir,
-                        key_prefix=f"flc_unified_{source_label}_{selected_job}",
-                    )
+                    if selected_job:
+                        job_dir = jobs[selected_job]
+                        _render_single_graph_download(
+                            selected_job,
+                            job_dir,
+                            jobs,
+                            key_prefix=f"flc_single_{_safe_filename(source_label)}_{_safe_filename(selected_job)}",
+                        )
+                        _render_job_media(job_dir)
+                        _render_job_tabs(
+                            job_dir,
+                            key_prefix=f"flc_unified_{source_label}_{selected_job}",
+                            panel_state_key="results_panel_flc",
+                        )
+                        _render_pdf_downloads(
+                            job_dir,
+                            key_prefix=f"flc_unified_{source_label}_{selected_job}",
+                        )
+
+        _flc_view()
 
     # ══════════════════════════════════════════════════════════════════════════
     # Sensitivity view
@@ -5749,51 +7019,3 @@ elif page == "Results":
                     f"Δthin = max thinning deviation from reference "
                     f"(mr={int(ref_mr)}, dt={ref_ms:.0e}).  ○ = partial run."
                 )
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# AI Assistant
-# ══════════════════════════════════════════════════════════════════════════════
-elif page == "AI Assistant":
-
-    st.subheader("AI Assistant")
-
-    api_key = st.text_input("Anthropic API key", type="password")
-
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.write(m["content"])
-
-    prompt = st.chat_input("Ask...")
-
-    if prompt and api_key:
-
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        client = anthropic.Anthropic(api_key=api_key)
-
-        mode_desc = "single job"
-
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=800,
-            system=f"""
-You are an Abaqus expert.
-
-Current setup:
-- Mode: {mode_desc}
-- Test: {test_type}
-- Thickness: {thickness}
-- Mesh: {mesh_factor}
-- Mass scaling: {mass_scaling}
-""",
-            messages=st.session_state.messages,
-        )
-
-        reply = response.content[0].text
-
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.rerun()
