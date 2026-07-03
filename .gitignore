@@ -57,3 +57,7 @@ nakazima_*.err
 
 # ── Old result files ──────────────────────────────────────────────────────────
 *.dat
+
+# ── FEM GUI runtime state ─────────────────────────────────────────────────────
+FEM_GUI/.state/
+FEM_GUI/.cache/
