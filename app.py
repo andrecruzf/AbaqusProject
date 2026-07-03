@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import shlex
 import subprocess
 import time
 import zipfile
@@ -21,6 +22,8 @@ from plotly.subplots import make_subplots
 import streamlit as st
 import streamlit.components.v1 as st_components
 from streamlit_autorefresh import st_autorefresh
+
+import config as pipeline_config
 
 
 
@@ -59,9 +62,22 @@ st_components.html("""
 </script>
 """, height=0)
 
-EULER_USER  = "acruzfaria"
-EULER_HOST  = "euler.ethz.ch"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+EULER_USER = str(getattr(pipeline_config, "EULER_USER", "acruzfaria"))
+EULER_HOST = str(getattr(pipeline_config, "EULER_HOST", "euler.ethz.ch"))
+EULER_DIR_TEMPLATE = str(
+    getattr(pipeline_config, "EULER_DIR_TEMPLATE", "/cluster/home/{user}/AbaqusProject")
+)
+EULER_SCRATCH_ROOT_TEMPLATE = str(
+    getattr(pipeline_config, "EULER_SCRATCH_ROOT_TEMPLATE", "/cluster/scratch/{user}")
+)
+
+SSH_AUTH_NORMAL = "normal"
+SSH_AUTH_KEY_ONLY = "key_only"
+SSH_AUTH_LABELS = {
+    SSH_AUTH_NORMAL: "Normal login via Terminal",
+    SSH_AUTH_KEY_ONLY: "SSH key only",
+}
 
 WIDTH_OPTIONS = [20, 50, 80, 90, 100, 120, 200]
 MS_OPTIONS = [1e-3, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 1e-7]
@@ -71,11 +87,31 @@ VH_FRACTURE_RADIUS_MM = max(0.0, float(os.environ.get("POSTPROC_VH_FRACTURE_RADI
 VH_SEED_COUNT = max(1, int(os.environ.get("POSTPROC_VH_SEED_COUNT", "50")))
 VH_SEED_LABEL = "Top-%d" % VH_SEED_COUNT
 VH_EVAL_BACK_FRAMES = max(0, int(os.environ.get("POSTPROC_VH_EVAL_BACK_FRAMES", "2")))
+VH_FIT_WINDOW_SECONDS = max(0.0, float(os.environ.get("POSTPROC_VH_FIT_WINDOW_SECONDS", "2.0")))
+VH_UNSTABLE_TAIL_POINTS = max(0, int(os.environ.get("POSTPROC_VH_UNSTABLE_TAIL_POINTS", "4")))
+VH_UNSTABLE_FIT_WINDOW_SECONDS = max(0.0, float(os.environ.get("POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS", "0.6")))
 VH_FIT_WINDOW_FRAC = max(0.1, min(1.0, float(os.environ.get("POSTPROC_VH_FIT_WINDOW_FRAC", "0.4"))))
-VH_MIN_STABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_STABLE_POINTS", "7")))
-VH_MIN_UNSTABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_UNSTABLE_POINTS", "3")))
+VH_MIN_STABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_STABLE_POINTS", "20")))
+VH_MIN_UNSTABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_UNSTABLE_POINTS", "4")))
 CLUSTER_PATH_DISPLAY_MAX = max(1, int(os.environ.get("STREAMLIT_CLUSTER_PATH_DISPLAY_MAX", "40")))
 USER_DEFAULTS_PATH = os.path.join(PROJECT_DIR, "streamlit_job_defaults.json")
+
+
+def _format_remote_template(template, user):
+    try:
+        return str(template).format(user=user)
+    except (KeyError, IndexError, ValueError):
+        return str(template)
+
+
+def _remote_project_root(user=None):
+    user = user or EULER_USER
+    return _format_remote_template(EULER_DIR_TEMPLATE, user)
+
+
+def _remote_scratch_root(user=None):
+    user = user or EULER_USER
+    return _format_remote_template(EULER_SCRATCH_ROOT_TEMPLATE, user)
 
 
 def _vh_eval_index(n_points):
@@ -424,6 +460,7 @@ def _job_parameter_key(name_or_path):
     mass_scaling = _token(r"(?:^|_)ms(\d+e\d+)(?=_|$)")
     mesh_refinement = _token(r"(?:^|_)mr([\dp]+)(?=_|$)", "1")
     nt = _token(r"(?:^|_)nt(\d+)(?=_|$)")
+    punch_speed = _token(r"(?:^|_)ps([\dp]+)(?=_|$)", "5")
 
     return (
         test_type,
@@ -434,6 +471,7 @@ def _job_parameter_key(name_or_path):
         mass_scaling,
         f"mr{mesh_refinement}" if mesh_refinement else "",
         f"nt{nt}" if nt else "",
+        f"ps{punch_speed}",
     )
 
 
@@ -454,7 +492,7 @@ def _dedupe_jobs_by_parameters(jobs):
 
 def _job_campaign_key(name_or_path):
     """Job identity for FLD campaigns: same setup, different specimen width."""
-    test_type, punch, _width, thickness, angle, mass_scaling, mesh_refinement, nt = (
+    test_type, punch, _width, thickness, angle, mass_scaling, mesh_refinement, nt, punch_speed = (
         _job_parameter_key(name_or_path)
     )
     return (
@@ -465,6 +503,7 @@ def _job_campaign_key(name_or_path):
         mass_scaling,
         mesh_refinement,
         nt,
+        punch_speed,
     )
 
 
@@ -947,8 +986,16 @@ def make_study_root_name(test_type, blank_thickness, angle, punch_diameter,
 
 
 def build_env(cfg, include_width=True):
+    euler_user = st.session_state.get("euler_user", EULER_USER)
+    euler_host = st.session_state.get("euler_host", EULER_HOST)
     env = {
         **os.environ,
+        "EULER_USER": euler_user,
+        "EULER_HOST": euler_host,
+        "EULER_DIR": _remote_project_root(euler_user),
+        "EULER_SCRATCH_ROOT": _remote_scratch_root(euler_user),
+        "SSH_AUTH_MODE": _current_ssh_auth_mode(),
+        "SSH_CONTROL_PATH": _current_ssh_control_path(),
         "TEST_TYPE": cfg["test_type"],
         "BLANK_THICKNESS": str(cfg["thickness"]),
         "MATERIAL_ORIENTATION_ANGLE": str(cfg["angle"]),
@@ -1251,7 +1298,7 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
     then tail the .sta file in that directory.  Works for flat and grouped
     submit_one layouts without any path inference.
     """
-    home       = f"/cluster/home/{user}/AbaqusProject"
+    home       = _remote_project_root(user)
     job_names  = [jn for _, jn in job_rows]
 
     # Build one compound command per job: find log → grep SCRATCH → tail .sta
@@ -1271,10 +1318,9 @@ def _fetch_progress(user: str, host: str, job_rows: list[tuple[str, str]]) -> di
     batch = "; ".join(parts)
 
     try:
-        res = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=4",
-             f"{user}@{host}", batch],
-            capture_output=True, text=True, timeout=30,
+        res = _run_ssh_command(
+            _ssh_command(f"{user}@{host}", batch, connect_timeout=8),
+            timeout=_ssh_timeout(default_normal=120, default_key_only=30),
         )
     except subprocess.TimeoutExpired:
         return {jn: None for jn in job_names}
@@ -1407,6 +1453,10 @@ for k, v in defaults.items():
 _USER_SETTINGS_PATH = os.path.join(PROJECT_DIR, ".streamlit", "user_settings.json")
 
 
+def _normalize_ssh_auth_mode(mode):
+    return mode if mode in SSH_AUTH_LABELS else SSH_AUTH_NORMAL
+
+
 def _load_user_settings():
     data = {}
     try:
@@ -1424,6 +1474,7 @@ def _load_user_settings():
         "host": data.get("host") or EULER_HOST,
         "known_users": users,
         "auto_login": bool(data.get("auto_login")),
+        "ssh_auth_mode": _normalize_ssh_auth_mode(data.get("ssh_auth_mode")),
     }
 
 
@@ -1436,6 +1487,7 @@ def _save_user_settings():
                 "host": st.session_state["euler_host"],
                 "known_users": st.session_state["euler_known_users"],
                 "auto_login": bool(st.session_state.get("euler_auto_login")),
+                "ssh_auth_mode": _current_ssh_auth_mode(),
             }, fh, indent=2)
             fh.write("\n")
     except OSError:
@@ -1448,6 +1500,7 @@ if "euler_user" not in st.session_state:
     st.session_state["euler_host"] = _us["host"]
     st.session_state["euler_known_users"] = _us["known_users"]
     st.session_state["euler_auto_login"] = _us["auto_login"]
+    st.session_state["euler_ssh_auth_mode"] = _us["ssh_auth_mode"]
     # "Remember me" skips the login screen for the saved user.
     st.session_state.setdefault("euler_logged_in", _us["auto_login"])
 
@@ -1460,6 +1513,370 @@ def _current_host():
     return st.session_state.get("euler_host", EULER_HOST)
 
 
+def _current_ssh_auth_mode():
+    return _normalize_ssh_auth_mode(st.session_state.get("euler_ssh_auth_mode"))
+
+
+def _mark_euler_verified(user, host, auth_mode, control_path=None):
+    st.session_state["euler_verify_status"] = "ok"
+    st.session_state["euler_verified_user"] = user
+    st.session_state["euler_verified_host"] = host
+    st.session_state["euler_verified_auth_mode"] = _normalize_ssh_auth_mode(auth_mode)
+    if control_path:
+        st.session_state["euler_ssh_control_path"] = control_path
+    else:
+        st.session_state.pop("euler_ssh_control_path", None)
+
+
+def _clear_euler_verified():
+    st.session_state["euler_verify_status"] = None
+    st.session_state.pop("euler_verified_user", None)
+    st.session_state.pop("euler_verified_host", None)
+    st.session_state.pop("euler_verified_auth_mode", None)
+    st.session_state.pop("euler_ssh_control_path", None)
+
+
+def _current_ssh_control_path():
+    path = st.session_state.get("euler_ssh_control_path")
+    if path and os.path.exists(path):
+        return path
+    return ""
+
+
+def _euler_access_verified():
+    verified = (
+        st.session_state.get("euler_verify_status") == "ok"
+        and st.session_state.get("euler_verified_user") == _current_user()
+        and st.session_state.get("euler_verified_host") == _current_host()
+        and st.session_state.get("euler_verified_auth_mode") == _current_ssh_auth_mode()
+    )
+    if not verified:
+        return False
+    if _current_ssh_auth_mode() == SSH_AUTH_NORMAL:
+        return bool(_current_ssh_control_path())
+    return True
+
+
+def _ssh_auth_options(connect_timeout=8, auth_mode=None):
+    mode = _normalize_ssh_auth_mode(auth_mode or _current_ssh_auth_mode())
+    opts = ["-o", f"ConnectTimeout={int(connect_timeout)}", "-o", "LogLevel=ERROR"]
+    if mode == SSH_AUTH_KEY_ONLY:
+        opts[0:0] = ["-o", "BatchMode=yes"]
+    elif _current_ssh_control_path():
+        opts.extend(
+            [
+                "-o", "BatchMode=yes",
+                "-o", "ControlMaster=no",
+                "-S", _current_ssh_control_path(),
+            ]
+        )
+    else:
+        opts.extend(
+            [
+                "-o", "BatchMode=no",
+                "-o", "PubkeyAuthentication=no",
+                "-o", "PreferredAuthentications=keyboard-interactive,password",
+                "-o", "KbdInteractiveAuthentication=yes",
+                "-o", "PasswordAuthentication=yes",
+                "-o", "ControlMaster=no",
+                "-S", "none",
+            ]
+        )
+    return opts
+
+
+def _ssh_command(spec, remote_command, connect_timeout=8, auth_mode=None):
+    return ["ssh", *_ssh_auth_options(connect_timeout, auth_mode), spec, remote_command]
+
+
+def _ssh_transport(connect_timeout=8, auth_mode=None):
+    return "ssh " + " ".join(shlex.quote(part) for part in _ssh_auth_options(connect_timeout, auth_mode))
+
+
+def _ssh_timeout(default_normal=120, default_key_only=30, auth_mode=None):
+    return default_key_only if _normalize_ssh_auth_mode(auth_mode or _current_ssh_auth_mode()) == SSH_AUTH_KEY_ONLY else default_normal
+
+
+def _run_ssh_command(cmd, timeout, auth_mode=None):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+
+
+_TERMINAL_AUTH_DIR = os.path.join(PROJECT_DIR, ".streamlit", "terminal_auth")
+
+
+def _terminal_verify_marker(user, host):
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{user}_{host}")
+    return os.path.join(_TERMINAL_AUTH_DIR, f"verify_{safe}.json")
+
+
+def _terminal_verify_script(user, host):
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{user}_{host}")
+    return os.path.join(_TERMINAL_AUTH_DIR, f"verify_{safe}.sh")
+
+
+def _terminal_control_path(user, host):
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{user}_{host}")
+    return os.path.join("/tmp", f"abaqusproject_ssh_{safe}.sock")
+
+
+def _terminal_window_title(user, host):
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{user}_{host}")
+    return f"Abaqus Euler Login {safe}"
+
+
+def _apple_string(text):
+    return str(text).replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _open_macos_terminal(shell_command, title=None):
+    escaped = shell_command.replace("\\", "\\\\").replace('"', '\\"')
+    title_escaped = _apple_string(title or "")
+    script = (
+        "tell application \"Terminal\"\n"
+        f"  set targetTab to do script \"{escaped}\"\n"
+        "  try\n"
+        f"    set custom title of targetTab to \"{title_escaped}\"\n"
+        "  end try\n"
+        "  return id of front window\n"
+        "end tell\n"
+    )
+    return subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+
+
+def _schedule_terminal_window_close(title=None, window_id=None, delay_seconds=6):
+    if not title and not window_id:
+        return
+    escaped = _apple_string(title or "")
+    lines = [f"delay {int(delay_seconds)}", 'tell application "Terminal"']
+    if window_id:
+        lines.extend(
+            [
+                "  repeat with w in windows",
+                f"    if id of w is {int(window_id)} then",
+                "      close w",
+                "      return",
+                "    end if",
+                "  end repeat",
+            ]
+        )
+    if title:
+        lines.extend(
+            [
+                "  repeat with w in windows",
+                f"    if name of w contains \"{escaped}\" then",
+                "      close w",
+                "      return",
+                "    end if",
+                "  end repeat",
+            ]
+        )
+    lines.append("end tell")
+    script = "\n".join(lines)
+    try:
+        subprocess.Popen(
+            ["osascript", "-e", script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        pass
+
+
+def _start_terminal_euler_verify(user, host):
+    marker = _terminal_verify_marker(user, host)
+    script_path = _terminal_verify_script(user, host)
+    control_path = _terminal_control_path(user, host)
+    window_title = f"{_terminal_window_title(user, host)} {int(time.time())}"
+    os.makedirs(os.path.dirname(marker), exist_ok=True)
+    try:
+        os.remove(marker)
+    except FileNotFoundError:
+        pass
+    spec = f"{user}@{host}"
+    close_master_cmd = " ".join(
+        shlex.quote(part)
+        for part in [
+            "ssh",
+            "-S", control_path,
+            "-O", "exit",
+            "-o", "BatchMode=yes",
+            "-o", "ControlMaster=no",
+            "-o", "ConnectTimeout=5",
+            "-o", "LogLevel=ERROR",
+            spec,
+        ]
+    )
+    start_master_parts = [
+        "ssh",
+        "-M",
+        "-S", control_path,
+        "-fN",
+        "-o", "ControlPersist=4h",
+        "-o", "ConnectTimeout=15",
+        "-o", "LogLevel=ERROR",
+        "-o", "BatchMode=no",
+        "-o", "PubkeyAuthentication=no",
+        "-o", "PreferredAuthentications=keyboard-interactive,password",
+        "-o", "KbdInteractiveAuthentication=yes",
+        "-o", "PasswordAuthentication=yes",
+        spec,
+    ]
+    start_master_cmd = " ".join(shlex.quote(part) for part in start_master_parts)
+    check_master_parts = [
+        "ssh",
+        "-S", control_path,
+        "-o", "BatchMode=yes",
+        "-o", "ControlMaster=no",
+        "-o", "ConnectTimeout=8",
+        "-o", "LogLevel=ERROR",
+        spec,
+        "true",
+    ]
+    check_master_cmd = " ".join(shlex.quote(part) for part in check_master_parts)
+    close_self_lines = [
+        'tell application "Terminal"',
+        '  repeat with w in windows',
+        f'    if name of w contains "{_apple_string(window_title)}" then',
+        '      close w',
+        '      exit repeat',
+        '    end if',
+        '  end repeat',
+        'end tell',
+    ]
+    close_self_cmd = " ".join(
+        shlex.quote(part)
+        for part in ["osascript", *[part for line in close_self_lines for part in ("-e", line)]]
+    )
+    close_self_later_cmd = (
+        " ".join(
+            shlex.quote(part)
+            for part in ["nohup", "bash", "-c", f"sleep 5; {close_self_cmd}"]
+        )
+        + " >/dev/null 2>&1 &"
+    )
+    ok_payload = json.dumps(
+        {
+            "ok": True,
+            "user": user,
+            "host": host,
+            "auth_mode": SSH_AUTH_NORMAL,
+            "control_path": control_path,
+        }
+    )
+    fail_payload = json.dumps({"ok": False, "user": user, "host": host, "auth_mode": SSH_AUTH_NORMAL})
+    script = (
+        "#!/bin/bash\n"
+        "clear\n"
+        f"printf '\\033]0;%s\\007' {shlex.quote(window_title)}\n"
+        f"echo {shlex.quote(f'Euler login: {user}@{host}')}\n"
+        "echo\n"
+        "echo 'If SSH asks, type your password or 2FA here.'\n"
+        "echo 'Password input is hidden while typing.'\n"
+        "echo\n"
+        f"mkdir -p {shlex.quote(os.path.dirname(marker))}\n"
+        f"rm -f {shlex.quote(marker)}\n"
+        f"{close_master_cmd} >/dev/null 2>&1 || true\n"
+        f"rm -f {shlex.quote(control_path)}\n"
+        f"if {start_master_cmd} >/dev/null && {check_master_cmd} >/dev/null; then\n"
+        f"  printf '%s\\n' {shlex.quote(ok_payload)} > {shlex.quote(marker)}\n"
+        "  echo\n"
+        "  echo 'Verified. Streamlit will update automatically.'\n"
+        "else\n"
+        f"  printf '%s\\n' {shlex.quote(fail_payload)} > {shlex.quote(marker)}\n"
+        "  echo\n"
+        "  echo 'Login failed. Streamlit will show the error.'\n"
+        "fi\n"
+        "echo\n"
+        "echo 'This window closes in 5 seconds.'\n"
+        f"{close_self_later_cmd}\n"
+        "exit 0\n"
+    )
+    try:
+        with open(script_path, "w", encoding="utf-8") as fh:
+            fh.write(script)
+        os.chmod(script_path, 0o700)
+    except OSError as exc:
+        return False, f"Could not create Terminal login helper: {exc}", marker
+    result = _open_macos_terminal(f"bash {shlex.quote(script_path)}", title=window_title)
+    if result.returncode != 0:
+        return False, result.stderr or result.stdout or "Could not open Terminal.", marker
+    window_id = None
+    try:
+        window_id = int((result.stdout or "").strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        pass
+    st.session_state["_terminal_verify"] = {
+        "user": user,
+        "host": host,
+        "marker": marker,
+        "title": window_title,
+        "window_id": window_id,
+    }
+    return True, "", marker
+
+
+def _check_terminal_euler_verify():
+    pending = st.session_state.get("_terminal_verify") or {}
+    marker = pending.get("marker")
+    if not marker or not os.path.exists(marker):
+        return None, "Still waiting for the Terminal verification result."
+    try:
+        with open(marker, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return False, "Could not read the Terminal verification result."
+    if data.get("ok"):
+        control_path = data.get("control_path")
+        if not control_path or not os.path.exists(control_path):
+            return False, "Terminal login succeeded, but the reusable SSH connection is missing. Verify again."
+        pending["control_path"] = control_path
+        st.session_state["_terminal_verify"] = pending
+        return True, ""
+    return False, "Terminal SSH verification failed."
+
+
+def _finish_terminal_euler_login(pending):
+    st.session_state["euler_auto_login"] = bool(
+        pending.get("remember", st.session_state.get("euler_auto_login"))
+    )
+    _switch_user(pending["user"], pending["host"])
+    _mark_euler_verified(
+        pending["user"],
+        pending["host"],
+        SSH_AUTH_NORMAL,
+        control_path=pending.get("control_path"),
+    )
+    st.session_state["euler_logged_in"] = True
+    st.session_state.pop("_terminal_verify", None)
+    _save_user_settings()
+    _schedule_terminal_window_close(
+        title=pending.get("title") or _terminal_window_title(pending["user"], pending["host"]),
+        window_id=pending.get("window_id"),
+        delay_seconds=6,
+    )
+
+
+def _render_terminal_login_poll(key_prefix):
+    pending = st.session_state.get("_terminal_verify") or {}
+    if not pending.get("user") or not pending.get("host"):
+        return False
+
+    ok, reason = _check_terminal_euler_verify()
+    if ok is True:
+        pending = st.session_state.get("_terminal_verify") or pending
+        _finish_terminal_euler_login(pending)
+        st.rerun()
+    if ok is False:
+        st.session_state.pop("_terminal_verify", None)
+        st.error(reason)
+        return False
+
+    st.info(f"Waiting for Terminal login: {pending['user']}@{pending['host']}")
+    st.caption("After the password or 2FA succeeds, Streamlit logs in automatically.")
+    st_autorefresh(interval=1000, limit=600, key=f"{key_prefix}_terminal_login_poll")
+    return True
+
+
 def _default_results_dir(user=None):
     """Per-user local mirror so one user's sync never mixes into another's."""
     user = user or _current_user()
@@ -1470,11 +1887,12 @@ def _default_results_dir(user=None):
 def _default_euler_src(user=None, host=None):
     user = user or _current_user()
     host = host or _current_host()
-    return f"{user}@{host}:/cluster/home/{user}/AbaqusProject/FLC_output/"
+    return f"{user}@{host}:{_remote_project_root(user)}/FLC_output/"
 
 
 def _switch_user(new_user, new_host):
     """Re-point every user-dependent path, widget and cache, then persist."""
+    _clear_euler_verified()
     st.session_state["euler_user"] = new_user
     st.session_state["euler_host"] = new_host
     known = st.session_state.get("euler_known_users", [])
@@ -1491,14 +1909,14 @@ def _switch_user(new_user, new_host):
     _save_user_settings()
 
 
-def _verify_euler_connection(user, host):
-    """Return (ok, reason). BatchMode cannot ask for a password, so classify
-    the failure to tell VPN problems apart from missing key access."""
+def _verify_euler_connection(user, host, auth_mode=None):
+    """Return (ok, reason) for non-interactive key checks."""
+    auth_mode = _normalize_ssh_auth_mode(auth_mode or _current_ssh_auth_mode())
     try:
-        r = subprocess.run(
-            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
-             f"{user}@{host}", "echo ok"],
-            capture_output=True, text=True, timeout=15,
+        r = _run_ssh_command(
+            _ssh_command(f"{user}@{host}", "echo ok", connect_timeout=15, auth_mode=auth_mode),
+            timeout=_ssh_timeout(default_normal=180, default_key_only=20, auth_mode=auth_mode),
+            auth_mode=auth_mode,
         )
     except subprocess.TimeoutExpired:
         return False, "timeout"
@@ -1506,9 +1924,11 @@ def _verify_euler_connection(user, host):
         return False, "error"
     if r.returncode == 0 and "ok" in r.stdout:
         return True, ""
-    err = (r.stderr or "").lower()
+    err = (getattr(r, "stderr", None) or "").lower()
     if "permission denied" in err:
-        return False, "no-key"
+        return False, "no-key" if auth_mode == SSH_AUTH_KEY_ONLY else "auth"
+    if "can't open /dev/tty" in err or "read_passphrase" in err:
+        return False, "terminal"
     if "timed out" in err or "no route" in err or "network is unreachable" in err:
         return False, "vpn"
     if "could not resolve" in err:
@@ -1520,6 +1940,9 @@ _SSH_FAIL_HINTS = {
     "no-key": "This machine's SSH key is not authorized for that user. "
               "Password login is not possible from the app — set up key "
               "access once in a terminal (see below), then retry.",
+    "auth":   "SSH authentication failed. In normal SSH mode, complete the "
+              "Euler password or 2FA prompt in the separate Terminal login window.",
+    "terminal": "SSH could not open the separate Terminal login window. Retry normal SSH mode.",
     "vpn":    "Euler is unreachable — connect the ETH VPN and retry.",
     "timeout": "Euler is unreachable — connect the ETH VPN and retry.",
     "host":   "Hostname not found — check the Host field.",
@@ -1559,6 +1982,21 @@ def _login_screen():
             value=bool(st.session_state.get("euler_auto_login")),
             key="login_remember",
         )
+        auth_mode = st.radio(
+            "SSH authentication",
+            [SSH_AUTH_NORMAL, SSH_AUTH_KEY_ONLY],
+            format_func=lambda mode: SSH_AUTH_LABELS[mode],
+            horizontal=True,
+            key="euler_ssh_auth_mode",
+            help=(
+                "Normal mode can use password or 2FA in a separate Terminal window. "
+                "It deliberately ignores SSH keys. Key-only mode fails fast and never prompts."
+            ),
+        )
+        if auth_mode == SSH_AUTH_NORMAL:
+            st.caption("A Terminal window will open for password or 2FA. Password input is hidden while typing.")
+        if _render_terminal_login_poll("login"):
+            return
         c_go, c_off = st.columns(2)
         connect = c_go.button("Connect", type="primary", width="stretch",
                               disabled=not pick)
@@ -1569,19 +2007,30 @@ def _login_screen():
                                     "need a connection.")
         if (connect or offline) and pick:
             verify_state = None
+            host_clean = host.strip() or EULER_HOST
             if connect:
-                with st.spinner(f"Connecting {pick}@{host} (up to ~5 s)…"):
-                    ok, reason = _verify_euler_connection(pick, host.strip())
-                if not ok:
-                    st.error(_SSH_FAIL_HINTS.get(reason, _SSH_FAIL_HINTS["error"]))
-                    if reason == "no-key":
-                        _ssh_key_setup_help(pick, host.strip())
-                    st.caption("You can still **Continue offline** to browse local results.")
+                if auth_mode == SSH_AUTH_NORMAL:
+                    launched, reason, _marker = _start_terminal_euler_verify(pick, host_clean)
+                    if not launched:
+                        st.error(reason)
+                    else:
+                        st.session_state["_terminal_verify"]["remember"] = bool(remember)
+                        st.rerun()
                     return
-                verify_state = "ok"
+                else:
+                    with st.spinner(f"Connecting {pick}@{host_clean}..."):
+                        ok, reason = _verify_euler_connection(pick, host_clean, auth_mode=auth_mode)
+                    if not ok:
+                        st.error(_SSH_FAIL_HINTS.get(reason, _SSH_FAIL_HINTS["error"]))
+                        if reason == "no-key":
+                            _ssh_key_setup_help(pick, host_clean)
+                        st.caption("You can still **Continue offline** to browse local results.")
+                        return
+                    verify_state = "ok"
             st.session_state["euler_auto_login"] = bool(remember)
-            _switch_user(pick, host.strip() or EULER_HOST)
-            st.session_state["euler_verify_status"] = verify_state
+            _switch_user(pick, host_clean)
+            if verify_state == "ok":
+                _mark_euler_verified(pick, host_clean, auth_mode)
             st.session_state["euler_logged_in"] = True
             st.rerun()
 
@@ -1596,7 +2045,7 @@ with _c_title:
     st.title("⚙️ Abaqus Pipeline")
 with _c_user:
     _verify_state = st.session_state.get("euler_verify_status")
-    _user_icon = {"ok": "🟢", "fail": "🔴"}.get(_verify_state, "⚪")
+    _user_icon = "🟢" if _euler_access_verified() else {"fail": "🔴"}.get(_verify_state, "⚪")
     with st.popover(f"{_user_icon} {_current_user()}", width="stretch"):
         _known_users = st.session_state["euler_known_users"]
         _pick = st.selectbox(
@@ -1607,20 +2056,39 @@ with _c_user:
         if _pick == "New user…":
             _pick = st.text_input("New ETH username", key="account_new_user").strip()
         _host_pick = st.text_input("Host", value=_current_host(), key="account_host")
+        _auth_pick = st.radio(
+            "SSH authentication",
+            [SSH_AUTH_NORMAL, SSH_AUTH_KEY_ONLY],
+            format_func=lambda mode: SSH_AUTH_LABELS[mode],
+            horizontal=True,
+            key="euler_ssh_auth_mode",
+            help="Normal mode prompts only in a separate Terminal window and deliberately ignores SSH keys. Key-only mode never prompts.",
+        )
+        _terminal_login_pending = _render_terminal_login_poll("account")
         _c_verify, _c_switch = st.columns(2)
         if _c_verify.button("Verify", key="account_verify", width="stretch",
-                            disabled=not _pick):
-            with st.spinner(f"ssh {_pick}@{_host_pick} (up to ~5 s)…"):
-                _ok, _reason = _verify_euler_connection(_pick, _host_pick.strip())
-            st.session_state["euler_verify_status"] = "ok" if _ok else "fail"
-            if _ok:
-                st.success(f"Connected as {_pick}@{_host_pick}")
+                            disabled=(not _pick) or _terminal_login_pending):
+            _host_clean = _host_pick.strip() or EULER_HOST
+            if _auth_pick == SSH_AUTH_NORMAL:
+                _launched, _reason, _marker = _start_terminal_euler_verify(_pick, _host_clean)
+                if _launched:
+                    st.rerun()
+                else:
+                    st.error(_reason)
             else:
-                st.error(_SSH_FAIL_HINTS.get(_reason, _SSH_FAIL_HINTS["error"]))
-                if _reason == "no-key":
-                    _ssh_key_setup_help(_pick, _host_pick.strip())
+                with st.spinner(f"ssh {_pick}@{_host_clean}..."):
+                    _ok, _reason = _verify_euler_connection(_pick, _host_clean, auth_mode=_auth_pick)
+                if _ok:
+                    _mark_euler_verified(_pick, _host_clean, _auth_pick)
+                    st.success(f"Connected as {_pick}@{_host_clean}")
+                else:
+                    _clear_euler_verified()
+                    st.session_state["euler_verify_status"] = "fail"
+                    st.error(_SSH_FAIL_HINTS.get(_reason, _SSH_FAIL_HINTS["error"]))
+                    if _reason == "no-key":
+                        _ssh_key_setup_help(_pick, _host_clean)
         if _c_switch.button("Switch user", type="primary", key="account_switch",
-                            width="stretch", disabled=not _pick,
+                            width="stretch", disabled=(not _pick) or _terminal_login_pending,
                             help="Re-points results directory, Euler paths and "
                                  "job monitoring to this user."):
             _switch_user(_pick, _host_pick.strip() or EULER_HOST)
@@ -1630,7 +2098,7 @@ with _c_user:
                      help="Back to the sign-in screen; disables auto sign-in."):
             st.session_state["euler_logged_in"] = False
             st.session_state["euler_auto_login"] = False
-            st.session_state["euler_verify_status"] = None
+            _clear_euler_verified()
             _save_user_settings()
             st.rerun()
         if _current_user() != EULER_USER:
@@ -1894,7 +2362,7 @@ def _page_submit_job():
             st.caption(f"Inner punch — {pip_id}  ·  drag to orbit, scroll to zoom")
             st.components.v1.html(_STL_VIEWER.replace("__B64__", _b64_data), height=430, scrolling=False)
         elif os.path.exists(_png_path):
-            st.image(_png_path, use_container_width=True)
+            st.image(_png_path, width="stretch")
 
         if os.path.exists(_step_path):
             with open(_step_path, "rb") as _f:
@@ -2104,22 +2572,55 @@ def _page_submit_job():
             st.success("Saved as default for future app runs.")
 
     with submit_col:
-        submit_clicked = st.button("Submit", type="primary")
+        euler_verified = _euler_access_verified()
+        submit_clicked = st.button(
+            "Submit",
+            type="primary",
+            disabled=not euler_verified,
+            help=(
+                "Verify Euler access from the account menu first."
+                if not euler_verified else
+                "Submit this job to Euler."
+            ),
+        )
+    if not _euler_access_verified():
+        st.caption("Submit is disabled until Euler access is verified from the account menu.")
 
     if submit_clicked:
+        normal_login = _current_ssh_auth_mode() == SSH_AUTH_NORMAL
         with st.spinner("Submitting..."):
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                env=build_env(cfg),
-            )
+            if normal_login:
+                log_dir = os.path.join(PROJECT_DIR, ".streamlit", "logs")
+                os.makedirs(log_dir, exist_ok=True)
+                submit_log = os.path.join(log_dir, f"submit_{int(time.time())}.log")
+                with open(submit_log, "w", encoding="utf-8") as log_fh:
+                    result = subprocess.run(
+                        cmd,
+                        env=build_env(cfg),
+                        stdout=log_fh,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+            else:
+                submit_log = None
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    env=build_env(cfg),
+                )
 
         if result.returncode == 0:
             st.success("Submitted")
-            st.code(result.stdout)
+            if normal_login:
+                st.caption(f"Submission output was written to `{submit_log}`.")
+            else:
+                st.code(result.stdout)
         else:
-            st.error(result.stderr)
+            if normal_login:
+                st.error(f"Submit failed. Check `{submit_log}`.")
+            else:
+                st.error(result.stderr or "Submit failed.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2128,8 +2629,11 @@ def _page_submit_job():
 def _page_job_status():
 
     st.subheader("Euler Queue")
+    if not _euler_access_verified():
+        st.info("Verify Euler access from the account menu before fetching the queue.")
+        return
 
-    user = st.text_input("Username", value=_current_user())
+    user = _current_user()
 
     auto_refresh = st.checkbox("Auto-refresh (30s)", value=True)
     if auto_refresh:
@@ -2138,15 +2642,18 @@ def _page_job_status():
 
     if user:
         with st.spinner("Fetching queue..."):
-            result = subprocess.run(
-                [
-                    "ssh",
-                    f"{user}@{_current_host()}",
-                    'squeue --me --format="%.18i %.10P %.60j %.8u %.2t %.10M %.10l %.6D %R" --noheader'
-                ],
-                capture_output=True,
-                text=True,
-            )
+            try:
+                result = _run_ssh_command(
+                    _ssh_command(
+                        f"{user}@{_current_host()}",
+                        'squeue --me --format="%.18i %.10P %.60j %.8u %.2t %.10M %.10l %.6D %R" --noheader',
+                        connect_timeout=8,
+                    ),
+                    timeout=_ssh_timeout(default_normal=30, default_key_only=30),
+                )
+            except subprocess.TimeoutExpired:
+                st.error("Queue request timed out. Re-verify Euler access from the account menu.")
+                return
 
         if result.returncode == 0:
             output = result.stdout.strip()
@@ -2192,7 +2699,7 @@ def _page_job_status():
 
                 styled_df = df.style.map(color_status, subset=["ST"])
 
-                st.dataframe(styled_df, use_container_width=True, hide_index=True)
+                st.dataframe(styled_df, width="stretch", hide_index=True)
 
                 # ── Simulation progress (all running jobs) ────────────────
                 running_rows = [
@@ -2267,7 +2774,7 @@ def _page_job_status():
                             st.caption(f"{pct:.1f}%  {eta}")
 
         else:
-            st.error(result.stderr)
+            st.error(result.stderr or "Could not fetch the Euler queue. Re-verify Euler access from the account menu.")
 # ══════════════════════════════════════════════════════════════════════════════
 # Results
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2315,74 +2822,132 @@ def _page_results():
             out.append(sum(values[lo:hi]) / (hi - lo))
         return out
 
+    def _vh_fit_start_time(t_start, t_fit_end):
+        if VH_FIT_WINDOW_SECONDS > 0.0:
+            return max(float(t_start), float(t_fit_end) - VH_FIT_WINDOW_SECONDS)
+        return float(t_start) + (1.0 - VH_FIT_WINDOW_FRAC) * (float(t_fit_end) - float(t_start))
+
+    def _vh_unstable_fit_start_time(t_start, t_fit_end):
+        if VH_UNSTABLE_FIT_WINDOW_SECONDS > 0.0:
+            return max(float(t_start), float(t_fit_end) - VH_UNSTABLE_FIT_WINDOW_SECONDS)
+        return _vh_fit_start_time(t_start, t_fit_end)
+
+    def _vh_fit_window_label():
+        if VH_FIT_WINDOW_SECONDS > 0.0:
+            if VH_UNSTABLE_TAIL_POINTS > 0:
+                return "Stable %.3g s, unstable last %d points" % (
+                    VH_FIT_WINDOW_SECONDS,
+                    VH_UNSTABLE_TAIL_POINTS,
+                )
+            return "Stable %.3g s, unstable %.3g s" % (
+                VH_FIT_WINDOW_SECONDS,
+                VH_UNSTABLE_FIT_WINDOW_SECONDS,
+            )
+        return "Last %.0f%% of pre-fracture signal" % (VH_FIT_WINDOW_FRAC * 100.0)
+
+    def _dic_instable_index(t_values, t_cross):
+        if not math.isfinite(t_cross):
+            return None
+        upper = next((idx for idx, value in enumerate(t_values) if value > t_cross), None)
+        if upper is None or upper <= 0:
+            return None
+        dt = t_values[upper] - t_values[upper - 1]
+        if dt <= 0:
+            return None
+        threshold = t_cross + 0.5 * dt
+        index = None
+        for idx, value in enumerate(t_values):
+            if value < threshold:
+                index = idx
+        if index is None or index <= 0:
+            return None
+        return index
+
     def _volk_hora_fit(t, rate, fit_end_time=None):
         t_fit_end = t[-1] if fit_end_time is None else float(fit_end_time)
-        t_min_fit = t[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (t_fit_end - t[0])
-        valid_indices = [
+        t_min_fit = _vh_fit_start_time(t[0], t_fit_end)
+        stable_indices = [
             i for i in range(1, len(t) - 1)
             if t[i] >= t_min_fit and t[i] <= t_fit_end
         ]
-        if len(valid_indices) < VH_MIN_STABLE_POINTS + VH_MIN_UNSTABLE_POINTS:
+        if VH_UNSTABLE_TAIL_POINTS > 0:
+            unstable_indices = list(range(1, len(t) - 1))[-VH_UNSTABLE_TAIL_POINTS:]
+        else:
+            t_min_unstable = _vh_unstable_fit_start_time(t[0], t_fit_end)
+            unstable_indices = [
+                i for i in range(1, len(t) - 1)
+                if t[i] >= t_min_unstable and t[i] <= t_fit_end
+            ]
+        if len(stable_indices) <= VH_MIN_STABLE_POINTS or len(unstable_indices) < VH_MIN_UNSTABLE_POINTS:
             return None
 
-        x = [t[i] for i in valid_indices]
-        y = [rate[i] for i in valid_indices]
-        n = len(x)
+        xs = [t[i] for i in stable_indices]
+        ys = [rate[i] for i in stable_indices]
+        xu = [t[i] for i in unstable_indices]
+        yu = [rate[i] for i in unstable_indices]
+        ns = len(xs)
+        nu = len(xu)
         min_stable = VH_MIN_STABLE_POINTS
         min_unstable = VH_MIN_UNSTABLE_POINTS
-        if n < min_stable + min_unstable:
+        if ns <= min_stable or nu < min_unstable:
             return None
 
         best_stable = None
-        for count in range(min_stable, n - min_unstable + 1):
-            fit = _line_fit(x[:count], y[:count])
-            if fit is not None and (best_stable is None or fit[2] < best_stable["mse"]):
+        for count in range(min_stable, ns):
+            fit = _line_fit(xs[:count], ys[:count])
+            if fit is None:
+                continue
+            score = fit[2] * float(count) / float(max(count - 1, 1))
+            if best_stable is None or score < best_stable["mse"]:
                 best_stable = {
                     "count": count,
                     "slope": fit[0],
                     "intercept": fit[1],
-                    "mse": fit[2],
+                    "mse": score,
                 }
 
         best_unstable = None
-        for count in range(min_unstable, n - min_stable + 1):
-            fit = _line_fit(x[n - count:], y[n - count:])
-            if fit is not None and (best_unstable is None or fit[2] < best_unstable["mse"]):
+        if VH_UNSTABLE_TAIL_POINTS > 0:
+            unstable_candidates = [(0, nu)]
+        else:
+            unstable_candidates = [(start, nu - start) for start in range(1, nu - min_unstable + 1)]
+        for start, count in unstable_candidates:
+            fit = _line_fit(xu[start:], yu[start:])
+            if fit is None:
+                continue
+            score = fit[2]
+            if best_unstable is None or score < best_unstable["mse"]:
                 best_unstable = {
                     "count": count,
                     "slope": fit[0],
                     "intercept": fit[1],
-                    "mse": fit[2],
+                    "mse": score,
                 }
 
         if best_stable is None or best_unstable is None:
             return None
 
         denom = best_stable["slope"] - best_unstable["slope"]
-        # Physically, the unstable-phase slope must exceed the stable-phase slope
-        # (thinning rate accelerates at localisation onset).  denom < 0 is required.
-        # denom >= 0 means the roles are inverted (or the signal is flat/noisy) — reject.
-        if denom >= 0:
+        if abs(denom) < 1e-20:
             return None
 
         t_cross = (best_unstable["intercept"] - best_stable["intercept"]) / denom
-        if t_cross < x[0] or t_cross > x[-1]:
-            return None
-
-        kcrit_pos = next((i for i, tv in enumerate(t) if tv >= t_cross), None)
+        kcrit_pos = _dic_instable_index(t, t_cross)
         if kcrit_pos is None or kcrit_pos <= 0:
             return None
         k_stable = kcrit_pos - 1
 
         return {
-            "t_fit_start": x[0],
-            "t_fit_end": x[-1],
+            "t_fit_start": xs[0],
+            "t_fit_end": t_fit_end,
             "t_cross": t_cross,
             "y_cross": best_stable["slope"] * t_cross + best_stable["intercept"],
             "kcrit": kcrit_pos,
             "kstable": k_stable,
             "stable": best_stable,
             "unstable": best_unstable,
+            "stable_range": (xs[0], xs[best_stable["count"] - 1]),
+            "unstable_range": (xu[nu - best_unstable["count"]], xu[-1]),
         }
 
     def _strip_plot_descriptions(fig):
@@ -2485,9 +3050,9 @@ def _page_results():
                     _ss, _si, _ = _sf
                     _us, _ui, _ = _uf
                     _dn = _ss - _us
-                    if _dn < 0:
+                    if abs(_dn) >= 1e-20:
                         _tc = (_ui - _si) / _dn
-                        _kc = next((i for i, tv in enumerate(t) if tv >= _tc), None)
+                        _kc = _dic_instable_index(t, _tc)
                         if _kc and _kc > 0:
                             fit = {
                                 "t_fit_start": min(ts0, tu0), "t_fit_end": max(ts1, tu1),
@@ -2527,7 +3092,7 @@ def _page_results():
         fig = make_subplots(
             rows=1,
             cols=2,
-            subplot_titles=("Overview over experiment", "Last %.0f%% of pre-fracture signal" % (VH_FIT_WINDOW_FRAC * 100.0)),
+            subplot_titles=("Volk-Hora", "Volk-Hora - last 2 seconds"),
             horizontal_spacing=0.08,
         )
 
@@ -2560,13 +3125,8 @@ def _page_results():
             stable_left = [stable["slope"] * tv + stable["intercept"] for tv in left_x]
             unstable_left = [unstable["slope"] * tv + unstable["intercept"] for tv in left_x]
 
-            # right subplot: draw each line only over its own fit range if available
-            if "stable_range" in fit:
-                stable_right_x = list(fit["stable_range"])
-                unstable_right_x = list(fit["unstable_range"])
-            else:
-                stable_right_x = right_x
-                unstable_right_x = right_x
+            stable_right_x = right_x
+            unstable_right_x = right_x
             stable_right = [stable["slope"] * tv + stable["intercept"] for tv in stable_right_x]
             unstable_right = [unstable["slope"] * tv + unstable["intercept"] for tv in unstable_right_x]
 
@@ -2613,17 +3173,16 @@ def _page_results():
 
             e1_vh = float(data.iloc[fit["kstable"]]["eps1_major"])
             e2_vh = float(data.iloc[fit["kstable"]]["eps2_minor"])
-            e_eff = 2.0 / math.sqrt(3.0) * math.sqrt(e1_vh ** 2 + e2_vh ** 2 + e1_vh * e2_vh)
             fig.add_annotation(
                 xref="x2 domain",
                 yref="y2 domain",
                 x=0.03,
-                y=0.96,
-                text=(
-                    "e1:    %.4f<br>"
-                    "e2:    %.4f<br>"
-                    "e_eff: %.4f"
-                ) % (e1_vh, e2_vh, e_eff),
+                y=0.99,
+                text="e1 = %.4f&nbsp;&nbsp; e2 = %.4f&nbsp;&nbsp; t_necking = %.4f s" % (
+                    e1_vh,
+                    e2_vh,
+                    t[fit["kstable"]],
+                ),
                 showarrow=False,
                 align="left",
                 font=dict(family="monospace", size=11, color=text),
@@ -2667,21 +3226,21 @@ def _page_results():
                 zerolinecolor=grid_color,
             )
         fig.update_layout(
-            title=dict(text="Volk-Hora Time Signal", font=dict(color=axis_color)),
+            title=dict(text="Volk-Hora", font=dict(color=axis_color)),
             template=template,
             height=520,
             legend=dict(
-                orientation="h",
+                orientation="v",
                 yanchor="top",
-                y=-0.18,
-                xanchor="center",
-                x=0.5,
-                bgcolor=plot_style["transparent"],
-                bordercolor=plot_style["transparent"],
-                borderwidth=0,
+                y=0.98,
+                xanchor="left",
+                x=0.01,
+                bgcolor=plot_style["annotation_bg"],
+                bordercolor=axis_color,
+                borderwidth=1,
                 font=dict(color=axis_color),
             ),
-            margin=dict(t=85, r=30, b=100, l=55),
+            margin=dict(t=85, r=30, b=55, l=55),
             paper_bgcolor=plot_style["transparent"],
             plot_bgcolor=plot_style["transparent"],
             font=dict(color=axis_color),
@@ -4747,7 +5306,7 @@ def _page_results():
 
         if os.path.exists(fl_fp):
             df_fl = _load_csv(fl_fp)
-            st.dataframe(df_fl, use_container_width=True, hide_index=True)
+            st.dataframe(df_fl, width="stretch", hide_index=True)
 
         # TRIAX vs EQPS fracture path (reuse sp_fp from above)
         if os.path.exists(sp_fp):
@@ -4795,7 +5354,7 @@ def _page_results():
                         plot_bgcolor=_tx_ps["transparent"],
                         font=dict(color=_tx_ps["axis"]),
                     )
-                    _plotly_chart(fig_tx, use_container_width=True)
+                    _plotly_chart(fig_tx, width="stretch")
 
     def _job_strain_path(job_dir):
         for fname, c1, c2 in [
@@ -5134,10 +5693,10 @@ def _page_results():
         ss, si, _ = stable_fit
         us, ui, _ = unstable_fit
         denom = ss - us
-        if denom >= 0:
+        if abs(denom) < 1e-20:
             return None
         tc = (ui - si) / denom
-        kc = next((i for i, tv in enumerate(t) if tv >= tc), None)
+        kc = _dic_instable_index(t, tc)
         if kc is None or kc <= 0:
             return None
         return {
@@ -5360,7 +5919,7 @@ def _page_results():
             return "Nakazima"
         return "Test"
 
-    def _plot_separator_meta(text, assume_default_mr=False):
+    def _plot_separator_meta(text, assume_default_mr=False, assume_default_ps=False):
         text = os.path.basename(os.path.normpath(str(text)))
         text = text[4:] if text.startswith("FLC_") else text
         test_type = _plot_test_type_label(text)
@@ -5370,21 +5929,23 @@ def _page_results():
         mass_match = re.search(r"_ms(\d+e\d+)(?=_|$)", text, flags=re.I)
         mesh_match = re.search(r"_mr([\dp]+)(?=_|$)", text, flags=re.I)
         nt_match = re.search(r"_nt(\d+)(?=_|$)", text, flags=re.I)
+        ps_match = re.search(r"(?:^|_)ps([\dp]+)(?=_|$)", text, flags=re.I)
         return {
             "test_type": test_type,
             "punch": f"P{punch_match.group(1)}" if punch_match else "",
             "ms": f"ms{mass_match.group(1)}" if mass_match else "",
             "mr": f"mr{mesh_match.group(1)}" if mesh_match else ("mr1" if assume_default_mr else ""),
             "nt": f"nt{nt_match.group(1)}" if nt_match else "",
+            "ps": f"ps{ps_match.group(1)}" if ps_match else ("ps5" if assume_default_ps else ""),
         }
 
     def _plot_separator_key(text):
-        meta = _plot_separator_meta(text, assume_default_mr=True)
-        return "|".join(meta[k] for k in ("test_type", "punch", "ms", "mr", "nt") if meta[k])
+        meta = _plot_separator_meta(text, assume_default_mr=True, assume_default_ps=True)
+        return "|".join(meta[k] for k in ("test_type", "punch", "ms", "mr", "nt", "ps") if meta[k])
 
-    def _plot_separator_label(text, assume_default_mr=False):
-        meta = _plot_separator_meta(text, assume_default_mr=assume_default_mr)
-        parts = [meta[k] for k in ("punch", "ms", "mr", "nt") if meta[k]]
+    def _plot_separator_label(text, assume_default_mr=False, assume_default_ps=False):
+        meta = _plot_separator_meta(text, assume_default_mr=assume_default_mr, assume_default_ps=assume_default_ps)
+        parts = [meta[k] for k in ("punch", "ms", "mr", "nt", "ps") if meta[k]]
         return " > ".join(parts)
 
     def _fld_export_title(source_jobs):
@@ -5673,11 +6234,11 @@ def _page_results():
         preview size is an upper bound before profile filtering.
         """
         find_cmd = (
-            f"find {base} -mindepth 2 -maxdepth 3 -type f -printf '%T@\\t%s\\t%P\\n'"
+            f"find {shlex.quote(base)} -mindepth 2 -maxdepth 3 -type f -printf '%T@\\t%s\\t%P\\n'"
         )
-        result = subprocess.run(
-            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", spec, find_cmd],
-            capture_output=True, text=True, timeout=90,
+        result = _run_ssh_command(
+            _ssh_command(spec, find_cmd, connect_timeout=10),
+            timeout=_ssh_timeout(default_normal=180, default_key_only=90),
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip() or "ssh find failed")
@@ -5726,6 +6287,7 @@ def _page_results():
         _toast = st.session_state.pop("_results_last_sync_toast", None)
         if _toast:
             st.toast(_toast, icon="✅")
+        ssh_verified = _euler_access_verified()
 
         c_scope, c_n, c_profile = st.columns([1.8, 0.8, 2.4])
         with c_scope:
@@ -5755,10 +6317,12 @@ def _page_results():
         remote_spec, remote_base = _parse_remote_src(euler_src)
         scope_rel_dirs = None      # None → full remote tree
         scope_problem = None
+        if not ssh_verified:
+            scope_problem = "Verify Euler access from the account menu before syncing."
 
         need_remote_index = sync_scope in ("Latest jobs only", "Selected jobs only")
         remote_index = st.session_state.get("_remote_job_index")
-        if need_remote_index:
+        if need_remote_index and not scope_problem:
             if remote_spec is None:
                 scope_problem = "Euler source must look like user@host:/path for scoped syncs."
             else:
@@ -5887,8 +6451,9 @@ def _page_results():
             filter_args.append(f"--include={pattern}")
         filter_args.append("--exclude=*")
 
-        # Fail fast instead of hanging ~75 s when Euler is unreachable.
-        _ssh_opt = ["-e", "ssh -o BatchMode=yes -o ConnectTimeout=8"]
+        # Use the selected SSH mode. Normal mode reuses the Terminal-created
+        # control socket, so rsync stays non-interactive here.
+        _ssh_opt = ["-e", _ssh_transport(connect_timeout=8)]
 
         if scope_rel_dirs is None:
             sync_cmd = ["rsync", "-av", *_ssh_opt,
@@ -5915,13 +6480,13 @@ def _page_results():
         n_files = 0
         with st.status(f"Syncing from Euler — {scope_desc}, {sync_profile}",
                        expanded=False) as status:
+            tail = collections.deque(maxlen=30)
             # stderr is merged into stdout so a flood of errors cannot fill the
             # stderr pipe and deadlock the stdout read loop.
             proc = subprocess.Popen(
                 sync_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, bufsize=1,
             )
-            tail = collections.deque(maxlen=30)
             for line in proc.stdout:
                 line = line.rstrip()
                 if not line:
@@ -6039,7 +6604,7 @@ def _page_results():
         if pngs:
             img_cols = st.columns(min(len(pngs), 3))
             for i, png in enumerate(pngs):
-                img_cols[i % 3].image(os.path.join(job_dir, png), use_container_width=True)
+                img_cols[i % 3].image(os.path.join(job_dir, png), width="stretch")
         _display_job_videos(job_dir)
 
     def _render_pdf_downloads(job_dir, key_prefix):
@@ -6087,7 +6652,7 @@ def _page_results():
                 lambda: _fd_with_fracture_fig(job_dir),
             )
             if fig_fd is not None:
-                _plotly_chart(fig_fd, use_container_width=True, key=f"{key_prefix}_fd")
+                _plotly_chart(fig_fd, width="stretch", key=f"{key_prefix}_fd")
             else:
                 st.info("Force–displacement data unavailable")
 
@@ -6098,7 +6663,7 @@ def _page_results():
                 lambda: _energy_fig_v2(job_dir),
             )
             if fig_en is not None:
-                _plotly_chart(fig_en, use_container_width=True, key=f"{key_prefix}_en")
+                _plotly_chart(fig_en, width="stretch", key=f"{key_prefix}_en")
             else:
                 st.info("Energy data unavailable")
 
@@ -6109,7 +6674,7 @@ def _page_results():
                 lambda: _strain_path_quick_fig(job_dir),
             )
             if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_sp_quick")
+                _plotly_chart(fig, width="stretch", key=f"{key_prefix}_sp_quick")
             else:
                 st.info(reason or "Strain-path data unavailable")
             fig_extras = _figure_memo(
@@ -6118,7 +6683,7 @@ def _page_results():
                 lambda: _strain_path_extras_fig(job_dir),
             )
             if fig_extras is not None:
-                _plotly_chart(fig_extras, use_container_width=True, key=f"{key_prefix}_sp_extras")
+                _plotly_chart(fig_extras, width="stretch", key=f"{key_prefix}_sp_extras")
             if st.checkbox(
                 "Load cluster strain paths (large diagnostics CSV)",
                 value=False,
@@ -6129,7 +6694,7 @@ def _page_results():
                 if cluster_fig is None:
                     cluster_fig, cluster_reason = _strain_cluster_fig(job_dir)
                 if cluster_fig is not None:
-                    _plotly_chart(cluster_fig, use_container_width=True, key=f"{key_prefix}_sp_cluster")
+                    _plotly_chart(cluster_fig, width="stretch", key=f"{key_prefix}_sp_cluster")
                 else:
                     st.info(cluster_reason or "Cluster strain-path data unavailable")
 
@@ -6153,14 +6718,17 @@ def _page_results():
                 if _vh_data_auto is not None:
                     _t_all = _vh_data_auto["t"]
                     _n = len(_t_all)
-                    _t_min = _t_all[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (_t_all[-1] - _t_all[0])
+                    _fit_end = _vh_data_auto["fit"]["t_fit_end"] if _vh_data_auto.get("fit") else _t_all[-1]
+                    _t_min = _vh_fit_start_time(_t_all[0], _fit_end)
                     _win = [i for i in range(1, _n - 1) if _t_all[i] >= _t_min]
-                    if len(_win) >= VH_MIN_STABLE_POINTS + VH_MIN_UNSTABLE_POINTS:
+                    if len(_win) > max(VH_MIN_STABLE_POINTS, VH_MIN_UNSTABLE_POINTS):
                         _fit_auto = _vh_data_auto["fit"]
                         _nsc = _fit_auto["stable"]["count"] if _fit_auto else max(VH_MIN_STABLE_POINTS, len(_win) // 2)
-                        _nsc = min(max(_nsc, VH_MIN_STABLE_POINTS), len(_win) - VH_MIN_UNSTABLE_POINTS)
+                        _nuc = _fit_auto["unstable"]["count"] if _fit_auto else max(VH_MIN_UNSTABLE_POINTS, len(_win) // 2)
+                        _nsc = min(max(_nsc, VH_MIN_STABLE_POINTS), len(_win) - 1)
+                        _nuc = min(max(_nuc, VH_MIN_UNSTABLE_POINTS), len(_win) - 1)
                         _def_stable = (_win[0], _win[_nsc - 1])
-                        _def_unstable = (_win[_nsc], _win[-1])
+                        _def_unstable = (_win[len(_win) - _nuc], _win[-1])
                         _stable_key = f"{_kp}_vh_stable_range"
                         _unstable_key = f"{_kp}_vh_unstable_range"
                         if "stable_range" in _stored_vh and _stable_key not in st.session_state:
@@ -6215,7 +6783,7 @@ def _page_results():
                         override_unstable_range=_unstable_range,
                     )
                 if fig is not None:
-                    _plotly_chart(fig, use_container_width=True, key=f"{_kp}_vh_rate")
+                    _plotly_chart(fig, width="stretch", key=f"{_kp}_vh_rate")
                 else:
                     st.info(reason or "V&H dome rate unavailable")
 
@@ -6237,7 +6805,7 @@ def _page_results():
                     else:
                         zone_fig, zone_reason = None, "Fracture cluster not found — rerun postprocessing"
                     if zone_fig is not None:
-                        _plotly_chart(zone_fig, use_container_width=True, key=f"{_kp}_vh_zone")
+                        _plotly_chart(zone_fig, width="stretch", key=f"{_kp}_vh_zone")
                     else:
                         st.info(zone_reason)
 
@@ -6361,7 +6929,7 @@ def _page_results():
 
                 st.dataframe(
                     summary.style.apply(_style_row, axis=1),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -6369,7 +6937,7 @@ def _page_results():
             st.caption("This diagnostic reads strain_cluster.csv and can be slow for large jobs.")
             fig, reason = _cluster_location_fig(job_dir)
             if fig is not None:
-                _plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_loc")
+                _plotly_chart(fig, width="stretch", key=f"{key_prefix}_loc")
             else:
                 st.info(reason or "Cluster location unavailable")
 
@@ -6466,7 +7034,7 @@ def _page_results():
                     st.session_state.get("results_scan_token", 0),
                 )
                 ev = st.dataframe(
-                    tbl, use_container_width=True, hide_index=True, height=300,
+                    tbl, width="stretch", hide_index=True, height=300,
                     on_select="rerun", selection_mode="single-row",
                     key="results_job_table",
                 )
@@ -7002,7 +7570,7 @@ def _page_results():
                     selected_sources, source_options, show_vh_flc, show_paths,
                 )
             flc_fig, path_indices, no_data, no_optional = _memo[_key]
-            _plotly_chart(flc_fig, use_container_width=True)
+            _plotly_chart(flc_fig, width="stretch")
             if no_data:
                 st.caption("No usable forming-limit CSV data for: " + ", ".join(no_data))
             if no_optional and show_vh_flc:
@@ -7095,13 +7663,15 @@ def _page_results():
         if fetch_rt:
             with st.spinner("Querying sacct on Euler…"):
                 try:
-                    cmd = (
-                        f"ssh {_current_user()}@{_current_host()} "
-                        f"\"sacct --format=JobName%100,Elapsed,State --noheader "
-                        f"--parsable2 -S 2026-01-01 -u {_current_user()} "
-                        f"| grep -v '\\.batch' | grep -v '\\.extern'\""
+                    remote_cmd = (
+                        f"sacct --format=JobName%100,Elapsed,State --noheader "
+                        f"--parsable2 -S 2026-01-01 -u {shlex.quote(_current_user())} "
+                        "| grep -v '\\.batch' | grep -v '\\.extern'"
                     )
-                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+                    result = _run_ssh_command(
+                        _ssh_command(f"{_current_user()}@{_current_host()}", remote_cmd, connect_timeout=8),
+                        timeout=_ssh_timeout(default_normal=120, default_key_only=30),
+                    )
                     runtimes = {}
                     for line in result.stdout.splitlines():
                         parts = line.strip().split("|")
@@ -7199,7 +7769,7 @@ def _page_results():
                 })
             st.dataframe(
                 pd.DataFrame(summary_rows).sort_values(["mr_factor", "ms_dt"]),
-                use_container_width=True, hide_index=True,
+                width="stretch", hide_index=True,
             )
             st.caption("○ = job did not reach fracture (solver hit wall time)")
 
@@ -7284,7 +7854,7 @@ def _page_results():
                 _plotly_chart(_thinning_curve_fig(
                     "ms", sel_ms, "mr", all_mr,
                     f"Mesh convergence (dt = {sel_ms_str})",
-                ), use_container_width=True)
+                ), width="stretch")
 
             # ── Mass-scaling sensitivity: fix mr, vary ms_dt ─────────────────
             if len(all_ms) > 1:
@@ -7292,7 +7862,7 @@ def _page_results():
                 _plotly_chart(_thinning_curve_fig(
                     "mr", sel_mr, "ms", all_ms,
                     f"Mass-scaling sensitivity (mr = {sel_mr_str})",
-                ), use_container_width=True)
+                ), width="stretch")
 
             # ── Quasi-staticity: ALLKE/ALLIE vs U3, one line per ms_dt ───────
             ke_available = any(m["ke_curve"] is not None for m in job_meta.values())
@@ -7339,7 +7909,7 @@ def _page_results():
                     plot_bgcolor=_ke_ps["transparent"],
                     font=dict(color=_ke_ps["axis"]),
                 )
-                _plotly_chart(fig_ke, use_container_width=True)
+                _plotly_chart(fig_ke, width="stretch")
 
             # ── Convergence map: thinning deviation + quasi-staticity ─────────
             st.markdown("#### Convergence map")
@@ -7414,7 +7984,7 @@ def _page_results():
                     index=mr_labels,
                 )
                 df_map.index.name = "mr \\ dt"
-                st.dataframe(df_map, use_container_width=True)
+                st.dataframe(df_map, width="stretch")
                 st.caption(
                     f"Δthin = max thinning deviation from reference "
                     f"(mr={int(ref_mr)}, dt={ref_ms:.0e}).  ○ = partial run."
