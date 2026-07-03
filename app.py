@@ -1400,7 +1400,139 @@ for k, v in defaults.items():
 # ─────────────────────────────────────────────────────────────────────────────
 # UI Header
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("⚙️ Abaqus Pipeline")
+# ─────────────────────────────────────────────────────────────────────────────
+# Account (Euler user) — mirrors the Tkinter app's login: pick and verify an
+# ETH user once; sync paths, remote listings and job monitoring adapt to it.
+# ─────────────────────────────────────────────────────────────────────────────
+_USER_SETTINGS_PATH = os.path.join(PROJECT_DIR, ".streamlit", "user_settings.json")
+
+
+def _load_user_settings():
+    data = {}
+    try:
+        with open(_USER_SETTINGS_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        pass
+    users = [u for u in data.get("known_users", []) if isinstance(u, str) and u]
+    current = data.get("username") or EULER_USER
+    for u in (current, EULER_USER):
+        if u not in users:
+            users.append(u)
+    return {
+        "username": current,
+        "host": data.get("host") or EULER_HOST,
+        "known_users": users,
+    }
+
+
+def _save_user_settings():
+    try:
+        os.makedirs(os.path.dirname(_USER_SETTINGS_PATH), exist_ok=True)
+        with open(_USER_SETTINGS_PATH, "w", encoding="utf-8") as fh:
+            json.dump({
+                "username": st.session_state["euler_user"],
+                "host": st.session_state["euler_host"],
+                "known_users": st.session_state["euler_known_users"],
+            }, fh, indent=2)
+            fh.write("\n")
+    except OSError:
+        pass
+
+
+if "euler_user" not in st.session_state:
+    _us = _load_user_settings()
+    st.session_state["euler_user"] = _us["username"]
+    st.session_state["euler_host"] = _us["host"]
+    st.session_state["euler_known_users"] = _us["known_users"]
+
+
+def _current_user():
+    return st.session_state.get("euler_user", EULER_USER)
+
+
+def _current_host():
+    return st.session_state.get("euler_host", EULER_HOST)
+
+
+def _default_results_dir(user=None):
+    """Per-user local mirror so one user's sync never mixes into another's."""
+    user = user or _current_user()
+    suffix = "" if user == EULER_USER else f"_{user}"
+    return os.path.join(PROJECT_DIR, f"FLC_output{suffix}")
+
+
+def _default_euler_src(user=None, host=None):
+    user = user or _current_user()
+    host = host or _current_host()
+    return f"{user}@{host}:/cluster/home/{user}/AbaqusProject/FLC_output/"
+
+
+def _switch_user(new_user, new_host):
+    """Re-point every user-dependent path, widget and cache, then persist."""
+    st.session_state["euler_user"] = new_user
+    st.session_state["euler_host"] = new_host
+    known = st.session_state.get("euler_known_users", [])
+    if new_user not in known:
+        known.append(new_user)
+    st.session_state["euler_known_users"] = known
+    st.session_state["results_local_dir"] = _default_results_dir(new_user)
+    st.session_state["results_euler_src"] = _default_euler_src(new_user, new_host)
+    st.session_state.pop("_remote_job_index", None)
+    st.session_state.pop("sta_cache", None)
+    for key in [k for k in st.session_state if str(k).startswith("sens_runtimes")]:
+        st.session_state.pop(key, None)
+    _invalidate_results_caches()
+    _save_user_settings()
+
+
+def _verify_euler_connection(user, host):
+    try:
+        r = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6",
+             f"{user}@{host}", "echo ok"],
+            capture_output=True, text=True, timeout=20,
+        )
+        return r.returncode == 0 and "ok" in r.stdout
+    except Exception:
+        return False
+
+
+_c_title, _c_user = st.columns([4, 1.3], vertical_alignment="center")
+with _c_title:
+    st.title("⚙️ Abaqus Pipeline")
+with _c_user:
+    _verify_state = st.session_state.get("euler_verify_status")
+    _user_icon = {"ok": "🟢", "fail": "🔴"}.get(_verify_state, "⚪")
+    with st.popover(f"{_user_icon} {_current_user()}", width="stretch"):
+        _known_users = st.session_state["euler_known_users"]
+        _pick = st.selectbox(
+            "ETH user",
+            _known_users + ["New user…"],
+            index=_known_users.index(_current_user()),
+        )
+        if _pick == "New user…":
+            _pick = st.text_input("New ETH username", key="account_new_user").strip()
+        _host_pick = st.text_input("Host", value=_current_host(), key="account_host")
+        _c_verify, _c_switch = st.columns(2)
+        if _c_verify.button("Verify", key="account_verify", width="stretch",
+                            disabled=not _pick):
+            with st.spinner(f"ssh {_pick}@{_host_pick}…"):
+                _ok = _verify_euler_connection(_pick, _host_pick.strip())
+            st.session_state["euler_verify_status"] = "ok" if _ok else "fail"
+            if _ok:
+                st.success(f"Connected as {_pick}@{_host_pick}")
+            else:
+                st.error("SSH failed — check VPN and key access for this user.")
+        if _c_switch.button("Switch user", type="primary", key="account_switch",
+                            width="stretch", disabled=not _pick,
+                            help="Re-points results directory, Euler paths and "
+                                 "job monitoring to this user."):
+            _switch_user(_pick, _host_pick.strip() or EULER_HOST)
+            st.session_state["euler_verify_status"] = None
+            st.rerun()
+        if _current_user() != EULER_USER:
+            st.caption(f"Local mirror: `{os.path.basename(_default_results_dir())}`")
 
 # Pages are plain functions handed to st.navigation (top bar) at the end of
 # this file. Navigation state lives in the URL, so refresh and back/forward
@@ -1895,7 +2027,7 @@ def _page_job_status():
 
     st.subheader("Euler Queue")
 
-    user = st.text_input("Username", value=EULER_USER)
+    user = st.text_input("Username", value=_current_user())
 
     auto_refresh = st.checkbox("Auto-refresh (30s)", value=True)
     if auto_refresh:
@@ -1907,7 +2039,7 @@ def _page_job_status():
             result = subprocess.run(
                 [
                     "ssh",
-                    f"{user}@{EULER_HOST}",
+                    f"{user}@{_current_host()}",
                     'squeue --me --format="%.18i %.10P %.60j %.8u %.2t %.10M %.10l %.6D %R" --noheader'
                 ],
                 capture_output=True,
@@ -1979,7 +2111,7 @@ def _page_job_status():
                     cache_age = time.time() - cache.get("ts", 0)
                     if sta_rows and (not cache.get("data") or cache_age > 60):
                         try:
-                            data = _fetch_progress(user, EULER_HOST, sta_rows)
+                            data = _fetch_progress(user, _current_host(), sta_rows)
                         except Exception:
                             data = {}
                         st.session_state["sta_cache"] = {"data": data, "ts": time.time()}
@@ -5720,17 +5852,19 @@ def _page_results():
     if _last_sync_info:
         _sync_label += f" · last: {_last_sync_info.get('when', '?')}"
     with st.expander(_sync_label, expanded=False):
+        # Seed-first (no value=): _switch_user rewrites these via the API, and
+        # value= together with API-set state triggers the yellow warning.
+        st.session_state.setdefault("results_local_dir", _default_results_dir())
+        st.session_state.setdefault("results_euler_src", _default_euler_src())
         c_dir, c_src = st.columns([2, 3])
         with c_dir:
             results_dir = st.text_input(
                 "Local results directory",
-                value=os.path.join(PROJECT_DIR, "FLC_output"),
                 key="results_local_dir",
             )
         with c_src:
             euler_src = st.text_input(
                 "Euler source path",
-                value=f"{EULER_USER}@{EULER_HOST}:/cluster/home/{EULER_USER}/AbaqusProject/FLC_output/",
                 key="results_euler_src",
                 help="Narrowing this to FLC_output avoids walking the whole remote AbaqusProject tree.",
             )
@@ -5828,11 +5962,8 @@ def _page_results():
         panel_key = panel_state_key
         if st.session_state.get(panel_key) not in sections:
             st.session_state[panel_key] = sections[0]
-        anchor_id = f"panel-anchor-{panel_state_key}"
-        st.markdown(
-            f'<div id="{anchor_id}" style="scroll-margin-top: 4.5rem;"></div>',
-            unsafe_allow_html=True,
-        )
+        # No scroll scripting here on purpose: fragment reruns keep the
+        # viewport exactly where it is, which beats any auto-scroll attempt.
         panel = st.segmented_control(
             "Result panel",
             sections,
@@ -5841,30 +5972,6 @@ def _page_results():
         if (panel and panel_state_key == "results_panel_single"
                 and st.query_params.get("panel") != panel):
             st.query_params["panel"] = panel
-
-        # When the panel actually changes, align the panel bar with the top of
-        # the viewport so the newly rendered plot below it is what you see.
-        _last_panel_key = f"_last_{panel_state_key}"
-        if panel and st.session_state.get(_last_panel_key) not in (None, panel):
-            st_components.html(
-                f"""
-<script>
-(function () {{
-  function go(tries) {{
-    const el = window.parent.document.getElementById("{anchor_id}");
-    if (el) {{
-      el.scrollIntoView({{behavior: "smooth", block: "start"}});
-    }} else if (tries > 0) {{
-      window.setTimeout(function () {{ go(tries - 1); }}, 60);
-    }}
-  }}
-  go(5);
-}})();
-</script>
-                """,
-                height=0,
-            )
-        st.session_state[_last_panel_key] = panel
 
         if panel == "Force-Disp.":
             fig_fd = _figure_memo(
@@ -6882,9 +6989,9 @@ def _page_results():
             with st.spinner("Querying sacct on Euler…"):
                 try:
                     cmd = (
-                        f"ssh {EULER_USER}@{EULER_HOST} "
+                        f"ssh {_current_user()}@{_current_host()} "
                         f"\"sacct --format=JobName%100,Elapsed,State --noheader "
-                        f"--parsable2 -S 2026-01-01 -u {EULER_USER} "
+                        f"--parsable2 -S 2026-01-01 -u {_current_user()} "
                         f"| grep -v '\\.batch' | grep -v '\\.extern'\""
                     )
                     result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
