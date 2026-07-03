@@ -5828,6 +5828,11 @@ def _page_results():
         panel_key = panel_state_key
         if st.session_state.get(panel_key) not in sections:
             st.session_state[panel_key] = sections[0]
+        anchor_id = f"panel-anchor-{panel_state_key}"
+        st.markdown(
+            f'<div id="{anchor_id}" style="scroll-margin-top: 4.5rem;"></div>',
+            unsafe_allow_html=True,
+        )
         panel = st.segmented_control(
             "Result panel",
             sections,
@@ -5836,6 +5841,30 @@ def _page_results():
         if (panel and panel_state_key == "results_panel_single"
                 and st.query_params.get("panel") != panel):
             st.query_params["panel"] = panel
+
+        # When the panel actually changes, align the panel bar with the top of
+        # the viewport so the newly rendered plot below it is what you see.
+        _last_panel_key = f"_last_{panel_state_key}"
+        if panel and st.session_state.get(_last_panel_key) not in (None, panel):
+            st_components.html(
+                f"""
+<script>
+(function () {{
+  function go(tries) {{
+    const el = window.parent.document.getElementById("{anchor_id}");
+    if (el) {{
+      el.scrollIntoView({{behavior: "smooth", block: "start"}});
+    }} else if (tries > 0) {{
+      window.setTimeout(function () {{ go(tries - 1); }}, 60);
+    }}
+  }}
+  go(5);
+}})();
+</script>
+                """,
+                height=0,
+            )
+        st.session_state[_last_panel_key] = panel
 
         if panel == "Force-Disp.":
             fig_fd = _figure_memo(
