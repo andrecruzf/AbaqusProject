@@ -107,31 +107,27 @@ class ResultsBrowserPage(BasePage):
         canvas.xview_moveto(fraction)
 
     def _build_viewer(self) -> None:
-        main = ctk.CTkFrame(self, fg_color="transparent")
-        main.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
-        main.grid_columnconfigure(0, weight=1)
-        main.grid_rowconfigure(1, weight=1)
-        self._build_media_section(main)
-        self._build_plots_section(main)
+        # One continuous vertically scrolling page, mirroring the Streamlit
+        # results view: movies, then mesh pictures, then the plot panel.
+        self.page = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.page.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+        self.page.grid_columnconfigure(0, weight=1)
+        self._build_movies_section(self.page)
+        self._build_mesh_section(self.page)
+        self._build_plots_section(self.page)
 
-    def _build_media_section(self, master: ctk.CTkFrame) -> None:
-        media = ctk.CTkFrame(master, **self.theme.frame_kwargs())
-        media.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        media.grid_columnconfigure(0, weight=1)
-        media.grid_columnconfigure(1, weight=1)
-        media.grid_columnconfigure(2, weight=0)
-
-        ctk.CTkLabel(media, text="Movies", font=ctk.CTkFont(size=14, weight="bold")).grid(
+    def _build_movies_section(self, master) -> None:
+        movies = ctk.CTkFrame(master, **self.theme.frame_kwargs())
+        movies.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        movies.grid_columnconfigure(0, weight=1)
+        movies.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(movies, text="Movies", font=ctk.CTkFont(size=14, weight="bold")).grid(
             row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(10, 2)
         )
-        ctk.CTkLabel(media, text="Mesh pictures", font=ctk.CTkFont(size=14, weight="bold")).grid(
-            row=0, column=2, sticky="w", padx=12, pady=(10, 2)
-        )
+        self.iso_panel = self._movie_panel(movies, "ISO view", column=0)
+        self.section_panel = self._movie_panel(movies, "Section view", column=1)
 
-        self.iso_panel = self._movie_panel(media, "ISO view", column=0)
-        self.section_panel = self._movie_panel(media, "Section view", column=1)
-
-        slider_row = ctk.CTkFrame(media, fg_color="transparent")
+        slider_row = ctk.CTkFrame(movies, fg_color="transparent")
         slider_row.grid(row=2, column=0, columnspan=2, sticky="ew", padx=12, pady=(2, 10))
         slider_row.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(slider_row, text="Frame", text_color=self.theme.colors.text_muted).grid(
@@ -152,12 +148,9 @@ class ResultsBrowserPage(BasePage):
         )
         self.video_frame_label.grid(row=0, column=2, sticky="e", padx=(10, 0))
 
-        self.mesh_column = ctk.CTkScrollableFrame(media, width=250, height=230, **self.theme.frame_kwargs(alt=True))
-        self.mesh_column.grid(row=1, column=2, rowspan=2, sticky="nsew", padx=(4, 12), pady=(2, 10))
-
     def _movie_panel(self, master: ctk.CTkFrame, title: str, column: int) -> dict[str, ctk.CTkLabel]:
         panel = ctk.CTkFrame(master, **self.theme.frame_kwargs(alt=True))
-        panel.grid(row=1, column=column, sticky="nsew", padx=(12 if column == 0 else 4, 4), pady=2)
+        panel.grid(row=1, column=column, sticky="nsew", padx=(12 if column == 0 else 4, 4 if column == 0 else 12), pady=2)
         panel.grid_columnconfigure(0, weight=1)
         heading = ctk.CTkLabel(panel, text=title, text_color=self.theme.colors.text_muted)
         heading.grid(row=0, column=0, sticky="w", padx=10, pady=(6, 0))
@@ -166,11 +159,22 @@ class ResultsBrowserPage(BasePage):
         image_label.bind("<Double-Button-1>", lambda _e, t=title: self._open_panel_video(t))
         return {"heading": heading, "image": image_label}
 
-    def _build_plots_section(self, master: ctk.CTkFrame) -> None:
+    def _build_mesh_section(self, master) -> None:
+        mesh = ctk.CTkFrame(master, **self.theme.frame_kwargs())
+        mesh.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        mesh.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(mesh, text="Mesh pictures", font=ctk.CTkFont(size=14, weight="bold")).grid(
+            row=0, column=0, sticky="w", padx=12, pady=(10, 2)
+        )
+        self.mesh_grid = ctk.CTkFrame(mesh, fg_color="transparent")
+        self.mesh_grid.grid(row=1, column=0, sticky="ew", padx=12, pady=(2, 10))
+        for col in range(3):
+            self.mesh_grid.grid_columnconfigure(col, weight=1)
+
+    def _build_plots_section(self, master) -> None:
         plots = ctk.CTkFrame(master, **self.theme.frame_kwargs())
-        plots.grid(row=1, column=0, sticky="nsew")
+        plots.grid(row=2, column=0, sticky="ew")
         plots.grid_columnconfigure(0, weight=1)
-        plots.grid_rowconfigure(1, weight=1)
         header = ctk.CTkFrame(plots, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(10, 4))
         ctk.CTkLabel(header, text="Post-processing plots", font=ctk.CTkFont(size=14, weight="bold")).pack(
@@ -190,7 +194,7 @@ class ResultsBrowserPage(BasePage):
         )
         self.fld_paths_checkbox.pack(side="left", padx=14)
         self.plot_viewer = PlotViewer(plots, self.theme)
-        self.plot_viewer.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+        self.plot_viewer.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 12))
 
     # ── Top-bar actions ───────────────────────────────────────────────────
 
@@ -311,6 +315,9 @@ class ResultsBrowserPage(BasePage):
         self._populate_movies(path)
         self._populate_mesh_pictures(path)
         self._render_current_panel()
+        canvas = getattr(self.page, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.yview_moveto(0.0)
 
     def _job_files(self, path: Path | None, suffixes: set[str]) -> list[Path]:
         if path is None:
@@ -410,7 +417,7 @@ class ResultsBrowserPage(BasePage):
             if image is None:
                 panel["image"].configure(image=None, text=f"Could not decode {path.name}")
                 continue
-            thumb = self._ctk_image(image, max_width=480, max_height=200)
+            thumb = self._ctk_image(image, max_width=620, max_height=380)
             self.video_frame_images.append(thumb)
             panel["image"].configure(image=thumb, text="")
 
@@ -436,34 +443,36 @@ class ResultsBrowserPage(BasePage):
             self.app.open_path(path)
 
     def _populate_mesh_pictures(self, path: Path | None) -> None:
-        for child in self.mesh_column.winfo_children():
+        for child in self.mesh_grid.winfo_children():
             child.destroy()
         self.media_images.clear()
         pngs = self._job_files(path, {".png"})
         pngs.sort(key=lambda item: "mesh" not in item.stem.lower())
         if not pngs:
-            ctk.CTkLabel(self.mesh_column, text="No pictures", text_color=self.theme.colors.text_muted).pack(
-                anchor="w", padx=8, pady=8
+            ctk.CTkLabel(self.mesh_grid, text="No pictures for this job", text_color=self.theme.colors.text_muted).grid(
+                row=0, column=0, sticky="w", padx=4, pady=6
             )
             return
-        for png in pngs:
+        for idx, png in enumerate(pngs):
             try:
                 image = Image.open(png).copy()
             except Exception:
                 continue
-            thumb = self._ctk_image(image, max_width=220, max_height=130)
+            thumb = self._ctk_image(image, max_width=420, max_height=300)
             self.media_images.append(thumb)
-            label = ctk.CTkLabel(self.mesh_column, image=thumb, text="")
-            label.pack(anchor="w", padx=4, pady=(4, 0))
+            cell = ctk.CTkFrame(self.mesh_grid, fg_color="transparent")
+            cell.grid(row=idx // 3, column=idx % 3, sticky="n", padx=4, pady=4)
+            label = ctk.CTkLabel(cell, image=thumb, text="")
+            label.pack()
             label.bind("<Double-Button-1>", lambda _e, p=png: self.app.open_path(p))
             ctk.CTkLabel(
-                self.mesh_column,
+                cell,
                 text=png.name,
                 text_color=self.theme.colors.text_muted,
-                wraplength=210,
-                justify="left",
+                wraplength=400,
+                justify="center",
                 font=ctk.CTkFont(size=10),
-            ).pack(anchor="w", padx=6, pady=(0, 4))
+            ).pack()
 
     @staticmethod
     def _scaled_size(image: Image.Image, max_width: int, max_height: int) -> tuple[int, int]:
