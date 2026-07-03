@@ -14,7 +14,32 @@ MODEL_NAME = 'Model-1'
 
 
 # =============================================================
-# TEST CONFIGURATION
+# USER / CLUSTER CONNECTION
+# =============================================================
+# Change these when handing the project to another Euler user.
+EULER_USER = _os.environ.get('EULER_USER', 'acruzfaria')
+EULER_HOST = _os.environ.get('EULER_HOST', 'euler.ethz.ch')
+EULER_PROJECT_NAME = _os.environ.get('EULER_PROJECT_NAME', 'AbaqusProject')
+
+# Templates are used by the GUI when switching between remembered users.
+EULER_DIR_TEMPLATE = _os.environ.get(
+    'EULER_DIR_TEMPLATE',
+    '/cluster/home/{{user}}/{}'.format(EULER_PROJECT_NAME),
+)
+EULER_SCRATCH_ROOT_TEMPLATE = _os.environ.get(
+    'EULER_SCRATCH_ROOT_TEMPLATE',
+    '/cluster/scratch/{user}',
+)
+
+EULER_DIR = _os.environ.get('EULER_DIR', EULER_DIR_TEMPLATE.format(user=EULER_USER))
+EULER_SCRATCH_ROOT = _os.environ.get(
+    'EULER_SCRATCH_ROOT',
+    EULER_SCRATCH_ROOT_TEMPLATE.format(user=EULER_USER),
+)
+
+
+# =============================================================
+# SPECIMEN & TEST SETUP
 # =============================================================
 # 'nakazima'  → hemispherical punch
 # 'marciniak' → flat punch (ISO 12004-2 §6.3.4)
@@ -32,6 +57,16 @@ INP_DIR = 'PiP_Geometries' if TEST_TYPE == 'pip' else 'Naka_Marciniak_Geometries
 # Leave empty to auto-detect when the imported file uses a different part name.
 SPECIMEN_PART_NAME = _os.environ.get('SPECIMEN_PART_NAME', 'Specimen') or None
 
+# ── Specimen geometry / mesh source ──────────────────────────
+# GEOMETRY_SOURCE (macro mode):
+#   'cae' → import the specimen mesh from W{SPECIMEN_WIDTH}.cae
+#   'inp' → import the specimen mesh from W{SPECIMEN_WIDTH}.inp
+#   'bm'  → build the specimen mesh through Nakazima_BM.py
+GEOMETRY_SOURCE = _os.environ.get('GEOMETRY_SOURCE', 'cae').lower()
+
+# Specimen mesh backend.  The Streamlit workflow uses the BM builder only.
+MESH_BACKEND = 'bm'
+
 BLANK_THICKNESS            = float(_os.environ.get('BLANK_THICKNESS', '')            or 1.5)    # mm
 MATERIAL_ORIENTATION_ANGLE = float(_os.environ.get('MATERIAL_ORIENTATION_ANGLE', '') or 0.0)  # degrees
 
@@ -47,7 +82,7 @@ SLURM_TIME_LIMIT = _os.environ.get('SLURM_TIME_LIMIT', '48:00:00')
 
 
 # =============================================================
-# GEOMETRY
+# GEOMETRY — TOOLING
 # =============================================================
 
 # ── Common — shared across all test types ────────────────────
@@ -103,30 +138,8 @@ if TEST_TYPE == 'pip':
     PIP_BH_HEIGHT        = 20.0   # mm — blank holder height
     PIP_BH_CHAMFER       = 2.0    # mm — blank holder inner chamfer
 
-    # Process parameters
-    PIP_PUNCH1_DISPLACEMENT = 20.0   # mm — Punch1 travel in Step 1
-    PIP_PUNCH2_DISPLACEMENT = 20.0   # mm — Punch2 additional travel in Step 2
-    PIP_STEP1_TIME          = 10.0   # s  — duration of Step 1 → 2 mm/s (ISO 12004-2: 0.5–2 mm/s)
-    PIP_STEP2_TIME          = 10.0   # s  — duration of Step 2 → 2 mm/s
-
-# ── Geometry source (macro mode) ─────────────────────────────
-# 'cae' → import the specimen mesh from W{SPECIMEN_WIDTH}.cae
-# 'inp' → import the specimen mesh from W{SPECIMEN_WIDTH}.inp
-# 'bm'  → build the specimen mesh through Nakazima_BM.py
-GEOMETRY_SOURCE = _os.environ.get('GEOMETRY_SOURCE', 'cae').lower()
-
-# Specimen mesh backend.  The Streamlit workflow uses the BM builder only.
-MESH_BACKEND = 'bm'
-
-SPECIMEN_TYPE = 'circular'   # 'circular' or 'notched' (macro mode only)
-A_WIDTH       = 80.0
-NOTCH_DEPTH   = 40.0
-C_FILLET      = 8.0
-BLANK_RADIUS  = 100.0
-
-
 # =============================================================
-# MESH
+# MESH GENERATION
 # =============================================================
 # Refinement factor: 1.0 = baseline; 0.5 = half element size (finer); 2.0 = coarser.
 MESH_REFINEMENT_FACTOR = float(_os.environ.get('MESH_REFINEMENT_FACTOR', 2.0))
@@ -215,7 +228,10 @@ MESH_CORE_PROBE_OFFSET = float(_os.environ.get('MESH_CORE_PROBE_OFFSET', '') or 
 # Elements through blank thickness — independent of MESH_REFINEMENT_FACTOR.
 N_THICKNESS_SEEDS = int(_os.environ.get('N_THICKNESS_SEEDS', 10))
 
-# ── BM mesh backend manual controls ───────────────────────────────────────────
+
+# =============================================================
+# MESH — BM BACKEND MANUAL OVERRIDES
+# =============================================================
 # When disabled, Nakazima_BM.py uses the legacy fine mesh sizes multiplied by
 # MESH_REFINEMENT_FACTOR. When enabled, the BM_MESH_* values below are absolute
 # target element sizes in mm and MESH_REFINEMENT_FACTOR no longer scales them.
@@ -226,10 +242,6 @@ BM_MESH_USE_MANUAL = (
 BM_MESH_TAG = _os.environ.get('BM_MESH_TAG', '')
 BM_MIRROR = (
     _os.environ.get('BM_MIRROR', '0').lower()
-    in ('1', 'true', 'yes', 'on')
-)
-ENABLE_SYMMETRIES = (
-    _os.environ.get('ENABLE_SYMMETRIES', '1').lower()
     in ('1', 'true', 'yes', 'on')
 )
 
@@ -255,10 +267,6 @@ BM_MESH_W200_SECTION2 = _os.environ.get('BM_MESH_W200_SECTION2', '')
 BM_MESH_W200_SECTION3 = _os.environ.get('BM_MESH_W200_SECTION3', '')
 BM_MESH_W200_SECTION4 = _os.environ.get('BM_MESH_W200_SECTION4', '')
 
-# Dome observation zone used by postproc.py to find the critical element.
-# ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter.
-R_DOME = 0.15 * PUNCH_RADIUS * 2.0
-
 
 # =============================================================
 # FORMING PARAMETERS
@@ -279,6 +287,17 @@ PUNCH_VELOCITY_PROFILE = _os.environ.get('PUNCH_VELOCITY_PROFILE', 'smoothstep')
 PUNCH_RAMP_FRACTION    = float(_os.environ.get('PUNCH_RAMP_FRACTION', '') or 0.05)  # smooth fraction at step ends (constant profile)
 
 USE_EDGE_ENCASTRE = True   # encastre the outer blank edge
+ENABLE_SYMMETRIES = (
+    _os.environ.get('ENABLE_SYMMETRIES', '1').lower()
+    in ('1', 'true', 'yes', 'on')
+)
+
+# ── PiP (Punch-in-Punch) process parameters ──────────────────
+if TEST_TYPE == 'pip':
+    PIP_PUNCH1_DISPLACEMENT = 20.0   # mm — Punch1 travel in Step 1
+    PIP_PUNCH2_DISPLACEMENT = 20.0   # mm — Punch2 additional travel in Step 2
+    PIP_STEP1_TIME          = 10.0   # s  — duration of Step 1 → 2 mm/s (ISO 12004-2: 0.5–2 mm/s)
+    PIP_STEP2_TIME          = 10.0   # s  — duration of Step 2 → 2 mm/s
 
 
 # =============================================================
@@ -440,6 +459,10 @@ def _pp_bool(name, default):
     return raw.strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+# Dome observation zone used by postproc.py to find the critical element.
+# ISO 12004-2 §6.3.3.3: fracture must occur within 15% of punch diameter.
+R_DOME = 0.15 * PUNCH_RADIUS * 2.0
+
 POSTPROC_THRESHOLDS = {
 
     # ── Dome observation zone ────────────────────────────────────────────────
@@ -478,9 +501,16 @@ POSTPROC_THRESHOLDS = {
 
     # ── Volk-Hora necking criterion ──────────────────────────────────────────
     'vh_fracture_radius_mm':       _pp_float('POSTPROC_VH_FRACTURE_RADIUS_MM', 3.0),
+    # FEM V&H stable-branch fitting window.  The DIC method uses the last 3 s at
+    # 1 mm/s, but the default FEM field-output cadence is coarser per mm at
+    # 5 mm/s.  Use a longer 2 s stable window while keeping the unstable branch
+    # fixed to the last few points via vh_unstable_tail_points below.
+    'vh_fit_window_seconds':       _pp_float('POSTPROC_VH_FIT_WINDOW_SECONDS', 2.0),
+    'vh_unstable_tail_points':     _pp_int('POSTPROC_VH_UNSTABLE_TAIL_POINTS', 4),
+    'vh_unstable_fit_window_seconds': _pp_float('POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS', 0.6),
     'vh_fit_window_frac':          _pp_float('POSTPROC_VH_FIT_WINDOW_FRAC', 0.4),
-    'vh_min_stable_points':        _pp_int('POSTPROC_VH_MIN_STABLE_POINTS', 7),
-    'vh_min_unstable_points':      _pp_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 3),
+    'vh_min_stable_points':        _pp_int('POSTPROC_VH_MIN_STABLE_POINTS', 20),
+    'vh_min_unstable_points':      _pp_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 4),
     # Engin frame selection: evaluate the thinning rate at b-1 (one frame before
     # crack) -> back_frames=1, the latest crack-free central-difference frame.
     'vh_eval_back_frames':         _pp_int('POSTPROC_VH_EVAL_BACK_FRAMES', 1),
@@ -506,6 +536,16 @@ POSTPROC_THRESHOLDS = {
     # Write the full per-element dome strain history (large for dense meshes).
     'write_dome_history':          _pp_bool('POSTPROC_WRITE_DOME_HISTORY', False),
 }
+
+
+# =============================================================
+# LEGACY — macro mode only, unused by the current BM-only workflow
+# =============================================================
+SPECIMEN_TYPE = 'circular'   # 'circular' or 'notched' (macro mode only)
+A_WIDTH       = 80.0
+NOTCH_DEPTH   = 40.0
+C_FILLET      = 8.0
+BLANK_RADIUS  = 100.0
 
 
 # =============================================================
