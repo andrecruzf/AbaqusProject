@@ -681,7 +681,10 @@ conforming to the quasi-static requirement of the energy criterion.
 
 The contact check varies only the punch--blank Coulomb coefficient
 $\mu_\mathrm{punch}$ from 0 to 0.25 for the \texttt{W120} specimen at
-$t=\SI{1.5}{\milli\meter}$ and $\alpha=\SI{0}{\degree}$. The runs use
+$t=\SI{1.5}{\milli\meter}$ and $\alpha=\SI{0}{\degree}$. The \texttt{W120}
+geometry is chosen because the experimental campaign shows a consistent jump
+in minor strain at this width, and the check assesses whether such a shift
+could originate from the friction definition. The runs use
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$. This is a single-width sensitivity check,
 not a calibrated numerical FLC. The late energy check remains below
 \SI{5}{\percent} for every friction value, so the discussion focuses on
@@ -750,11 +753,10 @@ and moves the critical strain path toward plane strain.
     \end{tabular}
 \end{table}
 
-The frictionless baseline, which matches the PTFE and lanolin lubrication of
-the experiments, is the only case of this sweep that yields a valid
-dome-centred limit point. A defensible friction choice should still be
-calibrated against the experimental force-displacement response and rechecked
-at the working setting $f_\mathrm{MR}=1.41$.
+The frictionless baseline matches the PTFE and lanolin lubrication of the
+experiments. A defensible friction choice should still be calibrated against
+the experimental force-displacement response and rechecked at the working
+setting $f_\mathrm{MR}=1.41$.
 
 \subsection{Working Configuration Summary}
 \label{sec:numerical_output_status}

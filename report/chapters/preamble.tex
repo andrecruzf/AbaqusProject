@@ -35,16 +35,17 @@ $|\Delta\varepsilon_1|$ and $|\Delta\varepsilon_2|$.
 The numerical part implements an automated \software{Abaqus/Explicit} workflow
 for Nakazima, Marciniak, and Punch in Punch simulations, including model
 generation, Euler submission, ODB post processing, and result synchronisation.
-For the \texttt{W100} reference case, the accepted setting is a mass scaling
-target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, which lies on the
-converged fine side plateau and is the least expensive run of the
-confirmation sweep. In the final
-\SI{0.5}{\second} before fracture, all completed mesh-refinement confirmation
-runs remain below the \SI{5}{\percent} quasi-static criterion. The fine-side
-checks from $f_\mathrm{MR}=1$ to $1.41$ cluster at
-$\varepsilon_1^\mathrm{f}=0.201$ to $0.207$, while the coarser points still
-show endpoint sensitivity. Mesh convergence is therefore supported for the
-reference case, but broader mesh-independence checks remain necessary.
+For the \texttt{W100} reference case, the working setting is a mass scaling
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, the coarsest and
+cheapest member of the fine-side strain plateau. This setting is quasi static
+by the energy criterion and reproduces the fracture strain of the finest
+tested mesh within \SI{1.9}{\percent} at \SI{63}{\percent} of its run time,
+while the coarser meshes remain non-monotonic and not converged. A friction
+check showed that only frictionless punch contact keeps the fracture
+dome-centred, which supports the frictionless baseline for the lubricated
+experiments. The fracture-based extraction already yields an exploratory
+fracture forming limit curve, and a necking-based FLC awaits a robust onset
+detection.
 
 \cleardoublepage
 
