@@ -1,95 +1,34 @@
 \chapter{Future Work}\label{chap:future_work}
 
-The following directions are identified for future investigation, grouped into
-four themes and ordered by priority within each.
-
-\section{Numerical Validation}
+The next steps should focus on turning the verified workflow into a validated
+numerical forming limit campaign.
 
 \begin{enumerate}
-  \item \textbf{Extend the mesh-size study beyond the reference case.} The
-  working settings ($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$,
-  $f_\mathrm{MR}=1.41$) are provisionally adopted for the \texttt{W100}
-  reference case (Section~\ref{sec:selection_numerical_parameters}). The
-  completed confirmation sweep is quasi-static in the final forming-limit
-  window and gives a more consistent fine-side group from $f_\mathrm{MR}=1$ to
-  $1.41$, but it does not establish mesh convergence. The
-  $f_\mathrm{MR}=1.5$ case did not yield a post-processed result, and the
-  coarser $f_\mathrm{MR}=2$ and $3$ points still show endpoint sensitivity in
-  the major fracture strain. The next step is to complete the missing
-  $f_\mathrm{MR}=1.5$ case and repeat the confirmation sweep for the other
-  relevant thicknesses and punch configurations. The present sweep only varies
-  the single global refinement factor. The independent per-section sizing of
-  Section~\ref{sec:mesh_generation} (central,
-  transition, dome, and flange target sizes) is already implemented but has not
-  yet been exercised in a sensitivity study, and a more extensive mesh study
-  varying these sizes independently, rather than uniformly through
-  $f_\mathrm{MR}$, is a natural next step now that every meshing parameter is
-  exposed and tunable.
+  \item \textbf{Complete the mesh verification.} The current
+  $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ setting is
+  only a working choice for the \texttt{W100} reference case. The missing
+  $f_\mathrm{MR}=1.5$ case should be completed, and the mesh study should be
+  repeated for the relevant thicknesses and punch configurations before mesh
+  convergence is claimed.
 
-  \item \textbf{Complete the numerical campaign.} Run the simulations for all
-  three test configurations (Nakazima, Marciniak, PiP) across the specimen
-  geometries, sheet thicknesses, punch radii, and orientation angles used
-  experimentally. This would allow thickness, size, punch-radius, and
-  anisotropy effects to be quantified numerically and compared with Task~I.
+  \item \textbf{Run the numerical campaign.} The simulations should be extended
+  from the reference cases to the specimen widths, sheet thicknesses, punch
+  diameters, and material orientations used experimentally. This is required
+  before a numerical FLC can be compared with the experimental campaign.
 
-  \item \textbf{Compare test configurations.} A direct comparison of the FLCs
-  produced by Nakazima, Marciniak, and PiP simulations should be used to
-  quantify the effect of strain-path linearity on the extracted limit strains.
-  In particular, the PiP configuration should be assessed as a candidate for
-  more linear paths in the biaxial regime.
+  \item \textbf{Validate material and contact parameters.} The AA5182
+  surrogate material constants should be replaced by an AA5754 calibration once
+  the required characterisation tests are available. The punch and die friction
+  coefficients should also be calibrated against experimental
+  force displacement curves, since the local friction check showed a strong
+  influence on the fracture location.
 
-  \item \textbf{Analyse strain paths and endpoint robustness.} Extract and
-  visualise the full strain-path trajectory
-  $(\varepsilon_2(t), \varepsilon_1(t))$ at the critical element to verify the
-  assumed strain state and assess non-linearity induced by punch contact and
-  bending. The force-drop fracture-frame detector should be cross-checked
-  against STATUS deletion and visual movie inspection for borderline cases.
-\end{enumerate}
+  \item \textbf{Compare forming limit identification criteria.} The simulated
+  strain histories should be processed with the same ISO, Volk Hora, and
+  Min Stoughton logic used for the experiments. This would separate numerical
+  model effects from post processing effects.
 
-\section{Experimental/Numerical Comparison}
-
-\begin{enumerate}
-  \item \textbf{Validate against experimental results.} Once the experimental
-  FLC from the high-throughput Nakazima/Marciniak test bench is available, the
-  numerical FLC can be compared directly to assess the accuracy of the
-  Hosford--Coulomb material model and the pipeline as a whole. The same
-  comparison can be used to identify whether the automated specimen loading
-  system introduces systematic effects that should be represented numerically.
-
-  \item \textbf{Calibrate the material constants for AA5754.} The 46 VUMAT
-  constants used in this work were taken from a surrogate AA5182 calibration, as
-  the AA5754 batch of Task~I had not yet been characterised. A dedicated
-  calibration against characterisation tests (uniaxial tension, notched tension,
-  shear) for the specific AA5754 sheet batch would replace the surrogate
-  parameters and turn the framework verification into a quantitative prediction.
-
-  \item \textbf{Calibrate friction coefficients.} The local \texttt{W120} sensitivity
-  check in Section~\ref{sec:friction_sensitivity} should be extended to a full
-  calibration against the experimental force--displacement response. A larger
-  parametric study varying both the punch--blank and die--blank coefficients
-  would quantify their influence on the FLC and on the prevalence of base
-  fracture versus dome fracture.
-\end{enumerate}
-
-\section{Min--Stoughton Integration}
-
-\begin{enumerate}
-  \item \textbf{Integrate Task~II identification criteria.} The numerical
-  strain-field data from \texttt{strain\_path.csv} can be fed into the FLC
-  identification framework of Task~II (Volk--Hora~\cite{VolkHora2011},
-  Merklein~\cite{Merklein2010}, Pham--Sigvant~\cite{Pham2023}, and
-  Min--Stoughton~\cite{Min2017}). This would allow criterion-dependent FLC
-  values to be compared on simulated data for which the damage state and
-  fracture location are known.
-\end{enumerate}
-
-\section{Usability and Interface}
-
-\begin{enumerate}
-  \item \textbf{Develop the user interface.} The current \software{Streamlit}
-  interface (Appendix~\ref{app:interface}) runs as a web application and is
-  convenient for configuring and launching individual cases. A standalone local
-  application would remove the web-server dependency, improve responsiveness for
-  larger result sets, and integrate more directly with the local project and
-  cluster workflow.
+  \item \textbf{Improve usability.} The Streamlit interface should be kept as a
+  practical front end for job setup, result synchronisation, and plot review,
+  with emphasis on faster result loading and clearer status feedback.
 \end{enumerate}
