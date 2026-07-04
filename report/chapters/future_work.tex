@@ -4,31 +4,31 @@ The next steps should focus on turning the verified workflow into a validated
 numerical forming limit campaign.
 
 \begin{enumerate}
-  \item \textbf{Complete the mesh verification.} The current
+  \item \textbf{Extend the mesh analysis.} The current
   $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ setting is
-  only a working choice for the \texttt{W100} reference case. The missing
-  $f_\mathrm{MR}=1.5$ case should be completed, and the mesh study should be
-  repeated for the relevant thicknesses and punch configurations before mesh
-  convergence is claimed.
+  only a working choice for the \texttt{W100} reference case. The mesh study
+  should be extended beyond the global refinement factor, since the parametrised
+  mesh also exposes local seed sizes, transition regions, dome sizing, and
+  growth factors.
 
   \item \textbf{Run the numerical campaign.} The simulations should be extended
   from the reference cases to the specimen widths, sheet thicknesses, punch
-  diameters, and material orientations used experimentally. This is required
-  before a numerical FLC can be compared with the experimental campaign.
+  diameters, and material orientations used experimentally. The AA5182
+  surrogate material constants and the contact coefficients should then be
+  replaced by calibrated AA5754 and friction data.
 
-  \item \textbf{Validate material and contact parameters.} The AA5182
-  surrogate material constants should be replaced by an AA5754 calibration once
-  the required characterisation tests are available. The punch and die friction
-  coefficients should also be calibrated against experimental
-  force displacement curves, since the local friction check showed a strong
-  influence on the fracture location.
+  \item \textbf{Continue the Min Stoughton evaluation.} The criterion should be
+  tested on more experimental data and checked across different punch
+  diameters. This is needed to understand whether its behaviour remains stable
+  when the strain field and fitting window change with punch geometry.
 
-  \item \textbf{Compare forming limit identification criteria.} The simulated
-  strain histories should be processed with the same ISO, Volk Hora, and
-  Min Stoughton logic used for the experiments. This would separate numerical
-  model effects from post processing effects.
+  \item \textbf{Improve numerical post processing.} The necking onset detection
+  for the numerical framework should be further tested against strain paths,
+  force drops, element deletion, and visual movie inspection. This is required
+  before the numerical FLC extraction can be treated as robust.
 
-  \item \textbf{Improve usability.} The Streamlit interface should be kept as a
-  practical front end for job setup, result synchronisation, and plot review,
-  with emphasis on faster result loading and clearer status feedback.
+  \item \textbf{Move toward a local application.} The Streamlit interface is
+  useful for the current workflow, but a full local application would be better
+  suited for large result folders, direct file access, job synchronisation, and
+  responsive plot review.
 \end{enumerate}
