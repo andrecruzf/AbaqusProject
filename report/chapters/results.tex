@@ -886,7 +886,10 @@ converged. The production settings are therefore fixed at
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ for the
 remainder of this report, since this mesh lies on the converged fine-side
 plateau and is at the same time the least expensive run of the confirmation
-sweep (Table~\ref{tab:confirm_sweep_summary}). Broader mesh-independence
+sweep (Table~\ref{tab:confirm_sweep_summary}). Because the refinement factor
+scales the seed spacing, $f_\mathrm{MR}=1.41\approx\sqrt{2}$ corresponds to
+about half the in plane element count of the finest tested mesh, obtained at
+roughly a quarter of its computational cost. Broader mesh-independence
 checks across more geometries are left as future work
 (Chapter~\ref{chap:future_work}).
 
