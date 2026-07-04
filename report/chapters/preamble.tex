@@ -37,8 +37,9 @@ The numerical part implements an automated \software{Abaqus/Explicit} workflow
 for Nakazima, Marciniak, and Punch in Punch simulations, including model
 generation, Euler submission, ODB post processing, and result synchronisation.
 For the \texttt{W100} reference case, the accepted setting is a mass scaling
-target of \SI{1e-6}{\second} with $f_\mathrm{MR}=2$, giving a maximum kinetic
-to internal energy ratio of \SI{1.8}{\percent}. In the final
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, which lies on the
+converged fine side plateau and is the least expensive run of the
+confirmation sweep. In the final
 \SI{0.5}{\second} before fracture, all completed mesh-refinement confirmation
 runs remain below the \SI{5}{\percent} quasi-static criterion. The fine-side
 checks from $f_\mathrm{MR}=1$ to $1.41$ cluster at

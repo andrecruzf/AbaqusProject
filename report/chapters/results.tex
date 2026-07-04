@@ -878,14 +878,17 @@ the \SI{5}{\percent} criterion, with late-window maxima between
 The fine-side checks $f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close
 element-status fracture strains, with $\varepsilon_1^\mathrm{f}$ between
 \num{0.201} and \num{0.207}, and $\varepsilon_2^\mathrm{f}$ between
-\num{0.096} and \num{0.097}. The coarser settings $f_\mathrm{MR}=2$ and $3$
-also keep the minor strain stable, but their major fracture strains are higher,
-at \num{0.244} and \num{0.219}. The additional sweep therefore supports
-mesh convergence in the fine-side range and confirms that the runs are
-quasi-static in the relevant extraction window. The production settings remain
-fixed at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=2$ for
-the remainder of this report, while broader mesh-independence checks across
-more geometries are left as future work (Chapter~\ref{chap:future_work}).
+\num{0.096} and \num{0.097}, which supports mesh convergence on the fine
+side (Figure~\ref{fig:ms_mr_flp}). The coarser settings $f_\mathrm{MR}=2$ and
+$3$ keep the minor strain stable, but their major fracture strains lie above
+this plateau, at \num{0.244} and \num{0.219}, so neither can be considered
+converged. The production settings are therefore fixed at
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ for the
+remainder of this report, since this mesh lies on the converged fine-side
+plateau and is at the same time the least expensive run of the confirmation
+sweep (Table~\ref{tab:confirm_sweep_summary}). Broader mesh-independence
+checks across more geometries are left as future work
+(Chapter~\ref{chap:future_work}).
 
 \begin{figure}[ht]
     \centering
@@ -937,6 +940,19 @@ more geometries are left as future work (Chapter~\ref{chap:future_work}).
     \end{tabular}
 \end{table}
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/results/ms_mr_forming_limit_points.png}
+    \caption[Extracted fracture forming-limit points of the numerical sweeps]{Extracted
+    element-status fracture points for the mass-scaling sweep (MS, at
+    $f_\mathrm{MR}=2$), the diagnostic mesh-refinement sweep (MR, at
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$), and the confirmation sweep at
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The confirmation runs from
+    $f_\mathrm{MR}=1$ to $1.41$ cluster tightly, while the coarser meshes and
+    the aggressively mass-scaled targets deviate in major or minor strain.}
+    \label{fig:ms_mr_flp}
+\end{figure}
+
 \subsection{Friction-Factor Sensitivity Check}
 \label{sec:friction_sensitivity}
 
@@ -951,7 +967,7 @@ blank-holder contact coefficient remained at the default value of 0.35. This
 is therefore a single-width sensitivity check rather than a calibrated
 numerical FLC. The runs use the finest mesh of the confirmation sweep of
 Section~\ref{sec:selection_numerical_parameters} rather than the production
-default $f_\mathrm{MR}=2$, so the mid-process energy ratios are elevated. In
+setting $f_\mathrm{MR}=1.41$, so the mid-process energy ratios are elevated. In
 the final \SI{0.5}{\second} before each extracted fracture point the ratio
 stays below the \SI{5}{\percent} criterion for every run
 (Table~\ref{tab:friction_sensitivity_summary}).
@@ -1037,7 +1053,7 @@ baseline, which matches the PTFE and lanolin lubrication of the experiments,
 is the only case of this sweep that yields a valid dome-centred limit point.
 A defensible friction choice should be calibrated against the experimental
 force--displacement response and then rechecked at the production settings
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=2$.
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
