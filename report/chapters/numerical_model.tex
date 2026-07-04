@@ -7,34 +7,32 @@ The numerical framework is controlled from a master configuration file. It
 defines the test type, specimen dimensions, punch setup, mesh controls, material
 orientation, loading conditions, solver resources, Euler paths, and post
 processing settings. Campaign parameters can therefore be changed in one place,
-while the model generation scripts remain fixed. An alpha version of a graphical
-user interface hosted with \software{Streamlit} drives the same configuration
+while the model generation scripts remain fixed. A prototype graphical
+user interface built with \software{Streamlit} drives the same configuration
 and submission logic, as described in Appendix~\ref{app:interface}.
 
 \subsection{Automated Workflow}
 
 For each case, the framework reads the master configuration and runs the same
-model generation sequence. The scripts create the geometry, material definition,
-contact setup, boundary conditions, output requests, and \software{Abaqus} job.
-
-After the model has been written, the input file and user material subroutine
-are submitted to \software{Abaqus/Explicit}. Once the job is complete, post
-processing extracts the compact result files used for evaluation. Forming limit
-point extraction is still a development output and is therefore treated
-cautiously in this report. The full pipeline architecture and the corresponding
-model generation sequence are shown in Appendix~\ref{app:pipeline},
-Figures~\ref{fig:architecture} and~\ref{fig:model_gen_sequence}.
+model generation sequence as a \software{Python} script in \software{Abaqus/CAE}.
+The scripts create the geometry, material definition, contact setup, boundary
+conditions, output requests, and \software{Abaqus} job, and write the input
+file together with a CAE model for visual verification. The full pipeline
+architecture and the corresponding model generation sequence are shown in
+Appendix~\ref{app:pipeline}, Figures~\ref{fig:architecture}
+and~\ref{fig:model_gen_sequence}.
 
 \subsection{Integration with the ETH Euler Cluster}
 
-The simulations are executed on the ETH Euler cluster. The local project files
-are copied to the cluster. The solver job is then submitted through
-\software{SLURM}, and the ODB post processing is performed after the analysis
-has completed.
+The simulations are executed with \software{Abaqus/Explicit}~2023 on the ETH
+Euler cluster. The project files are copied to the cluster, the input file and
+the user material subroutine are submitted through \software{SLURM}, and the
+ODB post processing runs after the analysis has completed.
 
 Only the compact result files, figures, and movies are copied back to the
-project directory. The large ODB files remain in scratch storage because of the
-Euler storage policy for scratch directories.
+project directory. The large ODB files remain in scratch storage, which is
+periodically purged, so the compact result files constitute the durable record
+of each simulation.
 
 \section{Automated Model Generation}
 
