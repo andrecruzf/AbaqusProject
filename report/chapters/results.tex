@@ -757,21 +757,21 @@ dome-centred limit point. A defensible friction choice should still be
 calibrated against the experimental force-displacement response and rechecked
 at the working setting $f_\mathrm{MR}=1.41$.
 
-\subsection{Current Numerical Output Status}
+\subsection{Working Configuration Summary}
 \label{sec:numerical_output_status}
 
 Task III closes with a verified working configuration rather than a validated
 model. Table~\ref{tab:working_configuration} collects the adopted settings
 together with the evidence behind each choice. At this configuration the
-reference case is quasi static by the energy criterion, with late energy
-ratios below \SI{1}{\percent}, and its fracture strain lies within
-\SI{1.9}{\percent} of the finest tested mesh at \SI{63}{\percent} of its run
-time. The evaluation artifacts identified in this section, the outside-dome
-failure sites and the artificial early point of the
-$\mu_\mathrm{punch}=0.05$ run, are labelled by the post-processing outputs
-and are therefore kept out of any dome-formability reading. A numerical FLC
-is not yet constructed, since the material constants remain the AA5182
-surrogate of Chapter~\ref{chap:numerical_model}.
+reference case is quasi static by the energy criterion and its fracture
+strain lies within \SI{1.9}{\percent} of the finest tested mesh at
+\SI{63}{\percent} of its run time. The evaluation artifacts identified above
+are labelled by the post-processing outputs and kept out of any
+dome-formability reading. A numerical FLC is not yet constructed, since the
+material constants remain the AA5182 surrogate of
+Chapter~\ref{chap:numerical_model}. The calibration and campaign steps that
+follow from this configuration are outlined in
+Chapter~\ref{chap:future_work}.
 
 \begin{table}[H]
     \centering
@@ -792,12 +792,3 @@ surrogate of Chapter~\ref{chap:numerical_model}.
         \bottomrule
     \end{tabular}
 \end{table}
-
-The remaining work follows in three steps. First, the punch friction is
-calibrated against the measured force response of the lubricated experiments
-and rechecked at the working mesh. Second, the calibrated configuration is
-run across the specimen widths of the experimental campaign, with the punch
-force curves and failure locations checked against the measured responses
-and the DIC crack positions. Third, the resulting numerical FLC is compared
-with the experimental FLCs of Task I, which requires an AA5754 calibration
-in place of the surrogate constants.
