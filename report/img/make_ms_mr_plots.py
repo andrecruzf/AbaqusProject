@@ -178,8 +178,6 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
     for idx, job in enumerate(jobs):
         curve = _energy_curve(job)
         curve = curve.replace([np.inf, -np.inf], np.nan).dropna()
-        cutoff = 0.05 * float(np.nanmax(curve["U3_mm"]))
-        curve = curve[curve["U3_mm"] >= cutoff]
         if curve.empty:
             continue
         max_ratio = max(max_ratio, float(np.nanmax(curve["ke_ratio_pct"])))
@@ -191,7 +189,7 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
         ax.set_ylim(*ylim)
     _style_axes(ax, r"Simulation time $t$ [s]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
     ax.set_title(title)
-    ax.legend(frameon=False, fontsize=8, ncol=2)
+    ax.legend(loc="upper right", frameon=False, fontsize=8, ncol=2)
     _save(fig, stem)
 
 
@@ -289,8 +287,11 @@ def main() -> None:
         }
     )
     _plot_strain_path(MASS_SWEEP, "ms_mr_mass_scaling_strain_path", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
+    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Energy-ratio history ($f_\mathrm{MR}=2$)")
     _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
+    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Energy-ratio history ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_strain_path(CONFIRM_SWEEP, "ms_mr_confirm_strain_path", r"Mesh-refinement confirmation ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
+    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy", r"Energy-ratio history ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)

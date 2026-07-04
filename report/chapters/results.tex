@@ -481,8 +481,9 @@ The sensitivity study uses the Nakazima \texttt{W100} specimen with the
 batch varies the mass-scaling target time increment and the global
 mesh-refinement factor separately. A second, more focused batch then repeats
 the mesh check at the conservative mass-scaling target. Energy ratios are kept
-as compact table checks only, since fracture and element deletion can create
-kinetic-energy spikes that are easy to overinterpret in full-history plots.
+as full-history plots and compact table checks, since fracture and element
+deletion can create kinetic-energy spikes that should not be read as stable
+forming-window behaviour.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
@@ -494,11 +495,13 @@ $1\times10^{-4}$\,\si{\second}.
 
 Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
 the smaller target increments but separate for the aggressive mass-scaling
-settings. The late energy check in Table~\ref{tab:mass_scaling_walltime}
-supports the same reading. The two largest target increments are clearly too
-dynamic, while the intermediate targets reduce wall time but still shift the
-extracted fracture point relative to the conservative run. The follow-up checks
-therefore use $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
+settings. The full $\mathrm{ALLKE}/\mathrm{ALLIE}$ histories show the expected
+inertial growth for the larger target increments, while the late energy check
+in Table~\ref{tab:mass_scaling_walltime} supports the same reading. The two
+largest target increments are clearly too dynamic, while the intermediate
+targets reduce wall time but still shift the extracted fracture point relative
+to the conservative run. The follow-up checks therefore use
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
 
 \begin{table}[H]
     \centering
@@ -522,10 +525,21 @@ therefore use $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_mass_scaling_strain_path.png}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
+        \caption{Energy-ratio history.}
+    \end{subfigure}
     \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
-    $f_\mathrm{MR}=2$. The curves show the extracted strain histories, and the
-    markers indicate the element-status fracture points.}
+    $f_\mathrm{MR}=2$. The strain-path markers indicate the element-status
+    fracture points. The $\mathrm{ALLKE}/\mathrm{ALLIE}$ curves show the full
+    finite energy-ratio histories without fracture-time truncation.}
     \label{fig:ms_sweep_results}
 \end{figure}
 
@@ -539,7 +553,8 @@ of the parametrised mesh. A larger value therefore gives a coarser mesh. This
 screening result is useful for orientation, but it is not used as the final
 mesh choice because it was run before the conservative mass-scaling target was
 fixed. The strain paths in Figure~\ref{fig:mr_sweep_results} remain close for
-most of the process, while the extracted fracture points in
+most of the process, while the full energy histories show the larger early
+transients of this first screening batch. The extracted fracture points in
 Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
 
 \begin{table}[H]
@@ -562,10 +577,21 @@ Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_mesh_refinement_strain_path.png}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy.png}
+        \caption{Energy-ratio history.}
+    \end{subfigure}
     \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The markers indicate the
-    element-status fracture points.}
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The strain-path markers indicate
+    the element-status fracture points. The energy-ratio panel shows the full
+    finite histories without fracture-time truncation.}
     \label{fig:mr_sweep_results}
 \end{figure}
 
@@ -586,11 +612,22 @@ element count of $f_\mathrm{MR}=1$.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_confirm_strain_path.png}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy.png}
+        \caption{Energy-ratio history.}
+    \end{subfigure}
     \caption[Mesh-refinement confirmation sweep at the accepted mass-scaling target]{Mesh-refinement sweep repeated at the accepted mass-scaling target
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, including the completed
-    intermediate checks $f_\mathrm{MR}=1.25$ and $1.41$. The markers indicate
-    the element-status fracture points.}
+    intermediate checks $f_\mathrm{MR}=1.25$ and $1.41$. The strain-path
+    markers indicate the element-status fracture points, and the energy-ratio
+    panel shows the full finite histories without fracture-time truncation.}
     \label{fig:confirm_sweep_results}
 \end{figure}
 
