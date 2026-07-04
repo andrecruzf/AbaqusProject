@@ -622,16 +622,11 @@ not converged. The run time falls monotonically with coarsening, from 40.7 to
 down to 4, so the time differences still understate the true cost
 differences.
 
-The choice therefore falls on the coarsest and cheapest member of the
-plateau, $f_\mathrm{MR}=1.41$. It changes $\varepsilon_1^\mathrm{f}$ by only
-\SI{1.9}{\percent} relative to $f_\mathrm{MR}=1$ while shortening the run
-from 40.7 to \SI{25.5}{\hour} on fewer cores, whereas the next coarser
-setting leaves the plateau. The setting
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is
-therefore used as a working compromise rather than as a converged production
-mesh. Since $f_\mathrm{MR}$ scales seed spacing,
-$f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane element count
-of $f_\mathrm{MR}=1$.
+The setting $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
+$f_\mathrm{MR}=1.41$ is therefore adopted as the working configuration. It
+offers the best compromise between accuracy and computational resources,
+since it stays on the fine-side plateau at the shortest run time, while also
+conforming to the quasi-static requirement of the energy criterion.
 
 \begin{figure}[H]
     \centering
