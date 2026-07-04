@@ -611,11 +611,12 @@ settings $f_\mathrm{MR}=1$, $1.25$, and $1.41$ form a plateau with successive
 changes of $+2.6$ and \SI{-0.7}{\percent}, while the step to $f_\mathrm{MR}=2$
 raises $\varepsilon_1^\mathrm{f}$ by \SI{19.1}{\percent} and the step to
 $f_\mathrm{MR}=3$ lowers it again by \SI{10.2}{\percent}, so the coarse side
-is not converged. The cost falls monotonically with coarsening, from 733 to
-52~CPU\,h. The coarsest and cheapest member of the plateau is
-$f_\mathrm{MR}=1.41$, which changes $\varepsilon_1^\mathrm{f}$ by only
-\SI{1.9}{\percent} relative to $f_\mathrm{MR}=1$ while reducing the cost by a
-factor of \num{2.9}, whereas the next coarser setting leaves the plateau. The
+is not converged. The run time falls monotonically with coarsening, from 40.7
+to \SI{13.0}{\hour}, even though the coarser cases were allocated fewer cores.
+The coarsest and cheapest member of the plateau is $f_\mathrm{MR}=1.41$, which
+changes $\varepsilon_1^\mathrm{f}$ by only \SI{1.9}{\percent} relative to
+$f_\mathrm{MR}=1$ while shortening the run from 40.7 to \SI{25.5}{\hour} on 10
+instead of 18 cores, whereas the next coarser setting leaves the plateau. The
 setting $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is
 therefore used as a working compromise rather than as a converged production
 mesh. Since $f_\mathrm{MR}$ scales seed spacing,
@@ -657,19 +658,19 @@ of $f_\mathrm{MR}=1$.
     \caption{Mesh-refinement confirmation sweep at
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The relative changes
     $\Delta\varepsilon_1^\mathrm{f}$ and $\Delta\varepsilon_2^\mathrm{f}$ are
-    taken with respect to the next finer mesh in the sweep. The cost is the
-    product of the job wall-clock time and the allocated CPU cores from the
-    cluster accounting, with allocations between 4 and 18 cores.}
+    taken with respect to the next finer mesh in the sweep. The wall-clock
+    time and the allocated core count of each run are taken from the cluster
+    accounting.}
     \label{tab:confirm_sweep_summary}
-    \begin{tabular}{c c c c c c}
+    \begin{tabular}{c c c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ & $\Delta\varepsilon_2^\mathrm{f}$ [\si{\percent}] & Cost [CPU\,h] \\
+        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ & $\Delta\varepsilon_2^\mathrm{f}$ [\si{\percent}] & Time [\si{\hour}] & Cores \\
         \midrule
-        1    & 0.201 & --      & 0.097 & --     & 733 \\
-        1.25 & 0.207 & $+2.6$  & 0.096 & $-1.4$ & 374 \\
-        1.41 & 0.205 & $-0.7$  & 0.097 & $+0.9$ & 255 \\
-        2    & 0.244 & $+19.1$ & 0.096 & $-0.7$ & 126 \\
-        3    & 0.219 & $-10.2$ & 0.097 & $+1.0$ & \phantom{0}52 \\
+        1    & 0.201 & --      & 0.097 & --     & 40.7 & 18 \\
+        1.25 & 0.207 & $+2.6$  & 0.096 & $-1.4$ & 31.2 & 12 \\
+        1.41 & 0.205 & $-0.7$  & 0.097 & $+0.9$ & 25.5 & 10 \\
+        2    & 0.244 & $+19.1$ & 0.096 & $-0.7$ & 21.0 & \phantom{0}6 \\
+        3    & 0.219 & $-10.2$ & 0.097 & $+1.0$ & 13.0 & \phantom{0}4 \\
         \bottomrule
     \end{tabular}
 \end{table}
