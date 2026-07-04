@@ -477,74 +477,30 @@ Appendix~\ref{app:configuration_parameters}.
 \label{sec:sensitivity_study}
 
 The sensitivity study uses the Nakazima \texttt{W100} specimen with the
-\SI{100}{\milli\meter} punch as one reference case. A first cross-analysis
-batch varies the mass-scaling target time increment and the global
-mesh-refinement factor separately. A second, more focused batch then repeats
-the mesh check at the conservative mass-scaling target. Energy ratios are kept
-as full-history plots and compact table checks, since fracture and element
+\SI{100}{\milli\meter} punch as one reference case. The first batch varies the
+mesh-refinement factor and the mass-scaling target separately. The order below
+follows the logic of the checks. The mesh sweep at
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is treated as an exploratory
+screening run, the mass-scaling sweep then fixes the conservative target, and a
+final mesh check repeats the refinement study at this target. Energy ratios are
+kept as full-history plots and compact table checks, since fracture and element
 deletion can create kinetic-energy spikes that should not be read as stable
 forming-window behaviour.
-
-\subsubsection{Mass Scaling Analysis}
-\label{sec:mass_scaling_analysis}
-
-The mass-scaling sweep varies the target time increment while keeping the mesh
-refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
-$1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
-$1\times10^{-4}$\,\si{\second}.
-
-Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
-the smaller target increments but separate for the aggressive mass-scaling
-settings. In the energy-ratio history, the first sharp increase occurs when the
-punch first contacts the blank. The second spike is associated with fracture
-and element deletion. The zoom around the \SI{5}{\percent} guideline therefore
-has to be read between these two events. Only
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ provides a sufficiently long forming
-interval below \SI{5}{\percent}. The larger target increments either remain too
-dynamic or drop below the criterion too late.
-
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_strain_path.png}
-        \caption{Strain path.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
-        \caption{Energy-ratio history.}
-    \end{subfigure}
-    \vspace{0.5em}
-
-    \begin{subfigure}[t]{0.68\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
-        \caption{Energy-ratio zoom near the \SI{5}{\percent} criterion.}
-    \end{subfigure}
-    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
-    $f_\mathrm{MR}=2$. The strain-path markers indicate the element-status
-    fracture points. The $\mathrm{ALLKE}/\mathrm{ALLIE}$ curves show the full
-    finite energy-ratio histories without fracture-time truncation, and the
-    zoomed panel resolves the \SI{5}{\percent} guideline.}
-    \label{fig:ms_sweep_results}
-\end{figure}
 
 \subsubsection{Mesh Refinement Analysis}
 \label{sec:mesh_refinement_analysis}
 
-The first mesh-refinement sweep keeps
+The first mesh-refinement sweep is an exploratory screening run. It keeps
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ fixed and varies
 $f_\mathrm{MR}=1$, $2$, and $3$. The refinement factor scales the seed spacing
 of the parametrised mesh. A larger value therefore gives a coarser mesh. This
-screening result is useful for orientation, but it is not used as the final
-mesh choice because it was run before the conservative mass-scaling target was
-fixed. The strain paths in Figure~\ref{fig:mr_sweep_results} remain close for
-most of the process, while the full energy histories show the larger early
-transients of this first screening batch. The extracted fracture points in
-Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
+screening result is useful for orientation, but it cannot define the final mesh
+because it was run before the mass-scaling target was fixed. The strain paths
+in Figure~\ref{fig:mr_sweep_results} remain close for most of the process,
+while the full energy histories show the larger early transients of this first
+screening batch. The extracted fracture points in
+Table~\ref{tab:mesh_refinement_walltime} are not mesh independent, and mesh
+convergence is therefore not obtained from this sweep.
 
 \begin{table}[H]
     \centering
@@ -593,20 +549,69 @@ Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
     \label{fig:mr_sweep_results}
 \end{figure}
 
-\subsubsection{Selection of Numerical Parameters}
+\subsubsection{Mass Scaling Analysis}
+\label{sec:mass_scaling_analysis}
+
+The mass-scaling sweep varies the target time increment while keeping the mesh
+refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
+$1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
+$1\times10^{-4}$\,\si{\second}.
+
+Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
+the smaller target increments but separate for the aggressive mass-scaling
+settings. In the energy-ratio history, the first sharp increase occurs when the
+punch first contacts the blank. The second spike is associated with fracture
+and element deletion. The zoom around the \SI{5}{\percent} guideline therefore
+has to be read between these two events. Only
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ provides a sufficiently long forming
+interval below \SI{5}{\percent}. The larger target increments either remain too
+dynamic or drop below the criterion too late.
+
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
+        \caption{Energy-ratio history.}
+    \end{subfigure}
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.68\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
+        \caption{Energy-ratio zoom near the \SI{5}{\percent} criterion.}
+    \end{subfigure}
+    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
+    $f_\mathrm{MR}=2$. The strain-path markers indicate the element-status
+    fracture points. The $\mathrm{ALLKE}/\mathrm{ALLIE}$ curves show the full
+    finite energy-ratio histories without fracture-time truncation, and the
+    zoomed panel resolves the \SI{5}{\percent} guideline.}
+    \label{fig:ms_sweep_results}
+\end{figure}
+
+\subsubsection{Working Numerical Parameters}
 \label{sec:selection_numerical_parameters}
 
-After the screening batch, the mesh check is repeated at
+After the mass-scaling sweep, the mesh check is repeated at
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
 $f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$. The fine-side checks
 $f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close fracture strains, while the
 coarser settings remain higher in $\varepsilon_1^\mathrm{f}$
-(Table~\ref{tab:confirm_sweep_summary} and Figure~\ref{fig:ms_mr_flp}). The
-selected setting is therefore
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$. This is the
-coarsest mesh on the fine-side plateau. Since $f_\mathrm{MR}$ scales seed
-spacing, $f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane
-element count of $f_\mathrm{MR}=1$.
+(Table~\ref{tab:confirm_sweep_summary} and Figure~\ref{fig:ms_mr_flp}). This
+improves the consistency of the fine-side range, but it still does not
+demonstrate full mesh convergence. The setting
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is therefore
+used as a working compromise rather than as a converged production mesh. Since
+$f_\mathrm{MR}$ scales seed spacing,
+$f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane element count
+of $f_\mathrm{MR}=1$.
 
 \begin{figure}[H]
     \centering
@@ -663,10 +668,11 @@ element count of $f_\mathrm{MR}=1$.
     \centering
     \includegraphics[width=0.8\linewidth]{img/results/ms_mr_forming_limit_points.png}
     \caption[Extracted fracture forming-limit points of the numerical sweeps]{Extracted
-    element-status fracture points for the mass-scaling screening batch, the
-    first mesh-refinement screening batch, and the confirmation sweep at
+    element-status fracture points for the first mesh-refinement screening
+    batch, the mass-scaling screening batch, and the confirmation sweep at
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The confirmation runs from
-    $f_\mathrm{MR}=1$ to $1.41$ cluster tightly in major strain.}
+    $f_\mathrm{MR}=1$ to $1.41$ group more closely, but the sweep is not a full
+    mesh-convergence proof.}
     \label{fig:ms_mr_flp}
 \end{figure}
 
@@ -741,13 +747,13 @@ The frictionless baseline, which matches the PTFE and lanolin lubrication of
 the experiments, is the only case of this sweep that yields a valid
 dome-centred limit point. A defensible friction choice should still be
 calibrated against the experimental force-displacement response and rechecked
-at the production setting $f_\mathrm{MR}=1.41$.
+at the working setting $f_\mathrm{MR}=1.41$.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
 
 At the present report stage, the numerical runs verify the pipeline and fix a
 defensible reference setting for the \texttt{W100} case. They do not yet
-construct a numerical FLC. The remaining work is to run the selected settings
+construct a numerical FLC. The remaining work is to run the working settings
 across the relevant specimen widths and to validate the force response and
 failure locations against the experiments.
