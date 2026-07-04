@@ -219,6 +219,11 @@ the mesh density and the mass scaling, and whether the resulting simulations
 are sufficiently quasi static is checked from the energy histories of each
 run.
 
+The punch motion follows a smooth step velocity profile, in which the velocity
+rises gradually from zero to a peak at mid stroke and returns to zero, so that
+no velocity discontinuity occurs at first punch contact. All simulations
+reported in this work use this profile.
+
 Mass scaling artificially modifies the material density so that the stable
 time increment reaches a prescribed target $\Delta t_\mathrm{MS}$. The choice
 of this target is the subject of the mass scaling study in
