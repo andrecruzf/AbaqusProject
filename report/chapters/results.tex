@@ -490,33 +490,32 @@ forming-window behaviour.
 \subsubsection{Mesh Refinement Analysis}
 \label{sec:mesh_refinement_analysis}
 
-The first mesh-refinement sweep is an exploratory screening run. It keeps
-$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ fixed and varies
-$f_\mathrm{MR}=1$, $2$, and $3$. The refinement factor scales the seed spacing
-of the parametrised mesh. A larger value therefore gives a coarser mesh. This
-screening result is useful for orientation, but it cannot define the final mesh
-because it was run before the mass-scaling target was fixed. The strain paths
-in Figure~\ref{fig:mr_sweep_results} remain close for most of the process,
-while the full energy histories show the larger early transients of this first
-screening batch. The extracted fracture points in
-Table~\ref{tab:mesh_refinement_walltime} are not mesh independent, and mesh
-convergence is therefore not obtained from this sweep.
+The screening sweep keeps $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ fixed and
+varies the refinement factor of Section~\ref{sec:mesh_generation} over
+$f_\mathrm{MR}=1$, $2$, and $3$. The strain paths in
+Figure~\ref{fig:mr_sweep_results} remain close for most of the process. The
+extracted fracture strains in Table~\ref{tab:mesh_refinement_walltime} do not,
+since $\varepsilon_1^\mathrm{f}$ varies non-monotonically between \num{0.210}
+and \num{0.254} while $\varepsilon_2^\mathrm{f}$ stays at \num{0.098}. In
+addition, the finest mesh exceeds the \SI{5}{\percent} energy guideline in the
+zoomed panel of Figure~\ref{fig:mr_sweep_results}, because the fixed target
+increment scales the most mass onto the smallest elements. Mesh convergence is
+therefore not obtained from this sweep, and the final mesh is only selected
+after the mass-scaling target is fixed.
 
 \begin{table}[H]
     \centering
     \small
-    \caption{First mesh-refinement screening batch at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, on 24 CPUs. The late energy
-    ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final
-    \SI{0.5}{\second} before the extracted fracture point.}
+    \caption{Extracted fracture strains of the first mesh-refinement
+    screening batch at $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$.}
     \label{tab:mesh_refinement_walltime}
-    \begin{tabular}{c c c c c}
+    \begin{tabular}{c c c}
         \toprule
-        $f_\mathrm{MR}$ & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] \\
+        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ \\
         \midrule
-        1 & 11.23 & 0.233 & 0.099 & 3.4 \\
-        2 &  4.86 & 0.210 & 0.098 & 2.0 \\
-        3 &  2.62 & 0.254 & 0.098 & 1.4 \\
+        1 & 0.233 & 0.099 \\
+        2 & 0.210 & 0.098 \\
+        3 & 0.254 & 0.098 \\
         \bottomrule
     \end{tabular}
 \end{table}
