@@ -608,19 +608,16 @@ Figure~\ref{fig:confirm_sweep_results}, with late energy ratios below
 \SI{1}{\percent}. The selection therefore rests on the fracture strains and
 run times in Table~\ref{tab:confirm_sweep_summary}.
 
-The minor strain is insensitive to the mesh, since
-$|\Delta\varepsilon_2^\mathrm{f}|$ stays below \SI{1.5}{\percent} across the
-sweep, so mesh convergence is judged on $\varepsilon_1^\mathrm{f}$. The
-fine-side settings $f_\mathrm{MR}=1$, $1.25$, and $1.41$ form a plateau with
-successive changes of $+2.6$ and \SI{-0.7}{\percent}. The step to
-$f_\mathrm{MR}=2$ raises $\varepsilon_1^\mathrm{f}$ by \SI{19.1}{\percent} and
-the step to $f_\mathrm{MR}=3$ lowers it again by \SI{10.2}{\percent}. This
-non-monotonic coarse-side behaviour shows that the coarse meshes do not
-resolve the strain localisation at the fracture site, so the coarse side is
-not converged. The run time falls monotonically with coarsening, from 40.7 to
-\SI{13.0}{\hour}, and the coarser runs were also allocated fewer cores, 18
-down to 4, so the time differences still understate the true cost
-differences.
+The relative changes in Table~\ref{tab:confirm_sweep_summary} compare each
+mesh with the next finer one, so each value measures the effect of a single
+coarsening step. The minor strain is insensitive to the mesh, and mesh
+convergence is therefore judged on $\varepsilon_1^\mathrm{f}$. The fine-side
+settings $f_\mathrm{MR}=1$ to $1.41$ form a plateau with changes of at most a
+few percent, while the coarser settings show large and non-monotonic changes,
+which indicates that they do not resolve the strain localisation at the
+fracture site. The run time falls monotonically with coarsening, and the
+coarser runs were also allocated fewer cores, so the time differences
+understate the true cost differences.
 
 The setting $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
 $f_\mathrm{MR}=1.41$ is therefore adopted as the working configuration. It
@@ -662,9 +659,9 @@ conforming to the quasi-static requirement of the energy criterion.
     \small
     \caption{Mesh-refinement confirmation sweep at
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The relative changes
-    $\Delta\varepsilon_1^\mathrm{f}$ and $\Delta\varepsilon_2^\mathrm{f}$ are
-    taken with respect to the next finer mesh in the sweep. The wall-clock
-    time of each run is taken from the cluster accounting.}
+    $\Delta\varepsilon_1^\mathrm{f}$ and $\Delta\varepsilon_2^\mathrm{f}$
+    give the change of each row relative to the next finer mesh in the sweep.
+    The wall-clock time of each run is taken from the cluster accounting.}
     \label{tab:confirm_sweep_summary}
     \begin{tabular}{c c c c c c}
         \toprule
