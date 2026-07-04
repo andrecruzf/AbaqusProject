@@ -264,8 +264,17 @@ the evaluation region is implemented, but this step remains a development output
 and is not used as a reliable forming limit point in the present report.
 
 The post processing can also apply a logic similar to the Volk Hora criterion
-of Section~\ref{sec:vh_method} to the numerical strain histories. When
-requested, they are evaluated with this time dependent necking indicator,
-alongside the damage evolution predicted by the constitutive model. These
-outputs are useful for checking the numerical workflow and for preparing a
-future comparison with the experimental evaluation.
+of Section~\ref{sec:vh_method} to the numerical strain histories. The deleted
+elements define the crack line, and the evaluation considers the top face
+elements within a band of \SI{3}{\milli\meter} around it, which mirrors the
+analysis zone of the experimental evaluation. On the last frame before element
+deletion begins, the mean thinning rate of the five fastest thinning elements
+defines a reference value, and the necking zone collects the band elements
+whose thinning rate exceeds the fraction $\alpha=0.55$ of this reference, the
+same threshold as in the experimental framework, while elements whose damage
+indicator exceeds \num{0.85} are excluded as already failing. The mean
+thinning rate of this zone is then tracked over time, two linear fits describe
+the stable and the unstable regime, and their transition defines the necking
+time at which the mean principal strains of the zone are read as the numerical
+limit strains. These outputs are useful for checking the numerical workflow
+and for preparing a future comparison with the experimental evaluation.
