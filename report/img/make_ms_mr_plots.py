@@ -139,7 +139,7 @@ def _ratio_near_time(curve: pd.DataFrame, time_s: float | None) -> float:
 def _max_ratio_between(curve: pd.DataFrame, start_s: float, end_s: float) -> float:
     if math.isnan(start_s) or math.isnan(end_s) or curve.empty:
         return math.nan
-    window = curve[(curve["time_s"] >= start_s) & (curve["time_s"] <= end_s)]
+    window = curve[(curve["time_s"] >= start_s) & (curve["time_s"] < end_s)]
     if window.empty:
         return math.nan
     return float(np.nanmax(window["ke_ratio_pct"]))
@@ -183,6 +183,11 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
         curve = curve.replace([np.inf, -np.inf], np.nan).dropna()
         cutoff = 0.05 * float(np.nanmax(curve["U3_mm"]))
         curve = curve[curve["U3_mm"] >= cutoff]
+        fracture = _limit_row(job)
+        if fracture is not None:
+            curve = curve[curve["time_s"] < float(fracture["time_s"])]
+        if curve.empty:
+            continue
         max_ratio = max(max_ratio, float(np.nanmax(curve["ke_ratio_pct"])))
         ax.plot(curve["time_s"], curve["ke_ratio_pct"], label=job.label, color=cmap(idx), linewidth=1.5)
     ax.axhline(5.0, color="#222222", linestyle="--", linewidth=1.0, label="5% criterion")
@@ -225,18 +230,27 @@ def _summary_rows() -> list[dict[str, object]]:
         curve = _energy_curve(job).replace([np.inf, -np.inf], np.nan).dropna()
         max_u3 = float(np.nanmax(curve["U3_mm"]))
         curve_after_start = curve[curve["U3_mm"] >= 0.05 * max_u3]
-        max_ke = float(np.nanmax(curve_after_start["ke_ratio_pct"])) if not curve_after_start.empty else math.nan
         fracture = _limit_row(job)
         volk_hora = _limit_row(job, "volk_hora")
         fracture_time = None if fracture is None else float(fracture["time_s"])
         volk_hora_time = None if volk_hora is None else float(volk_hora["time_s"])
+        curve_to_fracture = (
+            curve_after_start
+            if fracture_time is None
+            else curve_after_start[curve_after_start["time_s"] < fracture_time]
+        )
+        max_ke_full = float(np.nanmax(curve_after_start["ke_ratio_pct"])) if not curve_after_start.empty else math.nan
+        max_ke_to_fracture = (
+            float(np.nanmax(curve_to_fracture["ke_ratio_pct"])) if not curve_to_fracture.empty else math.nan
+        )
         rows.append(
             {
                 "sweep": job.group,
                 "label": job.label.replace("$", ""),
                 "mass_scaling_dt_s": job.dt,
                 "mesh_refinement_factor": job.mr,
-                "max_ke_allie_pct_after_5pct_u3": max_ke,
+                "max_ke_allie_pct_after_5pct_u3_full_history": max_ke_full,
+                "max_ke_allie_pct_after_5pct_u3_to_fracture": max_ke_to_fracture,
                 "max_ke_allie_pct_last_0p5s_before_fracture": (
                     math.nan
                     if fracture_time is None

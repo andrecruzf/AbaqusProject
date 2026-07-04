@@ -75,20 +75,37 @@ def _force_curve(job: Job) -> pd.DataFrame:
     return curve
 
 
-def _energy_ratio_to_fracture(job: Job) -> float:
+def _energy_history_to_fracture(job: Job) -> pd.DataFrame:
     _, punch, global_history, _ = _read(job)
     fracture = _fracture_row(job)
     max_u3 = float(punch["U3_mm"].max())
     cutoff_u3 = 0.05 * max_u3
     history = global_history[
-        (global_history["time_s"] <= float(fracture["time_s"]) + 1e-12)
+        (global_history["time_s"] < float(fracture["time_s"]))
         & (global_history["U3_mm"] >= cutoff_u3)
         & (global_history["ALLIE"] > 1e-12)
     ].copy()
+    history["ke_allie_pct"] = history["ALLKE"] / history["ALLIE"] * 100.0
+    return history
+
+
+def _energy_ratio_to_fracture(job: Job) -> float:
+    history = _energy_history_to_fracture(job)
     if history.empty:
         return np.nan
-    ratio = history["ALLKE"] / history["ALLIE"] * 100.0
-    return float(ratio.max())
+    return float(history["ke_allie_pct"].max())
+
+
+def _late_energy_ratio_to_fracture(job: Job) -> float:
+    fracture = _fracture_row(job)
+    history = _energy_history_to_fracture(job)
+    if history.empty:
+        return np.nan
+    fracture_time = float(fracture["time_s"])
+    late = history[history["time_s"] >= fracture_time - 0.5]
+    if late.empty:
+        return np.nan
+    return float(late["ke_allie_pct"].max())
 
 
 def _force_at_fracture(job: Job) -> float:
@@ -191,6 +208,7 @@ def _summary_rows() -> list[dict[str, object]]:
                 "max_force_kN_to_fracture": float(force_curve["RF3_kN"].max()),
                 "force_kN_at_fracture": _force_at_fracture(job),
                 "max_ke_allie_pct_after_5pct_travel_to_fracture": _energy_ratio_to_fracture(job),
+                "max_ke_allie_pct_last_0p5s_before_fracture": _late_energy_ratio_to_fracture(job),
                 "job_dir": str(job.path.relative_to(ROOT)),
             }
         )
