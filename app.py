@@ -24,6 +24,7 @@ import streamlit.components.v1 as st_components
 from streamlit_autorefresh import st_autorefresh
 
 import config as pipeline_config
+import static_postproc_plots
 
 
 
@@ -6623,6 +6624,40 @@ def _page_results():
                     mime="application/pdf", key=f"{key_prefix}_dl_{pdf}",
                 )
 
+    def _push_job_files_to_euler(job_dir, file_paths):
+        """Mirror edited job files back to the matching Euler job dir.
+
+        Keeps local and remote copies identical after an override save, so
+        cluster-side re-plots and future sync-downs agree with the saved fit.
+        Returns (ok, message).
+        """
+        src = st.session_state.get("results_euler_src") or euler_src
+        local_root = st.session_state.get("results_local_dir") or results_dir
+        remote_spec, remote_base = _parse_remote_src(src)
+        if remote_spec is None:
+            return False, "Euler source must look like user@host:/path — override saved locally only."
+        if not _euler_access_verified():
+            return False, "Euler access not verified — override saved locally only."
+        rel = os.path.relpath(os.path.abspath(job_dir), os.path.abspath(local_root))
+        if rel.startswith(".."):
+            return False, f"Job dir is outside {local_root} — override saved locally only."
+        push_cmd = [
+            "rsync", "-a", "--whole-file",
+            "-e", _ssh_transport(connect_timeout=8),
+            *file_paths, f"{remote_spec}:{remote_base}/{rel}/",
+        ]
+        try:
+            result = subprocess.run(
+                push_cmd, capture_output=True, text=True,
+                timeout=_ssh_timeout(default_normal=120, default_key_only=60),
+            )
+        except subprocess.TimeoutExpired:
+            return False, "rsync to Euler timed out — override saved locally only."
+        if result.returncode != 0:
+            reason = result.stderr.strip() or "rsync to Euler failed"
+            return False, f"{reason} — override saved locally only."
+        return True, f"{remote_base}/{rel}"
+
     @st.fragment
     def _render_job_tabs(job_dir, key_prefix, panel_state_key="results_panel"):
         sections = [
@@ -6882,6 +6917,28 @@ def _page_results():
                             _fw.to_csv(fl_path, index=False)
                             _load_csv.clear()
                             st.success(f"Written → t = {_tc:.4f} s  ε₁ = {_e1:.4f}  ε₂ = {_e2:.4f}")
+
+                            # Keep the static PDF and the Euler copy in step
+                            # with the saved fit, so cluster-side re-plots and
+                            # future sync-downs cannot clobber the override.
+                            _push_files = [fl_path]
+                            try:
+                                with st.spinner("Regenerating postproc_plots.pdf…"):
+                                    _n_pages = static_postproc_plots.write_job_pdf(_job_dir)
+                                if _n_pages:
+                                    _push_files.append(
+                                        os.path.join(_job_dir, "postproc_plots.pdf"))
+                            except Exception as _pdf_exc:
+                                st.warning(f"postproc_plots.pdf not regenerated: {_pdf_exc}")
+                            with st.spinner("Pushing override to Euler…"):
+                                _pushed, _push_msg = _push_job_files_to_euler(
+                                    _job_dir, _push_files)
+                            if _pushed:
+                                st.success(f"Pushed {len(_push_files)} file"
+                                           f"{'s' if len(_push_files) > 1 else ''}"
+                                           f" to Euler → {_push_msg}")
+                            else:
+                                st.warning(_push_msg)
             _vh_content()
 
         elif panel == "Forming Limits":
