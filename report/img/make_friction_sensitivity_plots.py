@@ -63,11 +63,17 @@ def _fracture_row(job: Job) -> pd.Series:
 
 def _strain_curve(job: Job) -> pd.DataFrame:
     strain, _, _, _ = _read(job)
-    fracture = _fracture_row(job)
-    return strain[strain["time_s"] <= float(fracture["time_s"]) + 1e-12]
+    return strain
 
 
 def _force_curve(job: Job) -> pd.DataFrame:
+    _, punch, _, _ = _read(job)
+    curve = punch.copy()
+    curve["RF3_kN"] = curve["RF3_N"] / 1000.0
+    return curve
+
+
+def _force_curve_to_fracture(job: Job) -> pd.DataFrame:
     _, punch, _, _ = _read(job)
     fracture = _fracture_row(job)
     curve = punch[punch["total_time_s"] <= float(fracture["time_s"]) + 1e-12].copy()
@@ -162,7 +168,7 @@ def _plot_strain_path() -> None:
         )
     _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title(r"Punch/blank friction sensitivity (W120)")
-    ax.legend(frameon=False, fontsize=8)
+    ax.legend(loc="upper left", frameon=False, fontsize=8)
     _save(fig, "friction_sensitivity_strain_path")
 
 
@@ -189,8 +195,8 @@ def _plot_force_displacement() -> None:
             linestyle="None",
         )
     _style_axes(ax, r"Punch displacement $U_3$ [mm]", r"Punch reaction force $F_3$ [kN]")
-    ax.set_title(r"Force response up to extracted fracture")
-    ax.legend(frameon=False, fontsize=8, ncol=2)
+    ax.set_title(r"Punch force response")
+    ax.legend(loc="upper left", frameon=False, fontsize=8, ncol=2)
     _save(fig, "friction_sensitivity_force_displacement")
 
 
@@ -198,7 +204,7 @@ def _summary_rows() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for job in FRICTION_SWEEP:
         fracture = _fracture_row(job)
-        force_curve = _force_curve(job)
+        force_curve = _force_curve_to_fracture(job)
         rows.append(
             {
                 "mu": job.mu,

@@ -477,13 +477,12 @@ Appendix~\ref{app:configuration_parameters}.
 \label{sec:sensitivity_study}
 
 The sensitivity study uses the Nakazima \texttt{W100} specimen with the
-\SI{100}{\milli\meter} punch as one reference case. The varied controls are the
-mass-scaling target time increment and the global mesh-refinement factor. The
-energy histories are evaluated only before the extracted fracture point, since
-fracture and element deletion can create kinetic-energy spikes. The broad
-post-start maximum is kept as a transient diagnostic. The final
-\SI{0.5}{\second} before fracture is used as the forming-window check against
-the \SI{5}{\percent} $\mathrm{ALLKE}/\mathrm{ALLIE}$ guideline.
+\SI{100}{\milli\meter} punch as one reference case. A first cross-analysis
+batch varies the mass-scaling target time increment and the global
+mesh-refinement factor separately. A second, more focused batch then repeats
+the mesh check at the conservative mass-scaling target. Energy ratios are kept
+as compact table checks only, since fracture and element deletion can create
+kinetic-energy spikes that are easy to overinterpret in full-history plots.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
@@ -493,62 +492,40 @@ refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments ar
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
 $1\times10^{-4}$\,\si{\second}.
 
-Figure~\ref{fig:ms_sweep_results} separates the strain path from the energy
-diagnostic. The aggressive targets
-$\Delta t_\mathrm{MS}=\SI{5e-5}{\second}$ and
-$\SI{1e-4}{\second}$ remain far above the \SI{5}{\percent} guideline in the
-late forming window. The intermediate targets stay below this value late in
-the run, but they still show large early inertial transients and shift the
-extracted fracture point relative to the conservative target. The production
-checks therefore retain $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, at the cost
-of a substantially longer solver time.
+Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
+the smaller target increments but separate for the aggressive mass-scaling
+settings. The late energy check in Table~\ref{tab:mass_scaling_walltime}
+supports the same reading. The two largest target increments are clearly too
+dynamic, while the intermediate targets reduce wall time but still shift the
+extracted fracture point relative to the conservative run. The follow-up checks
+therefore use $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
 
 \begin{table}[H]
     \centering
     \small
-    \caption{Mass-scaling sweep at $f_\mathrm{MR}=2$. The
-    post-start maximum is a transient diagnostic after omitting the first
-    \SI{5}{\percent} of punch travel. The late maximum is evaluated over the
-    final \SI{0.5}{\second} before the extracted fracture point.}
+    \caption{Mass-scaling screening batch at $f_\mathrm{MR}=2$, on 24 CPUs.
+    The late energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over
+    the final \SI{0.5}{\second} before the extracted fracture point.}
     \label{tab:mass_scaling_walltime}
-    \begin{tabular}{c c c c}
+    \begin{tabular}{c c c c c}
         \toprule
-        $\Delta t_\mathrm{MS}$ [\si{\second}] & Post-start max [\si{\percent}] & Late max [\si{\percent}] & Wall-clock time [\si{\hour}] \\
+        $\Delta t_\mathrm{MS}$ [\si{\second}] & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] \\
         \midrule
-        $1\times10^{-6}$ &   1.8 &   0.22 & 20.9 \\
-        $5\times10^{-6}$ &  42.7 &   1.64 &  4.0 \\
-        $1\times10^{-5}$ & 149.4 &   4.86 &  2.0 \\
-        $5\times10^{-5}$ & 2665  &  91.6  &  0.4 \\
-        $1\times10^{-4}$ & 2705  & 251.8  &  0.2 \\
+        $1\times10^{-6}$ &   0.22 & 0.244 & 0.096 & 20.9 \\
+        $5\times10^{-6}$ &   1.64 & 0.188 & 0.095 &  4.0 \\
+        $1\times10^{-5}$ &   4.86 & 0.210 & 0.098 &  2.0 \\
+        $5\times10^{-5}$ &  91.6  & 0.233 & 0.102 &  0.4 \\
+        $1\times10^{-4}$ & 251.8  & 0.227 & 0.123 &  0.2 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_strain_path.png}
-        \caption{Strain path.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy.png}
-        \caption{Energy-ratio overview.}
-    \end{subfigure}
-
-    \vspace{0.5em}
-
-    \begin{subfigure}[t]{0.49\textwidth}
-            \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
-        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
-    \end{subfigure}
+    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_mass_scaling_strain_path.png}
     \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
-    $f_\mathrm{MR}=2$. The energy ratio is plotted before extracted fracture,
-    with the first \SI{5}{\percent} of punch travel omitted because
-    $\mathrm{ALLIE}$ is close to zero. The zoom resolves the
-    \SI{5}{\percent} guideline.}
+    $f_\mathrm{MR}=2$. The curves show the extracted strain histories, and the
+    markers indicate the element-status fracture points.}
     \label{fig:ms_sweep_results}
 \end{figure}
 
@@ -559,108 +536,61 @@ The first mesh-refinement sweep keeps
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ fixed and varies
 $f_\mathrm{MR}=1$, $2$, and $3$. The refinement factor scales the seed spacing
 of the parametrised mesh. A larger value therefore gives a coarser mesh. This
-sweep is kept as a diagnostic because it was performed before the conservative
-mass-scaling target was selected.
-
-Figure~\ref{fig:mr_sweep_results} shows that the strain paths remain close
-until late localisation. In the final forming window, $f_\mathrm{MR}=1$ still
-exceeds the \SI{5}{\percent} guideline, while $f_\mathrm{MR}=2$ and $3$ are
-below it. However, the extracted fracture strains are not mesh independent at
-this mass-scaling target, so the production mesh is selected from a repeated
-confirmation sweep at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
+screening result is useful for orientation, but it is not used as the final
+mesh choice because it was run before the conservative mass-scaling target was
+fixed. The strain paths in Figure~\ref{fig:mr_sweep_results} remain close for
+most of the process, while the extracted fracture points in
+Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
 
 \begin{table}[H]
     \centering
     \small
-    \caption{Diagnostic mesh-refinement sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, on 24 CPUs. The post-start and
-    late maxima follow the definitions of Table~\ref{tab:mass_scaling_walltime}.}
+    \caption{First mesh-refinement screening batch at
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, on 24 CPUs. The late energy
+    ratio follows the definition of Table~\ref{tab:mass_scaling_walltime}.}
     \label{tab:mesh_refinement_walltime}
-    \begin{tabular}{c c c c}
+    \begin{tabular}{c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & Post-start max [\si{\percent}] & Late max [\si{\percent}] & Wall-clock time [\si{\hour}] \\
+        $f_\mathrm{MR}$ & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] \\
         \midrule
-        1 & 1130.5 & 11.23 & 3.4 \\
-        2 & 149.4  &  4.86 & 2.0 \\
-        3 &  42.4  &  2.62 & 1.4 \\
+        1 & 11.23 & 0.233 & 0.099 & 3.4 \\
+        2 &  4.86 & 0.210 & 0.098 & 2.0 \\
+        3 &  2.62 & 0.254 & 0.098 & 1.4 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_strain_path.png}
-        \caption{Strain path.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy.png}
-        \caption{Energy-ratio overview.}
-    \end{subfigure}
-
-    \vspace{0.5em}
-
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy_zoom.png}
-        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
-    \end{subfigure}
+    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_mesh_refinement_strain_path.png}
     \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The energy plot uses the same
-    pre-fracture window and initial-travel omission as
-    Figure~\ref{fig:ms_sweep_results}.}
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The markers indicate the
+    element-status fracture points.}
     \label{fig:mr_sweep_results}
 \end{figure}
 
 \subsubsection{Selection of Numerical Parameters}
 \label{sec:selection_numerical_parameters}
 
-The production settings are selected from the repeated mesh-refinement sweep at
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. This confirmation sweep covers
-$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$.
-
-All confirmation runs remain below the \SI{5}{\percent} guideline in the late
-forming window (Table~\ref{tab:confirm_sweep_summary}). The fine-side checks
-$f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close fracture strains, with
-$\varepsilon_1^\mathrm{f}$ between \num{0.201} and \num{0.207}, and
-$\varepsilon_2^\mathrm{f}$ between \num{0.096} and \num{0.097}. The coarser
-settings $f_\mathrm{MR}=2$ and $3$ keep $\varepsilon_2^\mathrm{f}$ stable, but
-their $\varepsilon_1^\mathrm{f}$ values remain higher at \num{0.244} and
-\num{0.219} (Figure~\ref{fig:ms_mr_flp}). The selected setting is therefore
+After the screening batch, the mesh check is repeated at
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
+$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$. The fine-side checks
+$f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close fracture strains, while the
+coarser settings remain higher in $\varepsilon_1^\mathrm{f}$
+(Table~\ref{tab:confirm_sweep_summary} and Figure~\ref{fig:ms_mr_flp}). The
+selected setting is therefore
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$. This is the
-coarsest mesh on the fine-side plateau and the least expensive run in that
-cluster. Since $f_\mathrm{MR}$ scales seed spacing,
-$f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane element count
-of $f_\mathrm{MR}=1$.
+coarsest mesh on the fine-side plateau. Since $f_\mathrm{MR}$ scales seed
+spacing, $f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane
+element count of $f_\mathrm{MR}=1$.
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_strain_path.png}
-        \caption{Strain path.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy.png}
-        \caption{Energy-ratio overview.}
-    \end{subfigure}
-
-    \vspace{0.5em}
-
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy_zoom.png}
-        \caption{Energy-ratio zoom around the \SI{5}{\percent} criterion.}
-    \end{subfigure}
+    \includegraphics[width=0.75\linewidth]{img/results/ms_mr_confirm_strain_path.png}
     \caption[Mesh-refinement confirmation sweep at the accepted mass-scaling target]{Mesh-refinement sweep repeated at the accepted mass-scaling target
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, including the completed
-    intermediate checks $f_\mathrm{MR}=1.25$ and $1.41$. The same runs are
-    listed in Table~\ref{tab:confirm_sweep_summary}.}
+    intermediate checks $f_\mathrm{MR}=1.25$ and $1.41$. The markers indicate
+    the element-status fracture points.}
     \label{fig:confirm_sweep_results}
 \end{figure}
 
@@ -668,13 +598,13 @@ of $f_\mathrm{MR}=1$.
     \centering
     \small
     \caption{Mesh-refinement confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The late maximum is evaluated
-    over the final \SI{0.5}{\second} before the extracted fracture point. The
-    cost is the product of solver wall-clock time and allocated CPUs.}
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The late energy ratio follows
+    the definition of Table~\ref{tab:mass_scaling_walltime}. The cost is the
+    product of solver wall-clock time and allocated CPUs.}
     \label{tab:confirm_sweep_summary}
     \begin{tabular}{c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & Late max [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Cost [CPU\,h] \\
+        $f_\mathrm{MR}$ & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Cost [CPU\,h] \\
         \midrule
         1    & 0.75 & 0.201 & 0.097 & 960 \\
         1.25 & 0.18 & 0.207 & 0.096 & 371 \\
@@ -685,7 +615,16 @@ of $f_\mathrm{MR}=1$.
     \end{tabular}
 \end{table}
 
-
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/results/ms_mr_forming_limit_points.png}
+    \caption[Extracted fracture forming-limit points of the numerical sweeps]{Extracted
+    element-status fracture points for the mass-scaling screening batch, the
+    first mesh-refinement screening batch, and the confirmation sweep at
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The confirmation runs from
+    $f_\mathrm{MR}=1$ to $1.41$ cluster tightly in major strain.}
+    \label{fig:ms_mr_flp}
+\end{figure}
 
 \subsection{Friction-Factor Sensitivity Check}
 \label{sec:friction_sensitivity}
@@ -695,10 +634,10 @@ $\mu_\mathrm{punch}$ from 0 to 0.25 for the \texttt{W120} specimen at
 $t=\SI{1.5}{\milli\meter}$ and $\alpha=\SI{0}{\degree}$. The runs use
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, $f_\mathrm{MR}=1$, and a prescribed
 punch travel of \SI{32}{\milli\meter}. This is a single-width sensitivity check,
-not a calibrated numerical FLC. The broad pre-fracture maximum remains elevated
-because of the early transient, but the late maximum stays below
+not a calibrated numerical FLC. The late energy check remains below
 \SI{5}{\percent} for every friction value
-(Table~\ref{tab:friction_sensitivity_summary}).
+(Table~\ref{tab:friction_sensitivity_summary}), so the discussion focuses on
+the strain path, force response, and fracture location.
 
 \begin{figure}[H]
     \centering
@@ -711,9 +650,9 @@ because of the early transient, but the late maximum stays below
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/results/friction_sensitivity_force_displacement.png}
-        \caption{Punch force up to extracted fracture.}
+        \caption{Punch force response.}
     \end{subfigure}
-    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case. The symbols mark the extracted fracture points. The force curves are truncated at the corresponding fracture time to avoid post-fracture continuation to the prescribed end travel.}
+    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case. The full strain and force histories are shown, and the symbols mark the extracted fracture points.}
     \label{fig:friction_sensitivity_results}
 \end{figure}
 
@@ -729,12 +668,11 @@ effect in this sweep is the shift of failure site and failure instant.
     \small
     \setlength{\tabcolsep}{5pt}
     \caption{Summary of the \texttt{W120} punch--blank friction sensitivity check. The
-    force maximum and energy ratios are evaluated before the extracted fracture
-    point. The pre-fracture maximum omits the first \SI{5}{\percent} of the
-    prescribed punch travel, and the late maximum uses the final
-    \SI{0.5}{\second} before fracture.}
+    force maximum is evaluated before the extracted fracture point. The late
+    energy ratio follows the definition of
+    Table~\ref{tab:mass_scaling_walltime}.}
     \label{tab:friction_sensitivity_summary}
-    \begin{tabular}{c c c c c c c c}
+    \begin{tabular}{c c c c c c c}
         \toprule
         $\mu_\mathrm{punch}$ &
         Location &
@@ -742,16 +680,15 @@ effect in this sweep is the shift of failure site and failure instant.
         $\varepsilon_2^\mathrm{f}$ &
         $U_3^\mathrm{f}$ &
         $F_{3,\max}$ &
-        Pre-fracture max &
-        Late max \\
-        & & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] & [\si{\percent}] \\
+        Late energy \\
+        & & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] \\
         \midrule
-        0.00 & dome         & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 & 0.06 \\
-        0.05 & outside dome & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 & 1.38 \\
-        0.10 & outside dome & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 & 0.16 \\
-        0.15 & outside dome & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 & 0.19 \\
-        0.20 & outside dome & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 & 0.34 \\
-        0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 & 0.25 \\
+        0.00 & dome         & 0.238 & 0.184 & 31.49 & 16.69 & 0.06 \\
+        0.05 & outside dome & 0.115 & 0.047 & 18.57 &  6.90 & 1.38 \\
+        0.10 & outside dome & 0.231 & 0.082 & 30.61 & 16.65 & 0.16 \\
+        0.15 & outside dome & 0.193 & 0.078 & 29.65 & 16.13 & 0.19 \\
+        0.20 & outside dome & 0.187 & 0.053 & 28.82 & 15.52 & 0.34 \\
+        0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21 & 0.25 \\
         \bottomrule
     \end{tabular}
 \end{table}

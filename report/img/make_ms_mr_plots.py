@@ -10,6 +10,7 @@ import math
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/abaqusproject_mplconfig")
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -73,11 +74,7 @@ def _u3_at(time_s: np.ndarray, punch: pd.DataFrame) -> np.ndarray:
 
 
 def _strain_path_curve(job: Job) -> pd.DataFrame:
-    strain, _, _, limits = _read(job)
-    fracture = limits[limits["method"] == "fracture"]
-    if not fracture.empty:
-        fracture_time = float(fracture.iloc[0]["time_s"])
-        strain = strain[strain["time_s"] <= fracture_time + 1e-12]
+    strain, _, _, _ = _read(job)
     return pd.DataFrame(
         {
             "time_s": strain["time_s"].to_numpy(),
@@ -170,7 +167,7 @@ def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
             )
     _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title(title)
-    ax.legend(frameon=False, fontsize=8)
+    ax.legend(loc="upper left", frameon=False, fontsize=8)
     _save(fig, stem)
 
 
@@ -183,9 +180,6 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
         curve = curve.replace([np.inf, -np.inf], np.nan).dropna()
         cutoff = 0.05 * float(np.nanmax(curve["U3_mm"]))
         curve = curve[curve["U3_mm"] >= cutoff]
-        fracture = _limit_row(job)
-        if fracture is not None:
-            curve = curve[curve["time_s"] < float(fracture["time_s"])]
         if curve.empty:
             continue
         max_ratio = max(max_ratio, float(np.nanmax(curve["ke_ratio_pct"])))
@@ -203,24 +197,32 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
 
 def _plot_forming_limit_points() -> None:
     fig, ax = plt.subplots(figsize=(6.2, 4.0))
-    for idx, job in enumerate(MASS_SWEEP):
+    mass_color = "#1f77b4"
+    mesh_color = "#d95f02"
+    confirm_color = "#2ca02c"
+    for job in MASS_SWEEP:
         fracture = _limit_row(job)
         if fracture is None:
             continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="o", color=plt.get_cmap("Blues")(0.35 + 0.1 * idx), linestyle="None", label=f"MS {job.label}")
-    for idx, job in enumerate(MESH_SWEEP):
+        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="o", color=mass_color, linestyle="None")
+    for job in MESH_SWEEP:
         fracture = _limit_row(job)
         if fracture is None:
             continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="s", color=plt.get_cmap("Oranges")(0.35 + 0.15 * idx), linestyle="None", label=f"MR {int(job.mr)}")
-    for idx, job in enumerate(CONFIRM_SWEEP):
+        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="s", color=mesh_color, linestyle="None")
+    for job in CONFIRM_SWEEP:
         fracture = _limit_row(job)
         if fracture is None:
             continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=plt.get_cmap("Greens")(0.35 + 0.15 * idx), linestyle="None", label=f"Confirm MR {_format_mr(job.mr)}")
+        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=confirm_color, linestyle="None")
     _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title("Extracted fracture forming-limit points")
-    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=7)
+    handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor=mass_color, markeredgecolor=mass_color, markersize=7, label="Mass-scaling sweep"),
+        Line2D([0], [0], marker="s", color="none", markerfacecolor=mesh_color, markeredgecolor=mesh_color, markersize=7, label="First mesh sweep"),
+        Line2D([0], [0], marker="^", color="none", markerfacecolor=confirm_color, markeredgecolor=confirm_color, markersize=7, label="Confirmation sweep"),
+    ]
+    ax.legend(handles=handles, loc="lower right", frameon=False, fontsize=8)
     _save(fig, "ms_mr_forming_limit_points")
 
 
@@ -287,14 +289,8 @@ def main() -> None:
         }
     )
     _plot_strain_path(MASS_SWEEP, "ms_mr_mass_scaling_strain_path", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
-    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Quasi-staticity overview ($f_\mathrm{MR}=2$)")
-    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy_zoom", r"Zoom near 5% criterion ($f_\mathrm{MR}=2$)", ylim=(0.0, 10.0))
     _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
-    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Quasi-staticity overview ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
-    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-5}$ s)", ylim=(0.0, 10.0))
     _plot_strain_path(CONFIRM_SWEEP, "ms_mr_confirm_strain_path", r"Mesh-refinement confirmation ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
-    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy", r"Quasi-staticity overview ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
-    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-6}$ s)", ylim=(0.0, 10.0))
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)
