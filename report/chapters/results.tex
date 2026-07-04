@@ -689,7 +689,12 @@ quasi-static acceptance criterion. For the mass-scaling screening, the
 post-start maximum is used as a conservative metric. For the mesh-refinement
 confirmation sweep, this is complemented by the maximum in the final
 \SI{0.5}{\second} before the element-status fracture point, because the early
-acceleration peak is not representative of the forming-limit extraction.
+acceleration peak is not representative of the forming-limit extraction. This
+split does not soften the mass-scaling selection, since for aggressive mass
+scaling the exceedance persists into the extraction window, with a late-window
+maximum of about \SI{11}{\percent} at
+$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, whereas for the fine meshes at the
+accepted target the exceedance is confined to the early acceleration phase.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
@@ -857,9 +862,7 @@ therefore repeated at the accepted mass-scaling target
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The completed reference runs cover
 $f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$, so that the selected
 production mesh is judged under the same quasi-static setting used for the
-final simulations. An additional $f_\mathrm{MR}=1.5$ run was launched, but it
-was cancelled before post processing and is therefore not included as a usable
-data point.
+final simulations.
 
 Figure~\ref{fig:confirm_sweep_results} and
 Table~\ref{tab:confirm_sweep_summary} separate the early post-start peak from
@@ -868,10 +871,9 @@ high for $f_\mathrm{MR}=1$, $1.25$, and $1.41$, reaching
 \SI{23.9}{\percent}, \SI{24.5}{\percent}, and \SI{41.4}{\percent}. These peaks
 occur during the early acceleration part of the simulation. In the final
 \SI{0.5}{\second} before fracture, all completed confirmation runs are below
-the \SI{5}{\percent} criterion. The late-window maxima are
-\SI{0.75}{\percent}, \SI{0.18}{\percent}, \SI{0.19}{\percent},
-\SI{0.22}{\percent}, and \SI{0.27}{\percent} for $f_\mathrm{MR}=1$, $1.25$,
-$1.41$, $2$, and $3$, respectively.
+the \SI{5}{\percent} criterion, with late-window maxima between
+\SI{0.18}{\percent} and \SI{0.75}{\percent}
+(Table~\ref{tab:confirm_sweep_summary}).
 
 The fine-side checks $f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close
 element-status fracture strains, with $\varepsilon_1^\mathrm{f}$ between
@@ -920,18 +922,17 @@ more geometries are left as future work (Chapter~\ref{chap:future_work}).
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The global energy maximum omits
     the first \SI{5}{\percent} of punch travel. The late maximum is evaluated
     over the final \SI{0.5}{\second} before the element-status fracture point.
-    Wall-clock times are diagnostic because the runs used different CPU
-    counts.}
+    The cost is the product of solver wall-clock time and allocated CPUs.}
     \label{tab:confirm_sweep_summary}
-    \begin{tabular}{c c c c c c c}
+    \begin{tabular}{c c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & Global max [\si{\percent}] & Late max [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] & CPUs \\
+        $f_\mathrm{MR}$ & Global max [\si{\percent}] & Late max [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Cost [CPU\,h] \\
         \midrule
-        1    & 23.9 & 0.75 & 0.201 & 0.097 & 40.0 & 24 \\
-        1.25 & 24.5 & 0.18 & 0.207 & 0.096 & 30.9 & 12 \\
-        1.41 & 41.4 & 0.19 & 0.205 & 0.097 & 25.2 & 10 \\
-        2    &  1.8 & 0.22 & 0.244 & 0.096 & 20.9 & 24 \\
-        3    &  0.9 & 0.27 & 0.219 & 0.097 & 12.7 & 24 \\
+        1    & 23.9 & 0.75 & 0.201 & 0.097 & 960 \\
+        1.25 & 24.5 & 0.18 & 0.207 & 0.096 & 371 \\
+        1.41 & 41.4 & 0.19 & 0.205 & 0.097 & 252 \\
+        2    &  1.8 & 0.22 & 0.244 & 0.096 & 502 \\
+        3    &  0.9 & 0.27 & 0.219 & 0.097 & 305 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -950,9 +951,10 @@ blank-holder contact coefficient remained at the default value of 0.35. This
 is therefore a single-width sensitivity check rather than a calibrated
 numerical FLC. The runs use the finest mesh of the confirmation sweep of
 Section~\ref{sec:selection_numerical_parameters} rather than the production
-default $f_\mathrm{MR}=2$, which explains why all six runs remain above the
-\SI{5}{\percent} energy criterion in
-Table~\ref{tab:friction_sensitivity_summary}.
+default $f_\mathrm{MR}=2$, so the mid-process energy ratios are elevated. In
+the final \SI{0.5}{\second} before each extracted fracture point the ratio
+stays below the \SI{5}{\percent} criterion for every run
+(Table~\ref{tab:friction_sensitivity_summary}).
 
 \begin{figure}[ht]
     \centering
@@ -999,9 +1001,11 @@ global force response.
     energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting
     the first \SI{5}{\percent} of the prescribed punch travel and before the
     extracted fracture point. Location is the fracture-location class assigned
-    by the post processing.}
+    by the post processing. The global maximum omits the first \SI{5}{\percent}
+    of the prescribed punch travel, and the late maximum is evaluated over the
+    final \SI{0.5}{\second} before the extracted fracture point.}
     \label{tab:friction_sensitivity_summary}
-    \begin{tabular}{c c c c c c c}
+    \begin{tabular}{c c c c c c c c}
         \toprule
         $\mu_\mathrm{punch}$ &
         Location &
@@ -1009,15 +1013,16 @@ global force response.
         $\varepsilon_2^\mathrm{f}$ &
         $U_3^\mathrm{f}$ &
         $F_{3,\max}$ &
-        $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ \\
-        & & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] \\
+        Global max &
+        Late max \\
+        & & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] & [\si{\percent}] \\
         \midrule
-        0.00 & dome         & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 \\
-        0.05 & outside dome & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 \\
-        0.10 & outside dome & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 \\
-        0.15 & outside dome & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 \\
-        0.20 & outside dome & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 \\
-        0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 \\
+        0.00 & dome         & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 & 0.06 \\
+        0.05 & outside dome & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 & 1.38 \\
+        0.10 & outside dome & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 & 0.16 \\
+        0.15 & outside dome & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 & 0.19 \\
+        0.20 & outside dome & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 & 0.34 \\
+        0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 & 0.25 \\
         \bottomrule
     \end{tabular}
 \end{table}
