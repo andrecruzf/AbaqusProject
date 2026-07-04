@@ -325,12 +325,10 @@ compared, for every thickness, against the ISO~12004-2 and Volk--Hora limits
 extracted from the same DIC samples. Figure~\ref{fig:flc_ms_comparison}
 overlays the three criteria in the forming-limit diagram for the four
 thicknesses, Table~\ref{tab:ms_campaign_summary} summarises the detection rate
-and mean two-component distance to ISO~12004-2 per thickness, and the
+and the mean $|\Delta\varepsilon_1|$ and $|\Delta\varepsilon_2|$ components
+relative to ISO~12004-2 per thickness, and the
 width-by-width mean and standard deviation over the two repetitions are
-tabulated in full in Appendix~\ref{app:ms_campaign_tables}. Here and below, the
-error is evaluated in the forming-limit diagram as
-$d_{\mathrm{ISO}}=\big\langle\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}\big\rangle$,
-so both the major and the minor limit strain enter the comparison.
+tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
 
 \begin{figure}[H]
     \centering
@@ -350,20 +348,22 @@ so both the major and the minor limit strain enter the comparison.
     \centering
     \small
     \caption[Min--Stoughton campaign comparison summary]{Detection rate and
-    mean distance to ISO~12004-2 per thickness using both $\varepsilon_1$ and
-    $\varepsilon_2$, over the 14 rolling-direction samples of the repeat
-    campaign with the \SI{100}{\milli\meter} punch. The Min--Stoughton results
-    use the baseline set listed in the text. Full per-width values for all
-    three criteria are given in Appendix~\ref{app:ms_campaign_tables}.}
+    mean absolute $\varepsilon_1$ and $\varepsilon_2$ differences to
+    ISO~12004-2 per thickness, over the 14 rolling-direction samples of the
+    repeat campaign with the \SI{100}{\milli\meter} punch. The
+    Min--Stoughton results use the baseline set listed in the text. Full
+    per-width values for all three criteria are given in
+    Appendix~\ref{app:ms_campaign_tables}.}
     \label{tab:ms_campaign_summary}
-    \begin{tabular}{c c c c}
+    \begin{tabular}{c c c c c}
         \toprule
-        Thickness & $t$ (\si{\milli\meter}) & Detection (of 14) & Mean $d_{\mathrm{ISO}}$ \\
+        Thickness & $t$ (\si{\milli\meter}) & Detection (of 14) &
+        Mean $|\Delta\varepsilon_1|$ & Mean $|\Delta\varepsilon_2|$ \\
         \midrule
-        A & 1.2 & 13 & 0.027 \\
-        B & 1.5 & 13 & 0.019 \\
-        C & 2.0 & 12 & 0.037 \\
-        D & 3.0 & 14 & 0.051 \\
+        A & 1.2 & 13 & 0.024 & 0.007 \\
+        B & 1.5 & 13 & 0.014 & 0.009 \\
+        C & 2.0 & 12 & 0.033 & 0.013 \\
+        D & 3.0 & 14 & 0.046 & 0.016 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -376,18 +376,20 @@ repeatability is good through the body of the curve, with a standard deviation
 below \num{0.014} from \texttt{W050} to \texttt{W120}, but it degrades at the
 extreme geometries, where the narrow \texttt{W020} and the biaxial \texttt{W200}
 samples occasionally trigger early or fail the persistence requirement. For the
-thinner sheets the curvature limit stays close to the established methods: the
-mean distance to the ISO~12004-2 average, using both $\varepsilon_1$ and
-$\varepsilon_2$, is about \num{0.019} for class~B, compared with \num{0.027}
-for class~A. This distance increases for the thicker sheets, rising to about
-\num{0.037} for class~C and \num{0.051} for class~D, and class~D shows a
-consistent negative bias, with the curvature point falling below both reference
-methods at nearly every width. For example, the \texttt{W020} point gives
-$\varepsilon_1=\num{0.285}$ against the ISO~12004-2 value of \num{0.358}. This
-baseline result shows that a single fixed parameter set does not describe all
-thicknesses equally well. It motivates the full sweep below, where the matrix
-length, reference-frame choice, persistence length, curvature offset, and
-threshold are varied across the complete \num{56}-sample dataset.
+thinner sheets the curvature limit stays close to the established methods:
+class~B gives mean absolute differences of \num{0.014} in $\varepsilon_1$ and
+\num{0.009} in $\varepsilon_2$, compared with \num{0.024} and \num{0.007} for
+class~A. The $\varepsilon_1$ component increases for the thicker sheets,
+reaching \num{0.033} for class~C and \num{0.046} for class~D, while the
+$\varepsilon_2$ component remains smaller but also rises to \num{0.013} and
+\num{0.016}. Class~D shows a consistent negative bias, with the curvature point
+falling below both reference methods at nearly every width. For example, the
+\texttt{W020} point gives $\varepsilon_1=\num{0.285}$ against the ISO~12004-2
+value of \num{0.358}. This baseline result shows that a single fixed parameter
+set does not describe all thicknesses equally well. It motivates the full sweep
+below, where the matrix length, reference-frame choice, persistence length,
+curvature offset, and threshold are varied across the complete \num{56}-sample
+dataset.
 
 \subsection{Parameter Sweep Across Thicknesses}
 \label{sec:ms_sweep_thickness}
@@ -399,36 +401,34 @@ $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
 $M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
 $\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
 $\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
-was scored by its detection rate and by the same $d_{\mathrm{ISO}}$ distance of
-the curvature point to the ISO~12004-2 average over the detected widths.
-Table~\ref{tab:ms_sweep_thickness} compares the baseline set with the best
-agreeing set (minimum $d_{\mathrm{ISO}}$, detecting at least 13 of the 14
-samples) for each thickness. The complete sweep is tabulated in
-Appendix~\ref{app:ms_sweep}, where the detection rate and stored
-$|\Delta\varepsilon_1|$ component are retained for traceability.
+was screened by its detection rate and by the stored mean
+$|\Delta\varepsilon_1|$ component relative to ISO~12004-2. The sweep export did
+not store the corresponding $|\Delta\varepsilon_2|$ component, so the sweep is
+treated as parameter screening rather than a final quantitative calibration.
+Table~\ref{tab:ms_sweep_thickness} lists the baseline and selected parameter
+sets used in Figure~\ref{fig:flc_ms_comparison_best}, and the complete stored
+$|\Delta\varepsilon_1|$ sweep is tabulated in Appendix~\ref{app:ms_sweep}.
 
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton parameter sweep across thicknesses]{Baseline versus
-    best agreeing parameter set per thickness from the sweep. The baseline
-    set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$, and the
-    best agreeing set minimises $d_{\mathrm{ISO}}$ subject to detecting at least 13 of
-    14 samples. Detection is the number of samples with a detected onset (of 14),
-    and $d_{\mathrm{ISO}}$ is the mean forming-limit-diagram distance
-    $\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}$ of the
-    Min--Stoughton point to the ISO~12004-2 average over the detected widths.}
+    \caption[Min--Stoughton parameter screening across thicknesses]{Baseline
+    and selected parameter sets from the sweep. The baseline set is
+    $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$, and the
+    selected set is the one used in Figure~\ref{fig:flc_ms_comparison_best}.
+    Detection is the number of samples with a detected onset out of 14. No
+    error column is reported here because the sweep export stores
+    $|\Delta\varepsilon_1|$ but not $|\Delta\varepsilon_2|$.}
     \label{tab:ms_sweep_thickness}
-    \begin{tabular}{c c c l c c}
+    \begin{tabular}{c c l c}
         \toprule
-        & \multicolumn{2}{c}{Baseline set} & \multicolumn{3}{c}{Best agreeing set (det.\ $\geq 13$)} \\
-        \cmidrule(lr){2-3}\cmidrule(lr){4-6}
-        Thickness & Det. & $d_{\mathrm{ISO}}$ & $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Det. & $d_{\mathrm{ISO}}$ \\
+        Thickness & Baseline det. &
+        Selected $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Selected det. \\
         \midrule
-        A ($\SI{1.2}{\milli\meter}$) & 13/14 & 0.027 & $(20,0.70,6,\num{5e-4},0.20)$ & 13/14 & 0.018 \\
-        B ($\SI{1.5}{\milli\meter}$) & 13/14 & 0.019 & $(15,0.80,8,\num{5e-4},0.10)$ & 13/14 & 0.019 \\
-        C ($\SI{2.0}{\milli\meter}$) & 12/14 & 0.037 & $(25,0.80,6,\num{5e-4},0.20)$ & 14/14 & 0.019 \\
-        D ($\SI{3.0}{\milli\meter}$) & 14/14 & 0.051 & $(25,0.80,10,\num{1e-3},0.10)$ & 13/14 & 0.036 \\
+        A ($\SI{1.2}{\milli\meter}$) & 13/14 & $(20,0.70,6,\num{5e-4},0.20)$ & 13/14 \\
+        B ($\SI{1.5}{\milli\meter}$) & 13/14 & $(15,0.80,8,\num{5e-4},0.10)$ & 13/14 \\
+        C ($\SI{2.0}{\milli\meter}$) & 12/14 & $(25,0.80,6,\num{5e-4},0.20)$ & 14/14 \\
+        D ($\SI{3.0}{\milli\meter}$) & 14/14 & $(25,0.80,10,\num{1e-3},0.10)$ & 13/14 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -436,44 +436,35 @@ $|\Delta\varepsilon_1|$ component are retained for traceability.
 Requiring detection of all fourteen samples is not always the best choice. For
 the thinner sheets the fourteenth sample is the stubborn second repetition of
 the biaxial \texttt{W200} geometry, and the only sets that capture it place
-\texttt{W200} far from the reference: for class~B the best full-detection set
-reaches $d_{\mathrm{ISO}}=\num{0.036}$, with the \texttt{W200} point alone
-\num{0.081} away from the ISO~12004-2 average in the
-$(\varepsilon_1,\varepsilon_2)$ plane. For class~B the baseline set is already
-the best agreeing one, so tuning brings no gain. Class~C benefits most, its
-two-component distance dropping from \num{0.037} to
-\num{0.019} once the threshold multiplier is raised to $\alpha=0.20$ with a
-longer matrix
-($W_Y=\SI{25}{\milli\meter}$), and class~D improves from \num{0.051} to
-\num{0.036}. A larger threshold delays the detected onset, which raises the
-extracted strain and counteracts the underestimation seen in
-Section~\ref{sec:ms_campaign}. The parameters were selected by minimising the
-two-component distance to the ISO~12004-2 average rather than validated against
-an independent reference, so the values are indicative. A held out validation,
-for example tuning on the first repetition and evaluating on the second, is
-the natural next step before these sets are adopted. A thickness-dependent
-parameter choice, with a larger curvature threshold for thicker sheets,
-remains the recommended path before the curvature method is used for
-production forming-limit extraction.
+\texttt{W200} far from the reference. For class~B the baseline set is retained,
+so the screening does not suggest a change there. Class~C moves to a longer
+matrix with the larger threshold multiplier $\alpha=0.20$, and class~D also
+favours a longer matrix. A larger threshold delays the detected onset, which
+raises the extracted strain and counteracts the underestimation seen in
+Section~\ref{sec:ms_campaign}. The selected sets remain indicative because
+they were chosen from a stored $|\Delta\varepsilon_1|$ screening metric. A
+final comparison should repeat the sweep with both $|\Delta\varepsilon_1|$ and
+$|\Delta\varepsilon_2|$, followed by held out validation, for example tuning on
+the first repetition and evaluating on the second.
 
 Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
-when each thickness uses its best agreeing set from
+when each thickness uses the selected set from
 Table~\ref{tab:ms_sweep_thickness}, in place of the single baseline set of
-Figure~\ref{fig:flc_ms_comparison}. The curvature curve moves closer to the
-ISO~12004-2 and Volk--Hora references across most of the diagram, including the
-biaxial \texttt{W200} point that the baseline set placed far off. The uniaxial
-branch of the thickest sheet~D still retains a visible offset. These sets detect
-thirteen or fourteen of the fourteen samples, the single miss being the extreme
-biaxial repetition whose forced detection would pull the \texttt{W200} point
-away from the reference.
+Figure~\ref{fig:flc_ms_comparison}. Visually, the curvature curve moves closer
+to the ISO~12004-2 and Volk--Hora references across most of the diagram,
+including the biaxial \texttt{W200} point that the baseline set placed far off.
+The uniaxial branch of the thickest sheet~D still retains a visible offset.
+These sets detect thirteen or fourteen of the fourteen samples, the single miss
+being the extreme biaxial repetition whose forced detection would pull the
+\texttt{W200} point away from the reference.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/flc_ms_comparison_best.png}
-    \caption[Forming-limit comparison with the best parameter set per thickness]{Forming-limit
+    \caption[Forming-limit comparison with the selected parameter set per thickness]{Forming-limit
     diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
     Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
-    using each thickness's best agreeing parameter set (detection $\geq 13/14$) from
+    using each thickness's selected parameter set from
     Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
     single baseline set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
     mean over the two repetitions of a width.}

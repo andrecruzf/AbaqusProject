@@ -25,11 +25,12 @@ should therefore be considered rather than treated as confirmed.
 The identification framework integrates a Min and Stoughton curvature
 criterion and applies it to the \num{56} DIC samples of the rolling direction,
 \SI{100}{\milli\meter} punch subset. With one baseline parameter set, it
-detects 12 to 14 of 14 samples per thickness, with mean distances to
-ISO~12004-2 of \num{0.019} to \num{0.051} using both $\varepsilon_1$ and
-$\varepsilon_2$. Thickness dependent recalibration improves this distance to
-\num{0.018} to \num{0.036} while keeping at least 13 of 14 detections, but
-sensitivity to matrix length, reference frame, and DIC coverage remains.
+detects 12 to 14 of 14 samples per thickness, with mean
+$|\Delta\varepsilon_1|$ values to ISO~12004-2 of \num{0.014} to \num{0.046}
+and mean $|\Delta\varepsilon_2|$ values of \num{0.007} to \num{0.016}.
+A thickness dependent sweep indicates parameter sensitivity, but final
+recalibration should report both $|\Delta\varepsilon_1|$ and
+$|\Delta\varepsilon_2|$ for every parameter set.
 
 The numerical part implements an automated \software{Abaqus/Explicit} workflow
 for Nakazima, Marciniak, and Punch in Punch simulations, including model
