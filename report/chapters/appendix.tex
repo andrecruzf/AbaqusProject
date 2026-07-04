@@ -394,27 +394,55 @@ steps branch internally on test type, as noted below. A separate
     \label{fig:model_gen_sequence}
 \end{figure}
 
-\section{Repository Structure}
+\section{Submitted Code Structure}
 
-The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
+The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). The tree
+below shows the structure of the submitted code, with the simulation pipeline
+at the repository root, the standalone Min--Stoughton workflow, and the two
+user interfaces.
 
-\begin{tabbing}
- \hspace*{4.5cm} \= \kill
- \texttt{config.py}             \> Central configuration of all model parameters \\[0.5ex]
- \texttt{app.py}                \> \software{Streamlit} interface for inspecting results and preparing scalar runs \\[0.5ex]
- \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
- \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{job} (see Figure~\ref{fig:model_gen_sequence}) \\[0.5ex]
- \texttt{VUMAT\_explicit.f}     \> Hosford--Coulomb VUMAT subroutine (\software{Fortran} 77) \\[0.5ex]
- \texttt{Naka\_Marciniak\_Geometries/}, \texttt{PiP\_Geometries/} \> Reference blank and punch geometry files (\texttt{W020}--\texttt{W200}) \\[0.5ex]
- \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
- \texttt{submit\_one.sh}        \> Builds and submits one selected simulation case on Euler \\[0.5ex]
- \texttt{run\_cluster.sh}       \> \software{SLURM} job script: solver, ODB post-processing, plots, and copy-back \\[0.5ex]
- \texttt{postproc.py}           \> Extracts strain path and energy ratio from ODB \\[0.5ex]
- \texttt{postproc\_movie.py}    \> Renders SDV1 (EQPS) animation to \texttt{.webm} \\[0.5ex]
- \texttt{plot\_results.py}      \> Creates per-specimen diagnostic plots \\[0.5ex]
- \texttt{plot\_flc.py}          \> Aggregates selected \texttt{strain\_path.csv} files and plots FLC \\[0.5ex]
- \texttt{run\_plots.sh}         \> Optional \software{SLURM} plotting and FLC aggregation job
-\end{tabbing}
+\lstset{language={},numbers=none}
+\begin{lstlisting}[frame=lines,basicstyle=\ttfamily\footnotesize]
+AbaqusProject/
+|-- config.py                    central configuration of all model parameters
+|-- build_model.py               model-generation orchestrator (Abaqus/CAE)
+|-- build_mesh_only.py           mesh-only export for mesh verification
+|-- modules/                     parts, assembly, material, step, contact,
+|                                boundary, job (Figure: module sequence)
+|-- VUMAT_explicit.f             Hosford-Coulomb user material (Fortran)
+|-- Nakazima_BM.py               legacy single-file Nakazima benchmark model
+|-- deploy.sh                    pushes the code and launches one Euler case
+|-- submit_one.sh                builds and submits one case on Euler
+|-- run_cluster.sh               SLURM job: solver, post-processing, copy-back
+|-- run_plots.sh, run_movie.sh,
+|   run_postproc*.sh             optional SLURM re-run jobs
+|-- collect_results.sh           pulls selected result folders to the laptop
+|-- postproc.py                  ODB extraction into the result folder above
+|-- postproc_movie.py            EQPS animation renderer
+|-- static_postproc_plots.py     static diagnostic plot set
+|-- plot_results.py, plot_flc.py per-run plots and FLC aggregation
+|-- screenshot_mesh.py           mesh verification renders
+|-- app.py                       Streamlit interface (this appendix)
+|-- Naka_Marciniak_Geometries/,
+|   PiP_Geometries/, PiP_Punches/  blank and punch geometry files
+|-- Post_processing_Nakazima_tests/
+|   `-- Min-Stroughton_post_pro/ standalone Min-Stoughton workflow
+|       |-- dic_loader.py            VIC-3D import
+|       |-- region_selector.py       crack line, neck centre, point matrix
+|       |-- curvature_matrix.py      matrix tracking across frames
+|       |-- nakazima_transform.py    punch-centred (D, R_out) transform
+|       |-- reference_subtraction.py Marciniak reference subtraction
+|       |-- sac_preparation.py       SAC and column construction
+|       |-- circle_fitting.py        column circle fits to C_pm(t)
+|       |-- onset_detection.py       onset criterion
+|       |-- limit_strains.py         limit strain extraction
+|       |-- vic_project_metadata.py  specimen metadata resolution
+|       `-- run_sensitivity_study.py Euler parameter sweep driver
+|-- GUI_2026_06_29/              laboratory FLC identification GUI
+|   |-- main.py                      ISO 12004-2 and Volk-Hora evaluation
+|   `-- functs/min_stoughton_runner.py  Min-Stoughton launcher
+`-- FEM_GUI/                     desktop interface prototype for the pipeline
+\end{lstlisting}
 
 \section{Configurable Simulation Parameters}
 \label{app:configuration_parameters}
