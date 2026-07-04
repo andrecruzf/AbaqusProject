@@ -141,16 +141,17 @@ Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the
 standard ISO~12004-2 evaluation, using the window width of
 Eq.~\eqref{eq:din_window} with its calibration constant of $10$. The
 \SI{100}{\milli\meter}, \SI{80}{\milli\meter}, and \SI{60}{\milli\meter}
-punches form a closely spaced group that rises gradually as the punch
-diameter decreases. The \SI{40}{\milli\meter} punch breaks this continuity,
-jumping far above the other three by a margin that grows with thickness. A
-genuine curvature driven size effect would vary continuously with punch
-diameter, so an isolated discontinuity at the smallest punch alone points to
-the evaluation rather than to the material response. The standard window is
-calibrated for the $\varnothing$\SI{100}{\milli\meter} Nakazima geometry,
-whereas the \SI{40}{\milli\meter} punch produces a much narrower neck, so a
-window sized for the standard punch no longer matches the strain field to
-which it is applied.
+punches form a closely spaced group, but the ordering is not perfectly
+monotonic in the ISO result. The \SI{40}{\milli\meter} punch departs from this
+larger-punch group, with a small negative deviation for the thinner sheets and
+a clear positive deviation for the thicker sheets. A genuine curvature driven
+size effect would be expected to vary continuously with punch diameter, so this
+sensitivity of the smallest punch points to the evaluation window as well as to
+the physical punch geometry. The standard window is calibrated for the
+$\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
+\SI{40}{\milli\meter} punch produces a much narrower neck, so a window sized
+for the standard punch no longer matches the strain field to which it is
+applied.
 
 To compare the punch diameters with a single number per curve, each forming
 limit curve is reduced to its plane strain limit $\mathrm{FLC}_0$, the major
@@ -159,11 +160,13 @@ interpolation between the neighbouring width points.
 Table~\ref{tab:flc0_punch} lists these values for every punch diameter and
 thickness. A straight line fitted through the \SIlist{100;80;60}{\milli\meter}
 values and extended to \SI{40}{\milli\meter} predicts the limit that a
-continuous trend would give. The measured \SI{40}{\milli\meter} value exceeds
-this prediction by $\Delta_{40}=+0.007$ for the thinnest sheet~A and by
-$+0.055$ for the thickest sheet~D. This growing excess is consistent with the
-fixed standard window increasingly mis-fitting the sharper neck of the small
-punch rather than with a continuation of the $t/R$ size effect.
+continuous trend would give. With the corrected \texttt{W02}--\texttt{W10}
+DIN result set, the \SI{40}{\milli\meter} value is below this extrapolation for
+sheet~A ($\Delta_{40}=-0.035$), nearly coincident for sheet~B, and above it for
+the thicker sheets~C and~D, reaching $\Delta_{40}=+0.083$ for sheet~D. The
+change in sign across thickness means that the smallest-punch result should
+not be read as a simple monotonic punch-radius effect. It still shows that the
+standard ISO window is sensitive to the neck geometry of nonstandard punches.
 
 \begin{figure}[H]
     \centering
@@ -205,9 +208,10 @@ punch rather than with a continuation of the $t/R$ size effect.
     \small
     \caption{Plane-strain limit $\mathrm{FLC}_0$ (major strain at
     $\varepsilon_2=0$) extracted with the standard ISO~12004-2 window for each
-    punch diameter and sheet thickness. $\Delta_{40}$ is the excess of the
-    measured \SI{40}{\milli\meter} value over the linear extrapolation of the
-    \SIlist{100;80;60}{\milli\meter} trend.}
+    punch diameter and sheet thickness, using the corrected
+    \texttt{W02}--\texttt{W10} DIN result set. $\Delta_{40}$ is the signed
+    difference between the measured \SI{40}{\milli\meter} value and the linear
+    extrapolation of the \SIlist{100;80;60}{\milli\meter} trend.}
     \label{tab:flc0_punch}
     \begin{tabular}{lccccc}
         \toprule
@@ -215,10 +219,10 @@ punch rather than with a continuation of the $t/R$ size effect.
         \cmidrule(lr){2-5}
         Thickness & 100 & 80 & 60 & 40 & $\Delta_{40}$ \\
         \midrule
-        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.222 & 0.253 & 0.274 & $+0.007$ \\
-        B (\SI{1.5}{\milli\meter}) & 0.254 & 0.280 & 0.263 & 0.305 & $+0.030$ \\
-        C (\SI{2.0}{\milli\meter}) & 0.267 & 0.289 & 0.312 & 0.372 & $+0.039$ \\
-        D (\SI{3.0}{\milli\meter}) & 0.320 & 0.342 & 0.395 & 0.482 & $+0.055$ \\
+        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.218 & 0.232 & 0.202 & $-0.035$ \\
+        B (\SI{1.5}{\milli\meter}) & 0.254 & 0.270 & 0.243 & 0.243 & $-0.003$ \\
+        C (\SI{2.0}{\milli\meter}) & 0.267 & 0.277 & 0.283 & 0.357 & $+0.065$ \\
+        D (\SI{3.0}{\milli\meter}) & 0.320 & 0.326 & 0.362 & 0.462 & $+0.083$ \\
         \bottomrule
     \end{tabular}
 \end{table}
