@@ -141,32 +141,19 @@ Figure~\ref{fig:flc_norm} shows the forming limit curves obtained with the
 standard ISO~12004-2 evaluation, using the window width of
 Eq.~\eqref{eq:din_window} with its calibration constant of $10$. The
 \SI{100}{\milli\meter}, \SI{80}{\milli\meter}, and \SI{60}{\milli\meter}
-punches form a closely spaced group, but the ordering is not perfectly
-monotonic in the ISO result. The \SI{40}{\milli\meter} punch departs from this
-larger-punch group, with a small negative deviation for the thinner sheets and
-a clear positive deviation for the thicker sheets. A genuine curvature driven
-size effect would be expected to vary continuously with punch diameter, so this
-sensitivity of the smallest punch points to the evaluation window as well as to
-the physical punch geometry. The standard window is calibrated for the
+punches form a closely spaced group, but the diameter ordering is not preserved
+throughout the ISO result. The \SI{40}{\milli\meter} punch does not show a
+consistent upward shift relative to the larger punches. Instead, parts of its
+FLC are lower than the larger-punch group, and the sequence of the curves
+changes with sheet thickness and strain state. This behaviour is not
+compatible with a simple curvature driven size effect, which would be expected
+to vary continuously with punch diameter. It points to an interaction between
+the fixed ISO fitting window and the neck geometry of the nonstandard punches.
+The standard window is calibrated for the
 $\varnothing$\SI{100}{\milli\meter} Nakazima geometry, whereas the
 \SI{40}{\milli\meter} punch produces a much narrower neck, so a window sized
 for the standard punch no longer matches the strain field to which it is
 applied.
-
-To compare the punch diameters with a single number per curve, each forming
-limit curve is reduced to its plane strain limit $\mathrm{FLC}_0$, the major
-strain where the curve crosses $\varepsilon_2=0$, obtained by linear
-interpolation between the neighbouring width points.
-Table~\ref{tab:flc0_punch} lists these values for every punch diameter and
-thickness. A straight line fitted through the \SIlist{100;80;60}{\milli\meter}
-values and extended to \SI{40}{\milli\meter} predicts the limit that a
-continuous trend would give. With the corrected \texttt{W02}--\texttt{W10}
-DIN result set, the \SI{40}{\milli\meter} value is below this extrapolation for
-sheet~A ($\Delta_{40}=-0.035$), nearly coincident for sheet~B, and above it for
-the thicker sheets~C and~D, reaching $\Delta_{40}=+0.083$ for sheet~D. The
-change in sign across thickness means that the smallest-punch result should
-not be read as a simple monotonic punch-radius effect. It still shows that the
-standard ISO window is sensitive to the neck geometry of nonstandard punches.
 
 \begin{figure}[H]
     \centering
@@ -199,33 +186,9 @@ standard ISO window is sensitive to the neck geometry of nonstandard punches.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_norm_d}
     \end{subfigure}
-    \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}. The \SI{40}{\milli\meter} punch (green) departs from the expected ordering by a margin inconsistent with the expected curvature trend.}
+    \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained; the main punch-diameter suffixes are \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}. The \SI{40}{\milli\meter} punch (green) is lower than the larger-punch group in parts of the FLC, and the expected diameter ordering is not maintained.}
     \label{fig:flc_norm}
 \end{figure}
-
-\begin{table}[ht]
-    \centering
-    \small
-    \caption{Plane-strain limit $\mathrm{FLC}_0$ (major strain at
-    $\varepsilon_2=0$) extracted with the standard ISO~12004-2 window for each
-    punch diameter and sheet thickness, using the corrected
-    \texttt{W02}--\texttt{W10} DIN result set. $\Delta_{40}$ is the signed
-    difference between the measured \SI{40}{\milli\meter} value and the linear
-    extrapolation of the \SIlist{100;80;60}{\milli\meter} trend.}
-    \label{tab:flc0_punch}
-    \begin{tabular}{lccccc}
-        \toprule
-        & \multicolumn{4}{c}{$\mathrm{FLC}_0$ at punch $\varnothing$ (\si{\milli\meter})} & \\
-        \cmidrule(lr){2-5}
-        Thickness & 100 & 80 & 60 & 40 & $\Delta_{40}$ \\
-        \midrule
-        A (\SI{1.2}{\milli\meter}) & 0.218 & 0.218 & 0.232 & 0.202 & $-0.035$ \\
-        B (\SI{1.5}{\milli\meter}) & 0.254 & 0.270 & 0.243 & 0.243 & $-0.003$ \\
-        C (\SI{2.0}{\milli\meter}) & 0.267 & 0.277 & 0.283 & 0.357 & $+0.065$ \\
-        D (\SI{3.0}{\milli\meter}) & 0.320 & 0.326 & 0.362 & 0.462 & $+0.083$ \\
-        \bottomrule
-    \end{tabular}
-\end{table}
 
 As a criterion comparison, the same punch diameter and thickness groups were
 also evaluated with the Volk Hora criterion. Figure~\ref{fig:flc_vh_pr_th}
