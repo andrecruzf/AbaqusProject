@@ -2787,7 +2787,8 @@ def _page_results():
         st.session_state["_results_qp_restored"] = True
         _qp = st.query_params
         if _qp.get("view"):
-            st.session_state["results_view_mode"] = _qp["view"]
+            view = _qp["view"]
+            st.session_state["results_view_mode"] = "FLD" if view == "FLC" else view
         if _qp.get("job"):
             st.session_state["results_single_job"] = _qp["job"]
         if _qp.get("panel"):
@@ -6206,7 +6207,7 @@ def _page_results():
     _SYNC_SCOPES = [
         "Latest jobs only",
         "Selected jobs only",
-        "Current FLC/source only",
+        "Current FLD/source only",
         "Full results directory",
     ]
 
@@ -6289,6 +6290,8 @@ def _page_results():
         if _toast:
             st.toast(_toast, icon="✅")
         ssh_verified = _euler_access_verified()
+        if st.session_state.get("results_sync_scope") == "Current FLC/source only":
+            st.session_state["results_sync_scope"] = "Current FLD/source only"
 
         c_scope, c_n, c_profile = st.columns([1.8, 0.8, 2.4])
         with c_scope:
@@ -6367,11 +6370,11 @@ def _page_results():
                 key="results_sync_selected_jobs",
             )
             include_siblings = st.checkbox(
-                "Include sibling specimens (pull the whole FLC folder)",
+                "Include sibling specimens (pull the whole FLD source folder)",
                 value=True,
                 key="results_sync_include_siblings",
                 help="FLD plots need the sibling widths of the same campaign, "
-                     "so pulling the parent FLC folder is the safe default.",
+                     "so pulling the parent FLD source folder is the safe default.",
             )
             rels = [rel_by_label[c] for c in chosen]
             if include_siblings:
@@ -6380,13 +6383,13 @@ def _page_results():
             if not scope_rel_dirs:
                 scope_problem = "Select at least one remote job."
 
-        elif sync_scope == "Current FLC/source only":
+        elif sync_scope == "Current FLD/source only":
             if remote_spec is None:
                 scope_problem = "Euler source must look like user@host:/path for scoped syncs."
             else:
                 scope_rel_dirs = sorted(set(st.session_state.get("_results_sync_scope_dirs") or []))
                 if not scope_rel_dirs:
-                    scope_problem = ("No current selection — open a job or an FLC source "
+                    scope_problem = ("No current selection — open a job or an FLD source "
                                      "below first, then sync it here.")
 
         def _scope_size_bytes(rel_dirs):
@@ -6558,9 +6561,9 @@ def _page_results():
     if job_dirs:
         modes.append("Single Job")
     if flc_dirs:
-        modes.append("FLC")
+        modes.append("FLD")
     elif job_dirs:
-        modes.append("FLC")
+        modes.append("FLD")
 
     def _persisted_choice(label, options, key, default=None, **kwargs):
         options = list(options)
@@ -6571,6 +6574,8 @@ def _page_results():
             st.session_state[key] = fallback
         return st.selectbox(label, options, key=key, **kwargs)
 
+    if st.session_state.get("results_view_mode") == "FLC":
+        st.session_state["results_view_mode"] = "FLD"
     if st.session_state.get("results_view_mode") not in modes:
         st.session_state["results_view_mode"] = modes[0]
     view_mode = st.segmented_control(
@@ -7142,9 +7147,9 @@ def _page_results():
         _single_job_view()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # Unified FLC view
+    # Unified FLD view
     # ══════════════════════════════════════════════════════════════════════════
-    elif view_mode == "FLC":
+    elif view_mode == "FLD":
 
         _FLC_COLORS = [
             "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
@@ -7522,7 +7527,7 @@ def _page_results():
             fig.update_layout(
                 xaxis=dict(title="ε₂  minor strain  (-)", range=[x0, x1]),
                 yaxis=dict(title="ε₁  major strain  (-)", range=[y0, y1]),
-                title="Forming Limit Curve",
+                title="Forming Limit Diagram",
                 legend_title="Source / method",
                 hovermode="closest",
                 template=theme["template"],
@@ -7555,17 +7560,17 @@ def _page_results():
         def _flc_view():
             source_options = _flc_source_options_cached()
             if not source_options:
-                st.info("No FLC data found. Sync from Euler or run post-processing first.")
+                st.info("No FLD data found. Sync from Euler or run post-processing first.")
                 return
 
             selected_sources = st.multiselect(
-                "FLC source",
+                "FLD source",
                 list(source_options.keys()),
                 default=[],
                 key="results_flc_sources_empty_default",
             )
             if not selected_sources:
-                st.info("Select at least one FLC source.")
+                st.info("Select at least one FLD source.")
                 return
 
             # Remember the FLC folders behind the current selection for scoped sync.
@@ -7591,7 +7596,7 @@ def _page_results():
             c_flc, c_paths = st.columns([3, 1])
             with c_flc:
                 show_vh_flc = st.checkbox(
-                    "Show optional FLC from V&H tab source",
+                    "Show optional FLD from V&H tab source",
                     value=True,
                     help="Uses the stored method='volk_hora' row in forming_limits.csv. "
                          "The V&H tab's Overwrite button updates this exact source.",
@@ -7631,7 +7636,7 @@ def _page_results():
             if no_data:
                 st.caption("No usable forming-limit CSV data for: " + ", ".join(no_data))
             if no_optional and show_vh_flc:
-                st.caption("No optional FLC overlay data for: " + ", ".join(no_optional))
+                st.caption("No optional FLD overlay data for: " + ", ".join(no_optional))
 
             _render_fld_graph_download(selected_sources, source_options, key_prefix="flc_unified")
 
