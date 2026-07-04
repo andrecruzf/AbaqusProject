@@ -672,7 +672,11 @@ during the run and copied to the Euler home directory on completion:
 
 The 46 VUMAT constants used for all simulations in this report originate from
 a chair internal calibration of the AA5182 batch \texttt{2023\_12\_21\_B} with
-\SI{3.0}{\milli\meter} sheet thickness. The constitutive framework follows
+\SI{3.0}{\milli\meter} sheet thickness. The calibration is based on uniaxial
+tension, notched tension with radii of \SI{6}{\milli\meter} and
+\SI{20}{\milli\meter}, central hole, and shear experiments, each tested at
+\SI{0}{\degree}, \SI{45}{\degree}, and \SI{90}{\degree} to the rolling
+direction. The constitutive framework follows
 Roth and Mohr~\cite{Roth2014}, combining a non associated Hill'48 formulation,
 mixed Swift Voce hardening, Johnson Cook type strain rate and temperature
 terms, and the Hosford and Coulomb fracture initiation model. The anisotropy
@@ -696,13 +700,13 @@ Table~\ref{tab:aa5182_parameters} lists the parameter set.
     \hfill
     \begin{subfigure}[t]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{img/aa5182_YR_ratios.png}
+        \includegraphics[height=0.75\textwidth]{img/aa5182_YR_ratios.png}
         \caption{Yield stress and $r$ value ratios versus loading angle.}
     \end{subfigure}
 
     \vspace{0.5em}
 
-    \begin{subfigure}[t]{0.6\textwidth}
+    \begin{subfigure}[t]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/aa5182_HC_locus.png}
         \caption{Hosford and Coulomb fracture locus.}
