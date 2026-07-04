@@ -63,62 +63,56 @@ limit curves for the four thicknesses.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_d}
     \end{subfigure}
-    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method under the robustness and accuracy criteria.}
+    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method.}
     \label{fig:rd_vs_td}
 \end{figure}
 
-To quantify the visual overlap in Figure~\ref{fig:rd_vs_td}, the repeat-level
-ISO~12004-2 average strain values were extracted from the campaign result
-files and averaged separately for each orientation. The
-repeat-level values are listed in Table~\ref{tab:rd_td_repeat_values}. 
-
-The orientation effect is reported for each specimen geometry separately, rather
-than condensed into a single per-thickness average, so that any geometry-specific
-deviation remains visible. Table~\ref{tab:rd_td_summary} lists the distance
-between the RD and TD mean points,
-$d_{\mathrm{RD-TD}} = \sqrt{(\Delta\varepsilon_1)^2 + (\Delta\varepsilon_2)^2}$,
-for every width and thickness. The corresponding per-geometry repeat scatter is
-given together with the underlying RD and TD strains in
-Table~\ref{tab:rd_td_repeat_values}.
+The repeat-level results underlying the mean curves are listed in
+Appendix~\ref{app:rd_td_repeat_data}, and Table~\ref{tab:rd_td_summary} lists
+the signed differences $\Delta\varepsilon_1$ and $\Delta\varepsilon_2$
+between the RD and TD mean points for every width and thickness.
 
 \begin{table}[htb]
     \centering
     \small
-    \setlength{\tabcolsep}{6pt}
-    \caption{RD--TD separation $d_{\mathrm{RD-TD}}$ for each specimen geometry
-    and sheet thickness, for the \SI{100}{\milli\meter} punch, expressed in
-    strain units in the forming-limit diagram.}
+    \setlength{\tabcolsep}{4pt}
+    \caption{Signed differences between the RD and TD mean forming-limit
+    points (RD minus TD) for each specimen geometry and sheet thickness, for
+    the standard Nakazima test.}
     \label{tab:rd_td_summary}
-    \begin{tabular}{lcccc}
+    \begin{tabular}{l rr rr rr rr}
         \toprule
-        & \multicolumn{4}{c}{$d_{\mathrm{RD-TD}}$} \\
-        \cmidrule(lr){2-5}
-        Specimen & A (\SI{1.2}{\milli\meter}) & B (\SI{1.5}{\milli\meter})
-        & C (\SI{2.0}{\milli\meter}) & D (\SI{3.0}{\milli\meter}) \\
+        & \multicolumn{2}{c}{A (\SI{1.2}{\milli\meter})}
+        & \multicolumn{2}{c}{B (\SI{1.5}{\milli\meter})}
+        & \multicolumn{2}{c}{C (\SI{2.0}{\milli\meter})}
+        & \multicolumn{2}{c}{D (\SI{3.0}{\milli\meter})} \\
+        \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+        Specimen & $\Delta\varepsilon_1$ & $\Delta\varepsilon_2$
+        & $\Delta\varepsilon_1$ & $\Delta\varepsilon_2$
+        & $\Delta\varepsilon_1$ & $\Delta\varepsilon_2$
+        & $\Delta\varepsilon_1$ & $\Delta\varepsilon_2$ \\
         \midrule
-        \texttt{W020} & 0.0140 & 0.0033 & 0.0094 & 0.0019 \\
-        \texttt{W050} & 0.0035 & 0.0096 & 0.0064 & 0.0011 \\
-        \texttt{W080} & 0.0165 & 0.0087 & 0.0014 & 0.0082 \\
-        \texttt{W090} & 0.0017 & 0.0115 & 0.0017 & 0.0046 \\
-        \texttt{W100} & 0.0044 & 0.0098 & 0.0113 & 0.0087 \\
-        \texttt{W120} & 0.0062 & 0.0086 & 0.0050 & 0.0139 \\
-        \texttt{W200} & 0.0158 & 0.0086 & 0.0150 & 0.0252 \\
+        \texttt{W020} & $+0.011$ & $-0.009$ & $-0.001$ & $-0.003$ & $+0.008$ & $-0.006$ & $-0.001$ & $-0.002$ \\
+        \texttt{W050} & $-0.001$ & $-0.003$ & $+0.007$ & $-0.006$ & $+0.001$ & $-0.006$ & $+0.001$ & $-0.001$ \\
+        \texttt{W080} & $-0.016$ & $+0.001$ & $+0.009$ & $-0.000$ & $-0.001$ & $-0.000$ & $-0.008$ & $-0.001$ \\
+        \texttt{W090} & $+0.001$ & $+0.001$ & $-0.012$ & $+0.001$ & $+0.002$ & $-0.001$ & $+0.005$ & $-0.000$ \\
+        \texttt{W100} & $-0.002$ & $-0.004$ & $-0.010$ & $-0.001$ & $+0.010$ & $-0.005$ & $+0.008$ & $-0.002$ \\
+        \texttt{W120} & $-0.006$ & $-0.002$ & $+0.008$ & $-0.004$ & $-0.002$ & $+0.005$ & $+0.004$ & $-0.013$ \\
+        \texttt{W200} & $+0.014$ & $-0.007$ & $+0.008$ & $+0.003$ & $-0.009$ & $-0.012$ & $+0.019$ & $+0.017$ \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 Across all four thicknesses, the RD and TD forming limit curves are nearly
 coincident, following the same trajectory from the uniaxial branch through the
-plane-strain minimum and into the biaxial branch. Read per geometry, every
-$d_{\mathrm{RD-TD}}$ in Table~\ref{tab:rd_td_summary} stays small, between
-\num{0.0011} and \num{0.0252} strain, and remains of the same order as the
-repeat scatter of the corresponding geometry in
-Table~\ref{tab:rd_td_repeat_values}. No single width separates beyond its own
-scatter: the largest values occur at the equi-biaxial \texttt{W200} point, most
-notably for the thickest sheet~D, where the transverse \texttt{W200} case has
-only one usable repeat. The signed differences also change sign between widths,
-so the per-geometry offsets do not form a consistent orientation-dependent
-shift, and no systematic trend with thickness is observed.
+plane-strain minimum and into the biaxial branch. The differences in
+Table~\ref{tab:rd_td_summary} remain within $\pm0.019$ in $\varepsilon_1$ and
+$\pm0.017$ in $\varepsilon_2$, of the same order as the repeat scatter
+reported in Appendix~\ref{app:rd_td_repeat_data}. The largest differences
+occur at the equi-biaxial \texttt{W200} point of the thickest sheet~D, where
+the transverse case has only one usable repeat. The signs change between
+widths and thicknesses, so the offsets do not form a consistent orientation
+dependent shift, and no systematic trend with thickness is observed.
 
 These results indicate that, for the AA5754 sheet material and thickness range
 investigated here, in-plane material orientation produces no systematic shift in
