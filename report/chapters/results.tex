@@ -760,8 +760,44 @@ at the working setting $f_\mathrm{MR}=1.41$.
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
 
-At the present report stage, the numerical runs verify the pipeline and fix a
-defensible reference setting for the \texttt{W100} case. They do not yet
-construct a numerical FLC. The remaining work is to run the working settings
-across the relevant specimen widths and to validate the force response and
-failure locations against the experiments.
+Task III closes with a verified working configuration rather than a validated
+model. Table~\ref{tab:working_configuration} collects the adopted settings
+together with the evidence behind each choice. At this configuration the
+reference case is quasi static by the energy criterion, with late energy
+ratios below \SI{1}{\percent}, and its fracture strain lies within
+\SI{1.9}{\percent} of the finest tested mesh at \SI{63}{\percent} of its run
+time. The evaluation artifacts identified in this section, the outside-dome
+failure sites and the artificial early point of the
+$\mu_\mathrm{punch}=0.05$ run, are labelled by the post-processing outputs
+and are therefore kept out of any dome-formability reading. A numerical FLC
+is not yet constructed, since the material constants remain the AA5182
+surrogate of Chapter~\ref{chap:numerical_model}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Working numerical configuration fixed by Task III.}
+    \label{tab:working_configuration}
+    \begin{tabular}{l l l}
+        \toprule
+        Setting & Value & Basis \\
+        \midrule
+        Mass-scaling target $\Delta t_\mathrm{MS}$ & \SI{1e-6}{\second} & Energy criterion (Sec.~\ref{sec:mass_scaling_analysis}) \\
+        Mesh-refinement factor $f_\mathrm{MR}$ & 1.41 & Strain plateau (Sec.~\ref{sec:selection_numerical_parameters}) \\
+        Punch--blank contact & frictionless & Lubricated experiments (Sec.~\ref{sec:friction_sensitivity}) \\
+        Die and holder contact & $\mu=0.35$ & Previous setup (Chap.~\ref{chap:numerical_model}) \\
+        Punch velocity & smooth step, \SI{5}{\milli\meter\per\second} & Rate-neutral speed-up (Chap.~\ref{chap:numerical_model}) \\
+        Through-thickness layers & 10 & Neck resolution (Sec.~\ref{sec:mesh_generation}) \\
+        Element type & C3D8R & Solid formulation (Sec.~\ref{sec:mesh_generation}) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The remaining work follows in three steps. First, the punch friction is
+calibrated against the measured force response of the lubricated experiments
+and rechecked at the working mesh. Second, the calibrated configuration is
+run across the specimen widths of the experimental campaign, with the punch
+force curves and failure locations checked against the measured responses
+and the DIC crack positions. Third, the resulting numerical FLC is compared
+with the experimental FLCs of Task I, which requires an AA5754 calibration
+in place of the surrogate constants.
