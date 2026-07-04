@@ -318,7 +318,7 @@ configuration to HPC output.
         \node[rowlbl, font=\scriptsize\itshape, below=3mm of $(results.south)!0.5!(flc.south)$] {Synced to the local machine on demand via \texttt{app.py} (\texttt{rsync})};
     \end{tikzpicture}%
     }
-  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}. Optional plotting jobs can be submitted with a \software{SLURM} \texttt{afterok} dependency after the solver has completed. Results remain on the Euler home directory until pulled to the local machine on demand.}
+  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}.}
   \label{fig:architecture}
 \end{figure}
 
@@ -405,7 +405,7 @@ The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). Key files:
  \texttt{build\_model.py}       \> Pipeline orchestrator, calls all modules sequentially \\[0.5ex]
  \texttt{modules/}              \> \texttt{parts}, \texttt{assembly}, \texttt{material}, \texttt{step}, \texttt{contact}, \texttt{boundary}, \texttt{job} (see Figure~\ref{fig:model_gen_sequence}) \\[0.5ex]
  \texttt{VUMAT\_explicit.f}     \> Hosford--Coulomb VUMAT subroutine (\software{Fortran} 77) \\[0.5ex]
- \texttt{geometries/}           \> Reference blank geometry files (\texttt{W020}--\texttt{W200}) \\[0.5ex]
+ \texttt{Naka\_Marciniak\_Geometries/}, \texttt{PiP\_Geometries/} \> Reference blank and punch geometry files (\texttt{W020}--\texttt{W200}) \\[0.5ex]
  \texttt{deploy.sh}             \> Pushes the current code and launches one Euler submission \\[0.5ex]
  \texttt{submit\_one.sh}        \> Builds and submits one selected simulation case on Euler \\[0.5ex]
  \texttt{run\_cluster.sh}       \> \software{SLURM} job script: solver, ODB post-processing, plots, and copy-back \\[0.5ex]
@@ -663,8 +663,9 @@ large ODB remains in scratch storage.
 
 Simulations run on the ETH Euler cluster
 (\texttt{<username>@euler.ethz.ch}) using \software{SLURM}. Each solver job
-currently requests 24 CPUs, \SI{4}{\giga\byte} per CPU, and a
-\SI{48}{\hour} time limit. The \software{Abaqus} module is loaded via
+requests 24 CPUs, \SI{4}{\giga\byte} per CPU, and a \SI{48}{\hour} time limit
+by default, and the interface of Appendix~\ref{app:interface} can propose a
+case-specific CPU count instead. The \software{Abaqus} module is loaded via
 \texttt{module load abaqus/2023}. Post-processing scripts use
 \texttt{xvfb-run} for headless ODB rendering. Results are stored in scratch
 during the run and copied to the Euler home directory on completion:
