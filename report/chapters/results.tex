@@ -311,17 +311,17 @@ described in Table~\ref{tab:ms_constants}.
 \subsection{Baseline Full-Campaign Evaluation}
 \label{sec:ms_campaign}
 
-As a baseline, the curvature criterion was applied to the full campaign with
-one fixed parameter set, $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$,
+As a baseline, the curvature criterion was applied to the full campaign with a
+fixed parameter set taken from a first calibration sweep:
+$W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$,
 $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, and $\alpha=0.1$. The result was
 compared, for every thickness, against the ISO~12004-2 and Volk--Hora limits
 extracted from the same DIC samples. Figure~\ref{fig:flc_ms_comparison}
 overlays the three criteria in the forming-limit diagram for the four
 thicknesses, Table~\ref{tab:ms_campaign_summary} summarises the detection rate
 and the mean $|\Delta\varepsilon_1|$ and $|\Delta\varepsilon_2|$ components
-relative to ISO~12004-2 per thickness, and the
-width-by-width mean and standard deviation over the two repetitions are
-tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
+relative to ISO~12004-2 per thickness, and the width-by-width repeat values are
+tabulated in Appendix~\ref{app:ms_campaign_tables}.
 
 \begin{figure}[H]
     \centering
@@ -331,9 +331,9 @@ tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
     Min--Stoughton ($\diamond$) criteria for the four sheet thicknesses, with the
     \SI{100}{\milli\meter} punch. Each marker is the mean over the two
     repetitions of a width, and the Min--Stoughton results use the baseline set
-    listed in the text. The three criteria remain close for the thin sheets,
-    while the curvature points fall increasingly below the reference curves as
-    the thickness increases.}
+    from the first calibration sweep. The three criteria remain close for the
+    thin sheets, while the curvature points fall increasingly below the
+    reference curves as the thickness increases.}
     \label{fig:flc_ms_comparison}
 \end{figure}
 
@@ -344,8 +344,8 @@ tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
     mean absolute $\varepsilon_1$ and $\varepsilon_2$ differences to
     ISO~12004-2 per thickness, over the 14 rolling-direction samples of the
     repeat campaign with the \SI{100}{\milli\meter} punch. The
-    Min--Stoughton results use the baseline set listed in the text. Full
-    per-width values for all three criteria are given in
+    Min--Stoughton results use the baseline set from the first calibration
+    sweep. Full per-width values for all three criteria are given in
     Appendix~\ref{app:ms_campaign_tables}.}
     \label{tab:ms_campaign_summary}
     \begin{tabular}{c c c c c}
@@ -363,26 +363,18 @@ tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
 
 As Figure~\ref{fig:flc_ms_comparison} shows, the curvature criterion detects an
 onset in 13 of 14 samples for both class~A and class~B, 12 of 14 for class~C,
-and all 14 for class~D, the non-detections being isolated
-\texttt{no\_sustained\_exceedance} cases at a single width. Per-width
-repeatability is good through the body of the curve, with a standard deviation
-below \num{0.014} from \texttt{W050} to \texttt{W120}, but it degrades at the
-extreme geometries, where the narrow \texttt{W020} and the biaxial \texttt{W200}
-samples occasionally trigger early or fail the persistence requirement. For the
-thinner sheets the curvature limit stays close to the established methods:
-class~B gives mean absolute differences of \num{0.014} in $\varepsilon_1$ and
-\num{0.009} in $\varepsilon_2$, compared with \num{0.024} and \num{0.007} for
-class~A. The $\varepsilon_1$ component increases for the thicker sheets,
-reaching \num{0.033} for class~C and \num{0.046} for class~D, while the
-$\varepsilon_2$ component remains smaller but also rises to \num{0.013} and
-\num{0.016}. Class~D shows a consistent negative bias, with the curvature point
-falling below both reference methods at nearly every width. For example, the
-\texttt{W020} point gives $\varepsilon_1=\num{0.285}$ against the ISO~12004-2
-value of \num{0.358}. This baseline result shows that a single fixed parameter
-set does not describe all thicknesses equally well. It motivates the full sweep
-below, where the matrix length, reference-frame choice, persistence length,
-curvature offset, and threshold are varied across the complete \num{56}-sample
-dataset.
+and all 14 for class~D. For the thinner sheets, the curvature limit stays close
+to the established methods: class~B gives mean absolute differences of
+\num{0.014} in $\varepsilon_1$ and \num{0.009} in $\varepsilon_2$, compared
+with \num{0.024} and \num{0.007} for class~A. The $\varepsilon_1$ component
+increases for the thicker sheets, reaching \num{0.033} for class~C and
+\num{0.046} for class~D. The $\varepsilon_2$ component remains smaller, with
+mean values of \num{0.013} and \num{0.016}. Class~D shows a negative bias, with
+the curvature point falling below both reference methods at most widths. For
+example, the \texttt{W020} point gives $\varepsilon_1=\num{0.285}$ against the
+ISO~12004-2 value of \num{0.358}. This baseline from the first calibration sweep
+does not describe all thicknesses equally well, which motivates the broader
+parameter sweep below.
 
 \subsection{Parameter Sweep Across Thicknesses}
 \label{sec:ms_sweep_thickness}
