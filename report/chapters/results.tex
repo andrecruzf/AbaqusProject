@@ -385,71 +385,78 @@ four thicknesses (\num{56} samples), covering
 $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
 $M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
 $\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
-$\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
-was screened by its detection rate and by the stored mean
-$|\Delta\varepsilon_1|$ component relative to ISO~12004-2. The sweep export did
-not store the corresponding $|\Delta\varepsilon_2|$ component, so the sweep is
-treated as parameter screening rather than a final quantitative calibration.
-Table~\ref{tab:ms_sweep_thickness} lists the baseline and selected parameter
-sets used in Figure~\ref{fig:flc_ms_comparison_best}, and the complete stored
-$|\Delta\varepsilon_1|$ sweep is tabulated in Appendix~\ref{app:ms_sweep}.
+$\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. The Euler
+sweep output stores the detected limit strains for each sample, so two rankings
+are kept separate. The detection rank maximises the number of detected onsets
+and uses the strain errors only to order ties. The ISO-match rank is evaluated
+only for parameter sets detecting at least 13 of 14 samples and is ordered by
+the mean $|\Delta\varepsilon_1|$ relative to ISO~12004-2. The corresponding
+$|\Delta\varepsilon_2|$ value is reported next to it rather than hidden in a
+single distance. The complete compact $|\Delta\varepsilon_1|$ sweep is tabulated
+in Appendix~\ref{app:ms_sweep}.
 
 \begin{table}[H]
     \centering
-    \small
-    \caption[Min--Stoughton parameter screening across thicknesses]{Baseline
-    and selected parameter sets from the sweep. The baseline set is
-    $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$, and the
-    selected set is the one used in Figure~\ref{fig:flc_ms_comparison_best}.
-    Detection is the number of samples with a detected onset out of 14. No
-    error column is reported here because the sweep export stores
-    $|\Delta\varepsilon_1|$ but not $|\Delta\varepsilon_2|$.}
+    \scriptsize
+    \caption[Min--Stoughton parameter rankings across thicknesses]{Baseline
+    detection, detection-rank, and ISO-match-rank parameter sets from the Euler sweep. The
+    baseline set is
+    $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$. Detection is
+    the number of samples with a detected onset out of 14. Errors are mean
+    absolute differences to ISO~12004-2, reported separately for
+    $\varepsilon_1$ and $\varepsilon_2$.}
     \label{tab:ms_sweep_thickness}
-    \begin{tabular}{c c l c}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{c c l c c c l c c c}
         \toprule
+        & &
+        \multicolumn{4}{c}{Detection rank} &
+        \multicolumn{4}{c}{ISO-match rank} \\
+        \cmidrule(lr){3-6}\cmidrule(lr){7-10}
         Thickness & Baseline det. &
-        Selected $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Selected det. \\
+        $(W_Y,M,n,\mathrm{SAC},\alpha)$ & det. & $|\Delta\varepsilon_1|$ & $|\Delta\varepsilon_2|$ &
+        $(W_Y,M,n,\mathrm{SAC},\alpha)$ & det. & $|\Delta\varepsilon_1|$ & $|\Delta\varepsilon_2|$ \\
         \midrule
-        A ($\SI{1.2}{\milli\meter}$) & 13/14 & $(20,0.70,6,\num{5e-4},0.20)$ & 13/14 \\
-        B ($\SI{1.5}{\milli\meter}$) & 13/14 & $(15,0.80,8,\num{5e-4},0.10)$ & 13/14 \\
-        C ($\SI{2.0}{\milli\meter}$) & 12/14 & $(25,0.80,6,\num{5e-4},0.20)$ & 14/14 \\
-        D ($\SI{3.0}{\milli\meter}$) & 14/14 & $(25,0.80,10,\num{1e-3},0.10)$ & 13/14 \\
+        A ($\SI{1.2}{\milli\meter}$) & 13/14 &
+        $(25,0.70,8,\num{5e-4},0.10)$ & 14/14 & 0.027 & 0.008 &
+        $(25,0.70,10,\num{5e-4},0.10)$ & 13/14 & 0.020 & 0.005 \\
+        B ($\SI{1.5}{\milli\meter}$) & 13/14 &
+        $(15,0.80,6,\num{1e-3},0.10)$ & 14/14 & 0.044 & 0.013 &
+        $(15,0.80,8,\num{5e-4},0.20)$ & 13/14 & 0.030 & 0.009 \\
+        C ($\SI{2.0}{\milli\meter}$) & 12/14 &
+        $(20,0.75,8,\num{1e-3},0.10)$ & 14/14 & 0.024 & 0.009 &
+        $(20,0.75,8,\num{1e-3},0.10)$ & 14/14 & 0.024 & 0.009 \\
+        D ($\SI{3.0}{\milli\meter}$) & 14/14 &
+        $(15,0.75,6,\num{5e-4},0.20)$ & 14/14 & 0.038 & 0.015 &
+        $(15,0.75,8,\num{5e-4},0.20)$ & 13/14 & 0.036 & 0.015 \\
         \bottomrule
     \end{tabular}
+    }
 \end{table}
 
-Requiring detection of all fourteen samples is not always the best choice. For
-the thinner sheets the fourteenth sample is the stubborn second repetition of
-the biaxial \texttt{W200} geometry, and the only sets that capture it place
-\texttt{W200} far from the reference. For class~B the baseline set is retained,
-so the screening does not suggest a change there. Class~C moves to a longer
-matrix with the larger threshold multiplier $\alpha=0.20$, and class~D also
-favours a longer matrix. A larger threshold delays the detected onset, which
-raises the extracted strain and counteracts the underestimation seen in
-Section~\ref{sec:ms_campaign}. The selected sets remain indicative because
-they were chosen from a stored $|\Delta\varepsilon_1|$ screening metric. A
-final comparison should repeat the sweep with both $|\Delta\varepsilon_1|$ and
-$|\Delta\varepsilon_2|$, followed by held out validation, for example tuning on
-the first repetition and evaluating on the second.
+Requiring detection of all fourteen samples is not always the same as matching
+the ISO curve most closely. For class~A, the best detection set detects all
+samples, while the ISO-match rank reduces both strain errors at the cost of one
+missed sample. For class~C, both rankings select the same set. For class~D, the
+two ranks differ only slightly in the reported errors. These results should
+still be read as parameter screening because the same samples are used for
+ranking and comparison.
 
 Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
-when each thickness uses the selected set from
+when each thickness uses the ISO-match-rank set from
 Table~\ref{tab:ms_sweep_thickness}, in place of the single baseline set of
 Figure~\ref{fig:flc_ms_comparison}. Visually, the curvature curve moves closer
-to the ISO~12004-2 and Volk--Hora references across most of the diagram,
-including the biaxial \texttt{W200} point that the baseline set placed far off.
-The uniaxial branch of the thickest sheet~D still retains a visible offset.
-These sets detect thirteen or fourteen of the fourteen samples, the single miss
-being the extreme biaxial repetition whose forced detection would pull the
-\texttt{W200} point away from the reference.
+to the ISO~12004-2 and Volk--Hora references across most of the diagram. The
+uniaxial branch of the thickest sheet~D still retains a visible offset. These
+sets detect thirteen or fourteen of the fourteen samples.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{img/flc_ms_comparison_best.png}
-    \caption[Forming-limit comparison with the selected parameter set per thickness]{Forming-limit
+    \caption[Forming-limit comparison with the ISO-match parameter set per thickness]{Forming-limit
     diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
     Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
-    using each thickness's selected parameter set from
+    using each thickness's ISO-match-rank parameter set from
     Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
     single baseline set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
     mean over the two repetitions of a width.}
