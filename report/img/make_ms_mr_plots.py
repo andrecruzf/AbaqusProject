@@ -10,7 +10,6 @@ import math
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/abaqusproject_mplconfig")
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -216,37 +215,6 @@ def _plot_energy(
         _save(fig, stem)
 
 
-def _plot_forming_limit_points() -> None:
-    fig, ax = plt.subplots(figsize=(6.2, 4.0))
-    mass_color = "#1f77b4"
-    mesh_color = "#d95f02"
-    confirm_color = "#2ca02c"
-    for job in MASS_SWEEP:
-        fracture = _limit_row(job)
-        if fracture is None:
-            continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="o", color=mass_color, linestyle="None")
-    for job in MESH_SWEEP:
-        fracture = _limit_row(job)
-        if fracture is None:
-            continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="s", color=mesh_color, linestyle="None")
-    for job in CONFIRM_SWEEP:
-        fracture = _limit_row(job)
-        if fracture is None:
-            continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=confirm_color, linestyle="None")
-    _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
-    ax.set_title("Extracted fracture forming-limit points")
-    handles = [
-        Line2D([0], [0], marker="o", color="none", markerfacecolor=mass_color, markeredgecolor=mass_color, markersize=7, label="Mass-scaling sweep"),
-        Line2D([0], [0], marker="s", color="none", markerfacecolor=mesh_color, markeredgecolor=mesh_color, markersize=7, label="First mesh sweep"),
-        Line2D([0], [0], marker="^", color="none", markerfacecolor=confirm_color, markeredgecolor=confirm_color, markersize=7, label="Confirmation sweep"),
-    ]
-    ax.legend(handles=handles, loc="lower right", frameon=False, fontsize=8)
-    _save(fig, "ms_mr_forming_limit_points")
-
-
 def _summary_rows() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for job in MASS_SWEEP + MESH_SWEEP + CONFIRM_SWEEP:
@@ -336,7 +304,6 @@ def main() -> None:
         ylim=(0.0, 10.0),
         legend_below=True,
     )
-    _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     summary.to_csv(OUT_DIR / "ms_mr_summary.csv", index=False)
