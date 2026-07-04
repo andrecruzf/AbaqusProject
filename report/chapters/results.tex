@@ -495,13 +495,13 @@ $1\times10^{-4}$\,\si{\second}.
 
 Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
 the smaller target increments but separate for the aggressive mass-scaling
-settings. The full $\mathrm{ALLKE}/\mathrm{ALLIE}$ histories show the expected
-inertial growth for the larger target increments, while the late energy check
-in Table~\ref{tab:mass_scaling_walltime} supports the same reading. The two
-largest target increments are clearly too dynamic, while the intermediate
-targets reduce wall time but still shift the extracted fracture point relative
-to the conservative run. The follow-up checks therefore use
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
+settings. In the energy-ratio history, the first sharp increase occurs when the
+punch first contacts the blank. The second spike is associated with fracture
+and element deletion. The zoom around the \SI{5}{\percent} guideline therefore
+has to be read between these two events. Only
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ provides a sufficiently long forming
+interval below \SI{5}{\percent}. The larger target increments either remain too
+dynamic or drop below the criterion too late.
 
 
 \begin{figure}[H]
@@ -551,7 +551,8 @@ Table~\ref{tab:mesh_refinement_walltime} are still not mesh independent.
     \small
     \caption{First mesh-refinement screening batch at
     $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, on 24 CPUs. The late energy
-    ratio follows the definition of Table~\ref{tab:mass_scaling_walltime}.}
+    ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final
+    \SI{0.5}{\second} before the extracted fracture point.}
     \label{tab:mesh_refinement_walltime}
     \begin{tabular}{c c c c c}
         \toprule
@@ -640,9 +641,10 @@ element count of $f_\mathrm{MR}=1$.
     \centering
     \small
     \caption{Mesh-refinement confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The late energy ratio follows
-    the definition of Table~\ref{tab:mass_scaling_walltime}. The cost is the
-    product of solver wall-clock time and allocated CPUs.}
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The late energy ratio is the
+    maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final \SI{0.5}{\second}
+    before the extracted fracture point. The cost is the product of solver
+    wall-clock time and allocated CPUs.}
     \label{tab:confirm_sweep_summary}
     \begin{tabular}{c c c c c}
         \toprule
@@ -711,8 +713,8 @@ effect in this sweep is the shift of failure site and failure instant.
     \setlength{\tabcolsep}{5pt}
     \caption{Summary of the \texttt{W120} punch--blank friction sensitivity check. The
     force maximum is evaluated before the extracted fracture point. The late
-    energy ratio follows the definition of
-    Table~\ref{tab:mass_scaling_walltime}.}
+    energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final
+    \SI{0.5}{\second} before the extracted fracture point.}
     \label{tab:friction_sensitivity_summary}
     \begin{tabular}{c c c c c c c}
         \toprule
