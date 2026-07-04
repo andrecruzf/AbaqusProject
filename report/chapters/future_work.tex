@@ -9,15 +9,16 @@ four themes and ordered by priority within each.
   \item \textbf{Extend the mesh-size study beyond the reference case.} The
   production settings ($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$,
   $f_\mathrm{MR}=2$) are now fixed for the \texttt{W100} scalar reference case
-  (Section~\ref{sec:selection_numerical_parameters}), but mesh convergence
-  could not be confirmed. The additional $f_\mathrm{MR}=1.25$ and $1.41$
-  checks still violate the quasi-static criterion, $f_\mathrm{MR}=1.5$ did not
-  yield a post-processed result, and only $f_\mathrm{MR}=2$ and $3$ are valid
-  at this mass-scaling target. The next step is to test whether a smaller
-  $\Delta t_\mathrm{MS}$ keeps the fine meshes quasi-static, and to extend the
-  coarse-side sweep to $f_\mathrm{MR}=4$. The confirmation sweep should then be
-  repeated for the other relevant thicknesses and punch configurations. The
-  present sweep only varies the single global refinement factor; the
+  (Section~\ref{sec:selection_numerical_parameters}). The completed
+  confirmation sweep is quasi-static in the final forming-limit window and
+  supports convergence in the fine-side range from $f_\mathrm{MR}=1$ to
+  $1.41$, but $f_\mathrm{MR}=1.5$ did not yield a post-processed result and the
+  coarser $f_\mathrm{MR}=2$ and $3$ points still show endpoint sensitivity in
+  the major fracture strain. The next step is to complete the missing
+  intermediate case, extend the coarse-side sweep to $f_\mathrm{MR}=4$, and
+  repeat the confirmation sweep for the other relevant thicknesses and punch
+  configurations. The present sweep only varies the single global refinement
+  factor. The
   independent per-section sizing of Section~\ref{sec:mesh_generation} (central,
   transition, dome, and flange target sizes) is already implemented but has not
   yet been exercised in a sensitivity study, and a more extensive mesh study

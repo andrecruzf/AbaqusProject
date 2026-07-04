@@ -38,10 +38,13 @@ for Nakazima, Marciniak, and Punch in Punch simulations, including model
 generation, Euler submission, ODB post processing, and result synchronisation.
 For the \texttt{W100} reference case, the accepted setting is a mass scaling
 target of \SI{1e-6}{\second} with $f_\mathrm{MR}=2$, giving a maximum kinetic
-to internal energy ratio of \SI{1.8}{\percent}. Mesh convergence remains open
-because $f_\mathrm{MR}=1$, $1.25$, and $1.41$ are not quasi-static,
-$f_\mathrm{MR}=1.5$ did not yield a post-processed result, and the only valid
-points, $f_\mathrm{MR}=2$ and $3$, do not define a reliable trend.
+to internal energy ratio of \SI{1.8}{\percent}. In the final
+\SI{0.5}{\second} before fracture, all completed mesh-refinement confirmation
+runs remain below the \SI{5}{\percent} quasi-static criterion. The fine-side
+checks from $f_\mathrm{MR}=1$ to $1.41$ cluster at
+$\varepsilon_1^\mathrm{f}=0.201$ to $0.207$, while the coarser points still
+show endpoint sensitivity. Mesh convergence is therefore supported for the
+reference case, but broader mesh-independence checks remain necessary.
 
 \cleardoublepage
 

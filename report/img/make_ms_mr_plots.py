@@ -129,6 +129,22 @@ def _format_mr(mr: float) -> str:
     return f"{mr:g}"
 
 
+def _ratio_near_time(curve: pd.DataFrame, time_s: float | None) -> float:
+    if time_s is None or math.isnan(time_s) or curve.empty:
+        return math.nan
+    idx = (curve["time_s"] - time_s).abs().idxmin()
+    return float(curve.loc[idx, "ke_ratio_pct"])
+
+
+def _max_ratio_between(curve: pd.DataFrame, start_s: float, end_s: float) -> float:
+    if math.isnan(start_s) or math.isnan(end_s) or curve.empty:
+        return math.nan
+    window = curve[(curve["time_s"] >= start_s) & (curve["time_s"] <= end_s)]
+    if window.empty:
+        return math.nan
+    return float(np.nanmax(window["ke_ratio_pct"]))
+
+
 def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
     fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
@@ -212,6 +228,8 @@ def _summary_rows() -> list[dict[str, object]]:
         max_ke = float(np.nanmax(curve_after_start["ke_ratio_pct"])) if not curve_after_start.empty else math.nan
         fracture = _limit_row(job)
         volk_hora = _limit_row(job, "volk_hora")
+        fracture_time = None if fracture is None else float(fracture["time_s"])
+        volk_hora_time = None if volk_hora is None else float(volk_hora["time_s"])
         rows.append(
             {
                 "sweep": job.group,
@@ -219,6 +237,18 @@ def _summary_rows() -> list[dict[str, object]]:
                 "mass_scaling_dt_s": job.dt,
                 "mesh_refinement_factor": job.mr,
                 "max_ke_allie_pct_after_5pct_u3": max_ke,
+                "max_ke_allie_pct_last_0p5s_before_fracture": (
+                    math.nan
+                    if fracture_time is None
+                    else _max_ratio_between(curve, fracture_time - 0.5, fracture_time)
+                ),
+                "max_ke_allie_pct_between_vh_and_fracture": (
+                    math.nan
+                    if fracture_time is None or volk_hora_time is None
+                    else _max_ratio_between(curve, volk_hora_time, fracture_time)
+                ),
+                "ke_allie_pct_at_fracture": _ratio_near_time(curve, fracture_time),
+                "ke_allie_pct_at_volk_hora": _ratio_near_time(curve, volk_hora_time),
                 "fracture_eps1": None if fracture is None else float(fracture["eps1_major"]),
                 "fracture_eps2": None if fracture is None else float(fracture["eps2_minor"]),
                 "fracture_u3_mm": None if fracture is None else float(fracture["U3_mm"]),

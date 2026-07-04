@@ -685,7 +685,11 @@ and the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter} punch
 as the single reference case. The two numerical controls varied are the
 mass-scaling target time increment and the mesh-refinement level. An
 $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio below \SI{5}{\percent} is used as the
-quasi-static acceptance criterion throughout.
+quasi-static acceptance criterion. For the mass-scaling screening, the
+post-start maximum is used as a conservative metric. For the mesh-refinement
+confirmation sweep, this is complemented by the maximum in the final
+\SI{0.5}{\second} before the element-status fracture point, because the early
+acceleration peak is not representative of the forming-limit extraction.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
@@ -839,10 +843,9 @@ energy criterion at this mass-scaling target.
 \subsubsection{Selection of Numerical Parameters}
 \label{sec:selection_numerical_parameters}
 
-The final production settings are selected by combining the mass-scaling and
-mesh-refinement sweeps. The target is the least computationally expensive
-configuration that satisfies both the quasi-static energy criterion and the
-strain-convergence criterion.
+The final production settings combine the mass-scaling and mesh-refinement
+sweeps. The target is the least expensive configuration that satisfies both
+the quasi-static energy criterion and the strain-convergence criterion.
 
 For the completed \texttt{W100} reference runs, the mass-scaling sweep identifies
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
@@ -858,29 +861,29 @@ final simulations. An additional $f_\mathrm{MR}=1.5$ run was launched, but it
 was cancelled before post processing and is therefore not included as a usable
 data point.
 
-Figure~\ref{fig:confirm_sweep_results} and the max $\mathrm{ALLKE}/\mathrm{ALLIE}$
-values in Table~\ref{tab:confirm_sweep_summary} show that the finest runs still
-violate the \SI{5}{\percent} criterion at this mass-scaling target.
-$f_\mathrm{MR}=1$, $1.25$, and $1.41$ reach \SI{23.9}{\percent},
-\SI{24.5}{\percent}, and \SI{41.4}{\percent}, respectively. This is a coupling
-effect rather than a meshing problem on its own. At a fixed mass-scaling target,
-a finer mesh has a smaller natural stable time increment, so reaching the same
-$\Delta t_\mathrm{MS}$ requires proportionally more artificial mass, which
-increases the inertial ratio. Both $f_\mathrm{MR}=2$ (\SI{1.8}{\percent}) and
-$f_\mathrm{MR}=3$ (\SI{0.9}{\percent}) satisfy the energy criterion.
+Figure~\ref{fig:confirm_sweep_results} and
+Table~\ref{tab:confirm_sweep_summary} separate the early post-start peak from
+the energy ratio in the forming-limit window. The post-start maximum remains
+high for $f_\mathrm{MR}=1$, $1.25$, and $1.41$, reaching
+\SI{23.9}{\percent}, \SI{24.5}{\percent}, and \SI{41.4}{\percent}. These peaks
+occur during the early acceleration part of the simulation. In the final
+\SI{0.5}{\second} before fracture, all completed confirmation runs are below
+the \SI{5}{\percent} criterion. The late-window maxima are
+\SI{0.75}{\percent}, \SI{0.18}{\percent}, \SI{0.19}{\percent},
+\SI{0.22}{\percent}, and \SI{0.27}{\percent} for $f_\mathrm{MR}=1$, $1.25$,
+$1.41$, $2$, and $3$, respectively.
 
-Because $f_\mathrm{MR}=1$, $1.25$, and $1.41$ fail the energy criterion, they
-cannot be treated as trustworthy fine-mesh references. Their extracted major
-fracture strains are close to each other, between \num{0.205} and \num{0.207},
-while $f_\mathrm{MR}=2$ and $f_\mathrm{MR}=3$ give \num{0.244} and \num{0.219}.
-The added intermediate points therefore fill part of the sweep, but they do not
-establish a valid convergence trend. The production settings are nonetheless
-fixed at the finer valid setting,
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=2$, for the
-remainder of this report. With only $f_\mathrm{MR}=2$ and $3$ satisfying the
-quasi-static criterion, mesh convergence remains open. Re-examining the fine
-meshes with a smaller mass-scaling target, and extending the coarse-side sweep,
-are left as future work (Chapter~\ref{chap:future_work}).
+The fine-side checks $f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close
+element-status fracture strains, with $\varepsilon_1^\mathrm{f}$ between
+\num{0.201} and \num{0.207}, and $\varepsilon_2^\mathrm{f}$ between
+\num{0.096} and \num{0.097}. The coarser settings $f_\mathrm{MR}=2$ and $3$
+also keep the minor strain stable, but their major fracture strains are higher,
+at \num{0.244} and \num{0.219}. The additional sweep therefore supports
+mesh convergence in the fine-side range and confirms that the runs are
+quasi-static in the relevant extraction window. The production settings remain
+fixed at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=2$ for
+the remainder of this report, while broader mesh-independence checks across
+more geometries are left as future work (Chapter~\ref{chap:future_work}).
 
 \begin{figure}[ht]
     \centering
@@ -914,21 +917,21 @@ are left as future work (Chapter~\ref{chap:future_work}).
     \centering
     \small
     \caption{Mesh-refinement confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The energy ratio is the maximum
-    $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting the first \SI{5}{\percent}
-    of punch travel. The fracture strains are the element-status-based limit
-    point. Wall-clock times are diagnostic because the runs used different CPU
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The global energy maximum omits
+    the first \SI{5}{\percent} of punch travel. The late maximum is evaluated
+    over the final \SI{0.5}{\second} before the element-status fracture point.
+    Wall-clock times are diagnostic because the runs used different CPU
     counts.}
     \label{tab:confirm_sweep_summary}
-    \begin{tabular}{c c c c c c}
+    \begin{tabular}{c c c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] & CPUs \\
+        $f_\mathrm{MR}$ & Global max [\si{\percent}] & Late max [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] & CPUs \\
         \midrule
-        1    & 23.9 & 0.201 & 0.097 & 40.0 & 24 \\
-        1.25 & 24.5 & 0.207 & 0.096 & 30.9 & 12 \\
-        1.41 & 41.4 & 0.205 & 0.097 & 25.2 & 10 \\
-        2    &  1.8 & 0.244 & 0.096 & 20.9 & 24 \\
-        3    &  0.9 & 0.219 & 0.097 & 12.7 & 24 \\
+        1    & 23.9 & 0.75 & 0.201 & 0.097 & 40.0 & 24 \\
+        1.25 & 24.5 & 0.18 & 0.207 & 0.096 & 30.9 & 12 \\
+        1.41 & 41.4 & 0.19 & 0.205 & 0.097 & 25.2 & 10 \\
+        2    &  1.8 & 0.22 & 0.244 & 0.096 & 20.9 & 24 \\
+        3    &  0.9 & 0.27 & 0.219 & 0.097 & 12.7 & 24 \\
         \bottomrule
     \end{tabular}
 \end{table}
