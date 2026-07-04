@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
+from app.constants import EULER_HOST
 from services.euler import EulerService
 
 from .base import BasePage
@@ -78,7 +79,7 @@ class ConnectionPage(BasePage):
 
     def verify(self) -> None:
         username = self.username_var.get().strip()
-        host = self.host_var.get().strip() or "euler.ethz.ch"
+        host = self.host_var.get().strip() or EULER_HOST
         self.session.settings.euler_host = host
 
         def task(ctx):

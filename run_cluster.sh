@@ -43,7 +43,10 @@ if [ -z "$JOB_NAME" ] || [ -z "$OUTPUT_SUBDIR" ]; then
 fi
 
 WORK_DIR="$SLURM_SUBMIT_DIR/$OUTPUT_SUBDIR"
-SCRATCH_DIR="/cluster/scratch/acruzfaria/$OUTPUT_SUBDIR"
+if [ -z "${EULER_SCRATCH_ROOT:-}" ]; then
+    EULER_SCRATCH_ROOT=$("$PYTHON3" -c "import os, sys; sys.path.insert(0, '$SLURM_SUBMIT_DIR'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/' + os.environ.get('USER', '')))" 2>/dev/null || printf "/cluster/scratch/%s" "${USER:-$LOGNAME}")
+fi
+SCRATCH_DIR="${EULER_SCRATCH_ROOT%/}/$OUTPUT_SUBDIR"
 VUMAT="$WORK_DIR/VUMAT_explicit.f"
 
 if [ ! -d "$WORK_DIR" ]; then

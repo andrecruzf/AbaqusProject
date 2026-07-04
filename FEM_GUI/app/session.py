@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .constants import EULER_HOST
 from .log import AppLogger
 from .settings import AppSettings
 
@@ -12,7 +13,7 @@ from .settings import AppSettings
 @dataclass
 class ConnectionState:
     username: str | None = None
-    host: str = "euler.ethz.ch"
+    host: str = EULER_HOST
     connected: bool = False
     last_success: datetime | None = None
     last_error: str = ""
@@ -48,4 +49,3 @@ class AppSession:
     def set_disconnected(self, error: str = "") -> None:
         self.connection.connected = False
         self.connection.last_error = error
-

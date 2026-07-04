@@ -27,10 +27,19 @@ class ResultsBrowserPage(BasePage):
 
     PANEL_FORCE = "Force-Disp."
     PANEL_ENERGY = "Energy"
+    PANEL_STRAIN = "Strain Path"
     PANEL_VH = "V&H Rate"
     PANEL_TRIAX = "Triaxiality"
     PANEL_FLD = "FLD"
-    PLOT_PANELS = [PANEL_FORCE, PANEL_ENERGY, PANEL_VH, PANEL_TRIAX, PANEL_FLD]
+    PLOT_PANELS = [PANEL_FORCE, PANEL_ENERGY, PANEL_STRAIN, PANEL_VH, PANEL_TRIAX, PANEL_FLD]
+    PLOT_TITLES = {
+        PANEL_FORCE: "Force-displacement",
+        PANEL_ENERGY: "Energy history",
+        PANEL_STRAIN: "Strain path",
+        PANEL_VH: "V&H thinning rate",
+        PANEL_TRIAX: "Triaxiality",
+        PANEL_FLD: "FLD",
+    }
 
     def __init__(self, master, app) -> None:
         super().__init__(master, app)
@@ -40,18 +49,22 @@ class ResultsBrowserPage(BasePage):
         self.selected_job: str | None = None
         self.results_dir_var = ctk.StringVar(value=self.session.settings.results_dir)
         self.sync_status_var = ctk.StringVar(value="")
-        self.plot_panel_var = ctk.StringVar(value=self.PANEL_FORCE)
         self.fld_paths_var = ctk.BooleanVar(value=True)
         self.video_frame_var = ctk.DoubleVar(value=0)
         self.job_buttons: dict[str, ctk.CTkButton] = {}
+        self.plot_viewers: dict[str, PlotViewer] = {}
+        self.plot_buttons: dict[str, ctk.CTkButton] = {}
         self.media_images: list[ctk.CTkImage] = []
         self.video_frame_images: list[ctk.CTkImage] = []
         self.video_info: dict[Path, tuple[int, float]] = {}
         self.current_video_pair: tuple[Path | None, Path | None] | None = None
         self.current_video_max_frame = 0
         self._video_after_id = None
+        self._video_play_after_id = None
+        self._video_playing = False
         self._sync_running = False
-        self._plot_request = 0
+        self._plot_requests: dict[str, int] = {}
+        self._plot_batch = 0
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self._build()
@@ -108,7 +121,7 @@ class ResultsBrowserPage(BasePage):
 
     def _build_viewer(self) -> None:
         # One continuous vertically scrolling page, mirroring the Streamlit
-        # results view: movies, then mesh pictures, then the plot panel.
+        # results view: movies, then mesh pictures, then the plot sections.
         self.page = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.page.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
         self.page.grid_columnconfigure(0, weight=1)
@@ -148,6 +161,64 @@ class ResultsBrowserPage(BasePage):
         )
         self.video_frame_label.grid(row=0, column=2, sticky="e", padx=(10, 0))
 
+        buttons_row = ctk.CTkFrame(movies, fg_color="transparent")
+        buttons_row.grid(row=3, column=0, columnspan=2, sticky="ew", padx=12, pady=(0, 10))
+        buttons_row.grid_columnconfigure(0, weight=1)
+        buttons_row.grid_columnconfigure(6, weight=1)
+        self.video_buttons = {
+            "start": ctk.CTkButton(
+                buttons_row,
+                text="⏮",
+                width=44,
+                state="disabled",
+                command=lambda: self._seek_video_frame(0, pause=True),
+                **self.theme.button_kwargs(),
+            ),
+            "prev": ctk.CTkButton(
+                buttons_row,
+                text="⏴",
+                width=44,
+                state="disabled",
+                command=lambda: self._step_video_frame(-1),
+                **self.theme.button_kwargs(),
+            ),
+            "play": ctk.CTkButton(
+                buttons_row,
+                text="▶",
+                width=54,
+                state="disabled",
+                command=self._toggle_video_playback,
+                **self.theme.button_kwargs(primary=True),
+            ),
+            "next": ctk.CTkButton(
+                buttons_row,
+                text="⏵",
+                width=44,
+                state="disabled",
+                command=lambda: self._step_video_frame(1),
+                **self.theme.button_kwargs(),
+            ),
+            "end": ctk.CTkButton(
+                buttons_row,
+                text="⏭",
+                width=44,
+                state="disabled",
+                command=lambda: self._seek_video_frame(self.current_video_max_frame, pause=True),
+                **self.theme.button_kwargs(),
+            ),
+        }
+        tips = {
+            "start": "Go to start",
+            "prev": "Frame back",
+            "play": "Play or pause",
+            "next": "Frame forward",
+            "end": "Go to end",
+        }
+        for column, key in enumerate(("start", "prev", "play", "next", "end"), start=1):
+            button = self.video_buttons[key]
+            button.grid(row=0, column=column, padx=4)
+            ToolTip(button, tips[key])
+
     def _movie_panel(self, master: ctk.CTkFrame, title: str, column: int) -> dict[str, ctk.CTkLabel]:
         panel = ctk.CTkFrame(master, **self.theme.frame_kwargs(alt=True))
         panel.grid(row=1, column=column, sticky="nsew", padx=(12 if column == 0 else 4, 4 if column == 0 else 12), pady=2)
@@ -177,24 +248,52 @@ class ResultsBrowserPage(BasePage):
         plots.grid_columnconfigure(0, weight=1)
         header = ctk.CTkFrame(plots, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(10, 4))
-        ctk.CTkLabel(header, text="Post-processing plots", font=ctk.CTkFont(size=14, weight="bold")).pack(
-            side="left", padx=(0, 12)
-        )
-        ctk.CTkSegmentedButton(
+        ctk.CTkLabel(header, text="Post-processing plots", font=ctk.CTkFont(size=14, weight="bold")).pack(side="left")
+        self.render_all_button = ctk.CTkButton(
             header,
-            values=self.PLOT_PANELS,
-            variable=self.plot_panel_var,
-            command=lambda _value: self._render_current_panel(),
+            text="Render all",
+            width=90,
+            state="disabled",
+            command=self._render_all_plots,
+            **self.theme.button_kwargs(),
+        )
+        self.render_all_button.pack(side="right")
+        for row, panel in enumerate(self.PLOT_PANELS, start=1):
+            self._build_plot_section(plots, row, panel)
+
+    def _build_plot_section(self, master: ctk.CTkFrame, row: int, panel: str) -> None:
+        section = ctk.CTkFrame(master, fg_color="transparent")
+        section.grid(row=row, column=0, sticky="ew", padx=12, pady=(0, 12))
+        section.grid_columnconfigure(0, weight=1)
+        header = ctk.CTkFrame(section, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+        ctk.CTkLabel(
+            header,
+            text=self.PLOT_TITLES.get(panel, panel),
+            font=ctk.CTkFont(size=12, weight="bold"),
         ).pack(side="left")
-        self.fld_paths_checkbox = ctk.CTkCheckBox(
+        render_button = ctk.CTkButton(
             header,
-            text="Strain paths",
-            variable=self.fld_paths_var,
-            command=self._render_current_panel,
+            text="Render",
+            width=72,
+            state="disabled",
+            command=lambda p=panel: self._render_plot_section(p),
+            **self.theme.button_kwargs(),
         )
-        self.fld_paths_checkbox.pack(side="left", padx=14)
-        self.plot_viewer = PlotViewer(plots, self.theme)
-        self.plot_viewer.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 12))
+        render_button.pack(side="right")
+        self.plot_buttons[panel] = render_button
+        if panel == self.PANEL_FLD:
+            ctk.CTkCheckBox(
+                header,
+                text="Show strain paths",
+                variable=self.fld_paths_var,
+                command=lambda: self._render_plot_section(self.PANEL_FLD),
+            ).pack(side="right", padx=(0, 10))
+        viewer = PlotViewer(section, self.theme)
+        viewer.configure(height=430)
+        viewer.grid(row=1, column=0, sticky="ew")
+        viewer.grid_propagate(False)
+        self.plot_viewers[panel] = viewer
 
     # ── Top-bar actions ───────────────────────────────────────────────────
 
@@ -314,7 +413,7 @@ class ResultsBrowserPage(BasePage):
     def _show_job(self, path: Path | None) -> None:
         self._populate_movies(path)
         self._populate_mesh_pictures(path)
-        self._render_current_panel()
+        self._reset_plot_sections()
         canvas = getattr(self.page, "_parent_canvas", None)
         if canvas is not None:
             canvas.yview_moveto(0.0)
@@ -331,6 +430,7 @@ class ResultsBrowserPage(BasePage):
             return []
 
     def _populate_movies(self, path: Path | None) -> None:
+        self._pause_video_playback()
         videos = [item for item in self._job_files(path, {".webm", ".mp4"}) if item.stat().st_size > 0]
         iso = next((item for item in videos if item.stem.endswith("_movie")), None)
         section = next((item for item in videos if item.stem.endswith("_cut")), None)
@@ -360,17 +460,28 @@ class ResultsBrowserPage(BasePage):
             to=max(1, self.current_video_max_frame),
             number_of_steps=max(1, self.current_video_max_frame),
         )
+        self._set_video_buttons_enabled(True)
         current = int(min(max(round(self.video_frame_var.get()), 0), self.current_video_max_frame))
         self.video_frame_var.set(current)
         self._render_video_frame(current)
 
     def _disable_video_slider(self, message: str) -> None:
+        self._pause_video_playback()
         self.video_slider.configure(state="disabled", to=1, number_of_steps=1)
         self.video_frame_label.configure(text=message)
+        self._set_video_buttons_enabled(False)
+
+    def _set_video_buttons_enabled(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        for button in getattr(self, "video_buttons", {}).values():
+            button.configure(state=state)
+        if not enabled:
+            self.video_buttons["play"].configure(text="▶")
 
     def _on_video_frame_change(self, value: float | str) -> None:
         if not self.current_video_pair:
             return
+        self._pause_video_playback()
         try:
             frame_index = int(round(float(value)))
         except (TypeError, ValueError):
@@ -378,6 +489,61 @@ class ResultsBrowserPage(BasePage):
         if self._video_after_id:
             self.after_cancel(self._video_after_id)
         self._video_after_id = self.after(45, lambda: self._render_video_frame(frame_index))
+
+    def _seek_video_frame(self, frame_index: int, pause: bool = True) -> None:
+        if not self.current_video_pair:
+            return
+        if pause:
+            self._pause_video_playback()
+        frame_index = max(0, min(int(frame_index), self.current_video_max_frame))
+        self.video_frame_var.set(frame_index)
+        self._render_video_frame(frame_index)
+
+    def _step_video_frame(self, delta: int) -> None:
+        current = int(round(self.video_frame_var.get()))
+        self._seek_video_frame(current + delta, pause=True)
+
+    def _toggle_video_playback(self) -> None:
+        if self._video_playing:
+            self._pause_video_playback()
+        else:
+            self._start_video_playback()
+
+    def _start_video_playback(self) -> None:
+        if not self.current_video_pair or self.current_video_max_frame <= 0:
+            return
+        self._video_playing = True
+        self.video_buttons["play"].configure(text="⏸")
+        if self._video_play_after_id is None:
+            self._advance_video_playback()
+
+    def _pause_video_playback(self) -> None:
+        self._video_playing = False
+        if hasattr(self, "video_buttons"):
+            self.video_buttons["play"].configure(text="▶")
+        if self._video_play_after_id is not None:
+            self.after_cancel(self._video_play_after_id)
+            self._video_play_after_id = None
+
+    def _advance_video_playback(self) -> None:
+        self._video_play_after_id = None
+        if not self._video_playing or not self.current_video_pair:
+            return
+        current = int(round(self.video_frame_var.get()))
+        next_frame = current + 1
+        if next_frame > self.current_video_max_frame:
+            next_frame = 0
+        self._seek_video_frame(next_frame, pause=False)
+        fps_values = [
+            fps
+            for path in self.current_video_pair
+            if path is not None
+            for _count, fps in [self._video_info(path)]
+            if fps > 0
+        ]
+        fps = fps_values[0] if fps_values else 15.0
+        delay_ms = max(20, min(250, int(1000.0 / fps)))
+        self._video_play_after_id = self.after(delay_ms, self._advance_video_playback)
 
     def _video_info(self, path: Path) -> tuple[int, float]:
         path = Path(path)
@@ -483,7 +649,7 @@ class ResultsBrowserPage(BasePage):
         size = self._scaled_size(image, max_width, max_height)
         return ctk.CTkImage(dark_image=image, light_image=image, size=size)
 
-    # ── Plot panels ───────────────────────────────────────────────────────
+    # ── Plot sections ─────────────────────────────────────────────────────
 
     def _campaign_jobs(self) -> dict[str, Path]:
         """Jobs sharing the selected job's parent directory, i.e. its FLC set."""
@@ -493,18 +659,65 @@ class ResultsBrowserPage(BasePage):
         siblings = {name: path for name, path in self.jobs.items() if Path(path).parent == parent}
         return siblings or {self.selected_job: self.jobs[self.selected_job]}
 
-    def _render_current_panel(self) -> None:
-        panel = self.plot_panel_var.get()
-        if panel == self.PANEL_FLD:
-            self.fld_paths_checkbox.pack(side="left", padx=14)
-        else:
-            self.fld_paths_checkbox.pack_forget()
+    def _render_all_plots(self) -> None:
+        self._plot_batch += 1
+        batch = self._plot_batch
         if not self.selected_job:
-            self.plot_viewer.show_message("No job selected")
+            self._reset_plot_sections()
+            return
+        if hasattr(self, "render_all_button"):
+            self.render_all_button.configure(text="Rendering...", state="disabled")
+        for panel in self.PLOT_PANELS:
+            viewer = self.plot_viewers.get(panel)
+            if viewer is not None:
+                viewer.show_message("Queued...")
+        self._render_plot_batch(list(self.PLOT_PANELS), batch)
+
+    def _reset_plot_sections(self) -> None:
+        self._plot_batch += 1
+        has_job = self.selected_job is not None
+        if hasattr(self, "render_all_button"):
+            self.render_all_button.configure(text="Render all", state="normal" if has_job else "disabled")
+        for panel in self.PLOT_PANELS:
+            self._plot_requests[panel] = self._plot_requests.get(panel, 0) + 1
+            button = self.plot_buttons.get(panel)
+            if button is not None:
+                button.configure(text="Render", state="normal" if has_job else "disabled")
+            viewer = self.plot_viewers.get(panel)
+            if viewer is not None:
+                viewer.show_message("Click Render to load this plot" if has_job else "No job selected")
+
+    def _render_plot_batch(self, panels: list[str], batch: int) -> None:
+        if batch != self._plot_batch:
+            return
+        if not panels:
+            if hasattr(self, "render_all_button"):
+                self.render_all_button.configure(text="Render all", state="normal" if self.selected_job else "disabled")
+            return
+        self._render_plot_section(
+            panels[0],
+            on_done=lambda: self._render_plot_batch(panels[1:], batch),
+        )
+
+    def _render_plot_section(self, panel: str, on_done=None) -> None:
+        viewer = self.plot_viewers.get(panel)
+        if viewer is None:
+            if on_done is not None:
+                on_done()
+            return
+        button = self.plot_buttons.get(panel)
+        if button is not None:
+            button.configure(text="Rendering...", state="disabled")
+        self._plot_requests[panel] = self._plot_requests.get(panel, 0) + 1
+        request = self._plot_requests[panel]
+        if not self.selected_job:
+            viewer.show_message("No job selected")
+            if button is not None:
+                button.configure(text="Render", state="disabled")
+            if on_done is not None:
+                on_done()
             return
         job_dir = self.jobs[self.selected_job]
-        self._plot_request += 1
-        request = self._plot_request
 
         if panel == self.PANEL_FLD:
             campaign = self._campaign_jobs()
@@ -516,6 +729,7 @@ class ResultsBrowserPage(BasePage):
             factory = {
                 self.PANEL_FORCE: force_displacement.build,
                 self.PANEL_ENERGY: material_response.energy,
+                self.PANEL_STRAIN: strain.strain_path,
                 self.PANEL_VH: vh_plotting.dome_rate,
                 self.PANEL_TRIAX: strain.triaxiality,
             }[panel]
@@ -523,15 +737,28 @@ class ResultsBrowserPage(BasePage):
             def task(_ctx):
                 return factory(job_dir, self.cache)
 
-        self.plot_viewer.show_message("Rendering...")
+        viewer.show_message("Rendering...")
 
         def success(result):
-            if request != self._plot_request:
+            if request != self._plot_requests.get(panel):
                 return
             fig, reason = result
             if fig is None:
-                self.plot_viewer.show_message(reason or "No data")
+                viewer.show_message(reason or "No data")
             else:
-                self.plot_viewer.show_figure(fig, panel)
+                viewer.show_figure(fig, self.PLOT_TITLES.get(panel, panel))
+            if button is not None:
+                button.configure(text="Render", state="normal")
+            if on_done is not None:
+                on_done()
 
-        self.app.tasks.submit(f"Render {panel}", task, on_success=success)
+        def failure(exc):
+            if request != self._plot_requests.get(panel):
+                return
+            viewer.show_message(f"Plot failed: {exc}")
+            if button is not None:
+                button.configure(text="Render", state="normal")
+            if on_done is not None:
+                on_done()
+
+        self.app.tasks.submit(f"Render {panel}", task, on_success=success, on_error=failure)

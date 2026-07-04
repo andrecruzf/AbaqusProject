@@ -37,6 +37,7 @@ module load python/3.11.6
 
 PROJ_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 python3 -c "import matplotlib" 2>/dev/null || pip install --user matplotlib
+EULER_SCRATCH_ROOT=${EULER_SCRATCH_ROOT:-$(python3 -c "import os, sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/' + os.environ.get('USER', '')))" 2>/dev/null || printf "/cluster/scratch/%s" "${USER:-$LOGNAME}")}
 
 # Resolve TEST_TYPE / thickness / orientation from env or config.py (flc, results).
 _resolve_params() {
@@ -90,7 +91,7 @@ case "$MODE" in
     DIRS=""
     for W in ${WIDTHS}; do
         JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}"
-        ODB_DIR="/cluster/scratch/acruzfaria/${JOB_NAME}"
+        ODB_DIR="${EULER_SCRATCH_ROOT%/}/${JOB_NAME}"
         if [ -d "$ODB_DIR" ]; then DIRS="$DIRS $ODB_DIR"; else echo "  WARNING: not found: $ODB_DIR — skipping."; fi
     done
     [ -z "$DIRS" ] && { echo "  ERROR: no valid output directories found."; exit 1; }

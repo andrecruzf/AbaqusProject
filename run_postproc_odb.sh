@@ -7,7 +7,7 @@
 #
 # Example:
 #   sbatch run_postproc_odb.sh \
-#     /cluster/scratch/acruzfaria/FLC_nakazima_t1p25_ang0/Naka100_W200_t1p25_ang0_ms1e6_mr2/Naka100_W200_t1p25_ang0_ms1e6_mr2.odb
+#     /cluster/scratch/<user>/FLC_nakazima_t1p25_ang0/Naka100_W200_t1p25_ang0_ms1e6_mr2/Naka100_W200_t1p25_ang0_ms1e6_mr2.odb
 # =============================================================
 
 #SBATCH --job-name=postproc_odb
@@ -40,6 +40,7 @@ if [ -f "${ODB%.odb}.lck" ]; then
 fi
 
 PROJ_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+EULER_SCRATCH_ROOT=${EULER_SCRATCH_ROOT:-$(python3 -c "import os, sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/' + os.environ.get('USER', '')))" 2>/dev/null || printf "/cluster/scratch/%s" "${USER:-$LOGNAME}")}
 SCRATCH_DIR="$(dirname "$ODB")"
 JOB_NAME="$(basename "$ODB" .odb)"
 
@@ -67,8 +68,9 @@ module load python/3.11.6
 python3 -c "import matplotlib" 2>/dev/null || pip install --user matplotlib
 python3 "${PROJ_DIR}/plot_results.py" "$SCRATCH_DIR"
 
-if [[ "$SCRATCH_DIR" == /cluster/scratch/acruzfaria/* ]]; then
-    REL_DIR="${SCRATCH_DIR#/cluster/scratch/acruzfaria/}"
+SCRATCH_PREFIX="${EULER_SCRATCH_ROOT%/}/"
+if [[ "$SCRATCH_DIR" == "$SCRATCH_PREFIX"* ]]; then
+    REL_DIR="${SCRATCH_DIR#$SCRATCH_PREFIX}"
     OUT_DIR="${PROJ_DIR}/${REL_DIR}"
     if [ -d "$OUT_DIR" ]; then
         echo "--- Step 4: copying outputs back to home ---"

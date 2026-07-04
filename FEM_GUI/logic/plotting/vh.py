@@ -21,9 +21,12 @@ from .style import apply_standard_axes
 VH_ALPHA = 0.55
 VH_SEED_COUNT = 50
 VH_EVAL_BACK_FRAMES = 2
-VH_FIT_WINDOW_FRAC = 0.4
-VH_MIN_STABLE_POINTS = 7
-VH_MIN_UNSTABLE_POINTS = 3
+VH_FIT_WINDOW_SECONDS = max(0.0, float(os.environ.get("POSTPROC_VH_FIT_WINDOW_SECONDS", "2.0")))
+VH_UNSTABLE_TAIL_POINTS = max(0, int(os.environ.get("POSTPROC_VH_UNSTABLE_TAIL_POINTS", "4")))
+VH_UNSTABLE_FIT_WINDOW_SECONDS = max(0.0, float(os.environ.get("POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS", "0.6")))
+VH_FIT_WINDOW_FRAC = max(0.1, min(1.0, float(os.environ.get("POSTPROC_VH_FIT_WINDOW_FRAC", "0.4"))))
+VH_MIN_STABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_STABLE_POINTS", "20")))
+VH_MIN_UNSTABLE_POINTS = max(2, int(os.environ.get("POSTPROC_VH_MIN_UNSTABLE_POINTS", "4")))
 
 
 def dome_rate(job_dir: Path, cache) -> tuple[Figure | None, str]:
@@ -79,11 +82,10 @@ def dome_rate(job_dir: Path, cache) -> tuple[Figure | None, str]:
     if fit is not None:
         stable = fit["stable"]
         unstable = fit["unstable"]
-        ts = np.array([fit["t_fit_start"], fit["t_cross"]])
-        tu = np.array([fit["t_cross"], fit["t_fit_end"]])
+        tx = np.array([fit["t_fit_start"], fit["t_fit_end"]])
         for ax in (overview, zoom):
-            ax.plot(ts, stable["slope"] * ts + stable["intercept"], color="seagreen", linewidth=1.2, label="stable fit")
-            ax.plot(tu, unstable["slope"] * tu + unstable["intercept"], color="firebrick", linewidth=1.2, label="unstable fit")
+            ax.plot(tx, stable["slope"] * tx + stable["intercept"], color="seagreen", linewidth=1.2, label="stable fit")
+            ax.plot(tx, unstable["slope"] * tx + unstable["intercept"], color="firebrick", linewidth=1.2, label="unstable fit")
             ax.scatter([fit["t_cross"]], [fit["y_cross"]], marker="x", s=48, color="#D19A3A", zorder=5, label="intersection")
         zoom.set_xlim(fit["t_fit_start"], fit["t_fit_end"])
         row = data.iloc[fit["kstable"]]
@@ -91,20 +93,20 @@ def dome_rate(job_dir: Path, cache) -> tuple[Figure | None, str]:
         e2 = float(row["eps2_minor"])
         zoom.text(
             0.03,
-            0.95,
-            f"e1: {e1:.4f}\ne2: {e2:.4f}\nt:  {fit['t_cross']:.4f} s",
+            0.98,
+            f"e1 = {e1:.4f}   e2 = {e2:.4f}   t_necking = {t[fit['kstable']]:.4f} s",
             transform=zoom.transAxes,
             va="top",
             family="monospace",
             fontsize=9,
             bbox=dict(facecolor="white", edgecolor="silver", alpha=0.8),
         )
-        title = "Fit window"
+        title = "Volk-Hora - last 2 seconds"
     else:
         title = "Fit unavailable for this signal"
-    apply_standard_axes(overview, "Time [s]", r"Thinning rate $d(e_1+e_2)/dt$ [1/s]", "Volk-Hora signal")
+    apply_standard_axes(overview, "Time [s]", r"Thinning rate $d(e_1+e_2)/dt$ [1/s]", "Volk-Hora")
     apply_standard_axes(zoom, "Time [s]", "", title)
-    overview.legend(frameon=True, edgecolor="k", fancybox=False, fontsize=8)
+    overview.legend(frameon=True, edgecolor="k", fancybox=False, fontsize=8, loc="upper left")
     fig.tight_layout()
     return fig, ""
 
@@ -158,10 +160,10 @@ def _fit_from_ranges(
     ss, si, _ = stable_fit
     us, ui, _ = unstable_fit
     denom = ss - us
-    if denom >= 0:
+    if abs(denom) < 1e-20:
         return None
     t_cross = (ui - si) / denom
-    kcrit = next((i for i, tv in enumerate(t) if tv >= t_cross), None)
+    kcrit = _dic_instable_index(t, t_cross)
     if kcrit is None or kcrit <= 0:
         return None
     return {
@@ -440,43 +442,87 @@ def _line_fit(x: list[float], y: list[float]) -> tuple[float, float, float] | No
     return slope, intercept, err
 
 
+def _dic_instable_index(t: list[float], t_cross: float) -> int | None:
+    if not np.isfinite(t_cross):
+        return None
+    upper = next((idx for idx, value in enumerate(t) if value > t_cross), None)
+    if upper is None or upper <= 0:
+        return None
+    dt = t[upper] - t[upper - 1]
+    if dt <= 0:
+        return None
+    threshold = t_cross + 0.5 * dt
+    index = None
+    for idx, value in enumerate(t):
+        if value < threshold:
+            index = idx
+    if index is None or index <= 0:
+        return None
+    return index
+
+
 def _volk_hora_fit(t: list[float], rate: list[float]) -> dict[str, Any] | None:
     t_fit_end = t[-1]
-    t_min_fit = t[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (t_fit_end - t[0])
-    valid = [idx for idx in range(1, len(t) - 1) if t_min_fit <= t[idx] <= t_fit_end]
-    if len(valid) < VH_MIN_STABLE_POINTS + VH_MIN_UNSTABLE_POINTS:
+    if VH_FIT_WINDOW_SECONDS > 0.0:
+        t_min_fit = max(t[0], t_fit_end - VH_FIT_WINDOW_SECONDS)
+    else:
+        t_min_fit = t[0] + (1.0 - VH_FIT_WINDOW_FRAC) * (t_fit_end - t[0])
+    stable_idx = [idx for idx in range(1, len(t) - 1) if t_min_fit <= t[idx] <= t_fit_end]
+    if VH_UNSTABLE_TAIL_POINTS > 0:
+        unstable_idx = list(range(1, len(t) - 1))[-VH_UNSTABLE_TAIL_POINTS:]
+    else:
+        if VH_UNSTABLE_FIT_WINDOW_SECONDS > 0.0:
+            t_min_unstable = max(t[0], t_fit_end - VH_UNSTABLE_FIT_WINDOW_SECONDS)
+        else:
+            t_min_unstable = t_min_fit
+        unstable_idx = [idx for idx in range(1, len(t) - 1) if t_min_unstable <= t[idx] <= t_fit_end]
+    if len(stable_idx) <= VH_MIN_STABLE_POINTS or len(unstable_idx) < VH_MIN_UNSTABLE_POINTS:
         return None
-    x = [t[idx] for idx in valid]
-    y = [rate[idx] for idx in valid]
-    n = len(x)
+    xs = [t[idx] for idx in stable_idx]
+    ys = [rate[idx] for idx in stable_idx]
+    xu = [t[idx] for idx in unstable_idx]
+    yu = [rate[idx] for idx in unstable_idx]
+    ns = len(xs)
+    nu = len(xu)
+
     best_stable = None
-    for count in range(VH_MIN_STABLE_POINTS, n - VH_MIN_UNSTABLE_POINTS + 1):
-        fit = _line_fit(x[:count], y[:count])
-        if fit is not None and (best_stable is None or fit[2] < best_stable["mse"]):
-            best_stable = {"count": count, "slope": fit[0], "intercept": fit[1], "mse": fit[2]}
+    for count in range(VH_MIN_STABLE_POINTS, ns):
+        fit = _line_fit(xs[:count], ys[:count])
+        if fit is None:
+            continue
+        score = fit[2] * float(count) / float(max(count - 1, 1))
+        if best_stable is None or score < best_stable["mse"]:
+            best_stable = {"count": count, "slope": fit[0], "intercept": fit[1], "mse": score}
     best_unstable = None
-    for count in range(VH_MIN_UNSTABLE_POINTS, n - VH_MIN_STABLE_POINTS + 1):
-        fit = _line_fit(x[n - count:], y[n - count:])
-        if fit is not None and (best_unstable is None or fit[2] < best_unstable["mse"]):
-            best_unstable = {"count": count, "slope": fit[0], "intercept": fit[1], "mse": fit[2]}
+    if VH_UNSTABLE_TAIL_POINTS > 0:
+        unstable_candidates = [(0, nu)]
+    else:
+        unstable_candidates = [(start, nu - start) for start in range(1, nu - VH_MIN_UNSTABLE_POINTS + 1)]
+    for start, count in unstable_candidates:
+        fit = _line_fit(xu[start:], yu[start:])
+        if fit is None:
+            continue
+        score = fit[2]
+        if best_unstable is None or score < best_unstable["mse"]:
+            best_unstable = {"count": count, "slope": fit[0], "intercept": fit[1], "mse": score}
     if best_stable is None or best_unstable is None:
         return None
     denom = best_stable["slope"] - best_unstable["slope"]
-    if denom >= 0:
+    if abs(denom) < 1e-20:
         return None
     t_cross = (best_unstable["intercept"] - best_stable["intercept"]) / denom
-    if t_cross < x[0] or t_cross > x[-1]:
-        return None
-    kcrit = next((idx for idx, value in enumerate(t) if value >= t_cross), None)
+    kcrit = _dic_instable_index(t, t_cross)
     if kcrit is None or kcrit <= 0:
         return None
     return {
-        "t_fit_start": x[0],
-        "t_fit_end": x[-1],
+        "t_fit_start": xs[0],
+        "t_fit_end": t_fit_end,
         "t_cross": t_cross,
         "y_cross": best_stable["slope"] * t_cross + best_stable["intercept"],
         "kcrit": kcrit,
         "kstable": kcrit - 1,
         "stable": best_stable,
         "unstable": best_unstable,
+        "stable_range": (xs[0], xs[best_stable["count"] - 1]),
+        "unstable_range": (xu[nu - best_unstable["count"]], xu[-1]),
     }

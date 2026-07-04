@@ -8,15 +8,16 @@
 #   ./deploy_movie.sh Nakazima_W50_t1p5_ang0
 #
 # The .webm is written to:
-#   /cluster/home/acruzfaria/AbaqusProject/<JOB_NAME>/<JOB_NAME>_movie.webm
+#   $EULER_DIR/<JOB_NAME>/<JOB_NAME>_movie.webm
 # =============================================================
 
 set -e
 
-EULER_USER="acruzfaria"
-EULER_HOST="euler.ethz.ch"
-EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EULER_USER="${EULER_USER:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_USER', 'acruzfaria'))")}"
+EULER_HOST="${EULER_HOST:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_HOST', 'euler.ethz.ch'))")}"
+EULER_DIR="${EULER_DIR:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_DIR', '/cluster/home/%s/AbaqusProject' % getattr(config, 'EULER_USER', '')))")}"
+EULER_SCRATCH_ROOT="${EULER_SCRATCH_ROOT:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/%s' % getattr(config, 'EULER_USER', '')))")}"
 
 # ── 1. Resolve JOB_NAME ───────────────────────────────────────────────────────
 JOB_NAME="$1"
@@ -26,7 +27,7 @@ if [ -z "$JOB_NAME" ]; then
     echo ""
     echo "Available jobs on Euler (scratch):"
     ssh "${EULER_USER}@${EULER_HOST}" \
-        "ls /cluster/scratch/acruzfaria/ 2>/dev/null | grep -v '^$' | sort" \
+        "ls ${EULER_SCRATCH_ROOT}/ 2>/dev/null | grep -v '^$' | sort" \
         2>/dev/null || echo "  (could not list)"
     exit 1
 fi
@@ -50,7 +51,7 @@ echo "  Submitting SLURM job ..."
 JOB_ID=$(ssh "${EULER_USER}@${EULER_HOST}" \
     "cd ${EULER_DIR} && sbatch \
      --job-name=movie_${JOB_NAME} \
-     --export=ALL,JOB_NAME=${JOB_NAME} \
+     --export=ALL,JOB_NAME=${JOB_NAME},EULER_DIR=${EULER_DIR},EULER_SCRATCH_ROOT=${EULER_SCRATCH_ROOT} \
      --parsable run_movie.sh")
 
 echo "=============================================="

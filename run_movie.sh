@@ -19,8 +19,10 @@ set -e
 module load stack/2024-06
 module load abaqus/2023
 
-EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
-SCRATCH_ODB="/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}.odb"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EULER_DIR="${EULER_DIR:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_DIR', '${SCRIPT_DIR}'))" 2>/dev/null || printf "%s" "$SCRIPT_DIR")}"
+EULER_SCRATCH_ROOT="${EULER_SCRATCH_ROOT:-$(python3 -c "import os, sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/' + os.environ.get('USER', '')))" 2>/dev/null || printf "/cluster/scratch/%s" "${USER:-$LOGNAME}")}"
+SCRATCH_ODB="${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}.odb"
 DEST_DIR="${EULER_DIR}/${JOB_NAME}"
 
 echo "=============================================="
@@ -45,16 +47,16 @@ cp /tmp/postproc_movie_out.txt "$DEST_DIR/postproc_movie_out.txt" 2>/dev/null \
     && echo "  postproc_movie_out.txt -> $DEST_DIR" \
     || echo "  WARNING: log copy failed"
 cat "$DEST_DIR/postproc_movie_out.txt" 2>/dev/null || true
-cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_movie.webm" "$DEST_DIR/" \
+cp "${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}_movie.webm" "$DEST_DIR/" \
     && echo "  ${JOB_NAME}_movie.webm -> $DEST_DIR" \
     || echo "  WARNING: webm copy failed"
-cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_movie.mp4" "$DEST_DIR/" \
+cp "${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}_movie.mp4" "$DEST_DIR/" \
     && echo "  ${JOB_NAME}_movie.mp4  -> $DEST_DIR" \
     || echo "  NOTE: mp4 not present (optional)"
-cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_cut.webm" "$DEST_DIR/" \
+cp "${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}_cut.webm" "$DEST_DIR/" \
     && echo "  ${JOB_NAME}_cut.webm   -> $DEST_DIR" \
     || echo "  NOTE: cut webm not present (optional)"
-cp "/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}_cut.mp4" "$DEST_DIR/" \
+cp "${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}_cut.mp4" "$DEST_DIR/" \
     && echo "  ${JOB_NAME}_cut.mp4    -> $DEST_DIR" \
     || echo "  NOTE: cut mp4 not present (optional)"
 

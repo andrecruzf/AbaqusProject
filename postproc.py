@@ -74,10 +74,18 @@ Environment variables (all optional; defaults in parentheses):
         evaluated (1).
 
   Volk & Hora — time fit (WHEN necking starts):
-    POSTPROC_VH_FIT_WINDOW_FRAC : trailing physical-time fraction used for the
-        stable/unstable line fit (0.4).
-    POSTPROC_VH_MIN_STABLE_POINTS : min points on the stable branch (7).
-    POSTPROC_VH_MIN_UNSTABLE_POINTS : min points on the unstable branch (3).
+    POSTPROC_VH_FIT_WINDOW_SECONDS : trailing physical-time window used for the
+        stable line fit. Default 2.0 s for the FEM field-output cadence. Set to
+        0 to use POSTPROC_VH_FIT_WINDOW_FRAC instead.
+    POSTPROC_VH_UNSTABLE_TAIL_POINTS : number of final pre-fracture fit points
+        used for the unstable line (4). Set to 0 to use
+        POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS instead.
+    POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS : fallback trailing physical-time
+        window used for the unstable line fit (0.6).
+    POSTPROC_VH_FIT_WINDOW_FRAC : fallback trailing physical-time fraction used
+        when POSTPROC_VH_FIT_WINDOW_SECONDS <= 0 (0.4).
+    POSTPROC_VH_MIN_STABLE_POINTS : min points on the stable branch (20).
+    POSTPROC_VH_MIN_UNSTABLE_POINTS : min points on the unstable branch (4).
 
   Other criteria / output:
     POSTPROC_QS_RATIO_LIMIT : warn if max ALLKE/ALLIE exceeds this value (0.10).
@@ -111,8 +119,10 @@ except Exception as _cfg_err:   # standalone fallback — mirror config.py defau
         'force_peak_guard_fraction': 0.02, 'force_drop_fraction': 0.15,
         'require_through_thickness': True, 'through_thickness_fraction': 1.0,
         'min_through_thickness_layers': 0,
-        'vh_fracture_radius_mm': 3.0, 'vh_fit_window_frac': 0.4,
-        'vh_min_stable_points': 7, 'vh_min_unstable_points': 3,
+        'vh_fracture_radius_mm': 3.0, 'vh_fit_window_seconds': 2.0,
+        'vh_unstable_tail_points': 4, 'vh_unstable_fit_window_seconds': 0.6,
+        'vh_fit_window_frac': 0.4,
+        'vh_min_stable_points': 20, 'vh_min_unstable_points': 4,
         'vh_eval_back_frames': 1, 'vh_alpha': 0.55, 'vh_seed_count': 5,
         'vh_damage_max': 0.85, 'vh_damage_min_cells': 5,
         'spacing_sample_max': 1500,
@@ -134,6 +144,9 @@ _ENV_TO_CFG = {
     'POSTPROC_FORCE_PEAK_GUARD_FRACTION':            'force_peak_guard_fraction',
     'POSTPROC_FORCE_DROP_FRACTION':                  'force_drop_fraction',
     'POSTPROC_VH_FRACTURE_RADIUS_MM':                'vh_fracture_radius_mm',
+    'POSTPROC_VH_FIT_WINDOW_SECONDS':                'vh_fit_window_seconds',
+    'POSTPROC_VH_UNSTABLE_TAIL_POINTS':              'vh_unstable_tail_points',
+    'POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS':       'vh_unstable_fit_window_seconds',
     'POSTPROC_VH_FIT_WINDOW_FRAC':                   'vh_fit_window_frac',
     'POSTPROC_VH_MIN_STABLE_POINTS':                 'vh_min_stable_points',
     'POSTPROC_VH_MIN_UNSTABLE_POINTS':               'vh_min_unstable_points',
@@ -1481,23 +1494,43 @@ def _volk_hora_fit_indices(times, rates, fit_end_time=None):
     Fit stable and unstable straight lines to the representative thinning-rate
     signal. Mirrors the Streamlit helper, returning frame indices in this path.
     """
+    fit_window_seconds = max(0.0, _env_float('POSTPROC_VH_FIT_WINDOW_SECONDS', 2.0))
+    unstable_tail_points = max(0, _env_int('POSTPROC_VH_UNSTABLE_TAIL_POINTS', 4))
+    unstable_window_seconds = max(0.0, _env_float('POSTPROC_VH_UNSTABLE_FIT_WINDOW_SECONDS', 0.6))
     fit_window_frac = max(0.1, min(1.0, _env_float('POSTPROC_VH_FIT_WINDOW_FRAC', 0.4)))
-    min_stable = max(2, _env_int('POSTPROC_VH_MIN_STABLE_POINTS', 7))
-    min_unstable = max(2, _env_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 3))
-    if len(times) < min_stable + min_unstable or len(rates) != len(times):
+    min_stable = max(2, _env_int('POSTPROC_VH_MIN_STABLE_POINTS', 20))
+    min_unstable = max(2, _env_int('POSTPROC_VH_MIN_UNSTABLE_POINTS', 4))
+    if len(rates) != len(times) or len(times) <= max(min_stable, min_unstable):
         return None
     t_fit_end = times[-1] if fit_end_time is None else float(fit_end_time)
-    t_min_fit = times[0] + (1.0 - fit_window_frac) * (t_fit_end - times[0])
-    valid_indices = [
+    if fit_window_seconds > 0.0:
+        t_min_fit = max(times[0], t_fit_end - fit_window_seconds)
+    else:
+        t_min_fit = times[0] + (1.0 - fit_window_frac) * (t_fit_end - times[0])
+    stable_indices = [
         i for i in range(1, len(times) - 1)
         if times[i] >= t_min_fit and times[i] <= t_fit_end
     ]
-    if len(valid_indices) < min_stable + min_unstable:
+    if unstable_tail_points > 0:
+        unstable_indices = list(range(1, len(times) - 1))[-unstable_tail_points:]
+    else:
+        if unstable_window_seconds > 0.0:
+            t_min_unstable = max(times[0], t_fit_end - unstable_window_seconds)
+        else:
+            t_min_unstable = t_min_fit
+        unstable_indices = [
+            i for i in range(1, len(times) - 1)
+            if times[i] >= t_min_unstable and times[i] <= t_fit_end
+        ]
+    if len(stable_indices) <= min_stable or len(unstable_indices) < min_unstable:
         return None
-    x = [times[i] for i in valid_indices]
-    y = [rates[i] for i in valid_indices]
-    n = len(x)
-    if n < min_stable + min_unstable:
+    xs = [times[i] for i in stable_indices]
+    ys = [rates[i] for i in stable_indices]
+    xu = [times[i] for i in unstable_indices]
+    yu = [rates[i] for i in unstable_indices]
+    ns = len(xs)
+    nu = len(xu)
+    if ns <= min_stable or nu < min_unstable:
         return None
 
     def _line_fit(xs, ys):
@@ -1515,33 +1548,59 @@ def _volk_hora_fit_indices(times, rates, fit_end_time=None):
         mse = sum((ys[i] - (m * xs[i] + q)) ** 2 for i in range(n_pts)) / n_pts
         return m, q, mse
 
+    def _dic_instable_index(t_cross):
+        if not math.isfinite(t_cross):
+            return None
+        upper = None
+        for idx, value in enumerate(times):
+            if value > t_cross:
+                upper = idx
+                break
+        if upper is None or upper <= 0:
+            return None
+        dt = times[upper] - times[upper - 1]
+        if dt <= 0:
+            return None
+        threshold = t_cross + 0.5 * dt
+        index = None
+        for idx, value in enumerate(times):
+            if value < threshold:
+                index = idx
+        if index is None or index <= 0:
+            return None
+        return index
+
     best_stable = None
-    for count in range(min_stable, n - min_unstable + 1):
-        fit = _line_fit(x[:count], y[:count])
-        if fit is not None and (best_stable is None or fit[2] < best_stable['mse']):
+    for count in range(min_stable, ns):
+        fit = _line_fit(xs[:count], ys[:count])
+        if fit is None:
+            continue
+        score = fit[2] * float(count) / float(max(count - 1, 1))
+        if best_stable is None or score < best_stable['mse']:
             best_stable = {'count': count, 'slope': fit[0],
-                           'intercept': fit[1], 'mse': fit[2]}
+                           'intercept': fit[1], 'mse': score}
 
     best_unstable = None
-    for count in range(min_unstable, n - min_stable + 1):
-        fit = _line_fit(x[n - count:], y[n - count:])
-        if fit is not None and (best_unstable is None or fit[2] < best_unstable['mse']):
+    if unstable_tail_points > 0:
+        unstable_candidates = [(0, nu)]
+    else:
+        unstable_candidates = [(start, nu - start) for start in range(1, nu - min_unstable + 1)]
+    for start, count in unstable_candidates:
+        fit = _line_fit(xu[start:], yu[start:])
+        if fit is None:
+            continue
+        score = fit[2]
+        if best_unstable is None or score < best_unstable['mse']:
             best_unstable = {'count': count, 'slope': fit[0],
-                             'intercept': fit[1], 'mse': fit[2]}
+                             'intercept': fit[1], 'mse': score}
     if best_stable is None or best_unstable is None:
         return None
 
     denom = best_stable['slope'] - best_unstable['slope']
-    if denom >= 0:
+    if abs(denom) < 1e-20:
         return None
     t_cross = (best_unstable['intercept'] - best_stable['intercept']) / denom
-    if t_cross < x[0] or t_cross > x[-1]:
-        return None
-    kcrit = None
-    for i, tv in enumerate(times):
-        if tv >= t_cross:
-            kcrit = i
-            break
+    kcrit = _dic_instable_index(t_cross)
     if kcrit is None or kcrit <= 0:
         return None
     return {

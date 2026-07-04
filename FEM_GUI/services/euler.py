@@ -73,7 +73,7 @@ class EulerService:
             if key_only:
                 msg = "SSH key authentication failed. Disable key-only mode or configure your Euler SSH key."
             else:
-                msg = "SSH authentication failed. Try connecting once in Terminal with ssh username@euler.ethz.ch."
+                msg = f"SSH authentication failed. Try connecting once in Terminal with ssh username@{self.host}."
         elif "Network is unreachable" in err or "Could not resolve" in err:
             msg = "Euler is unreachable. Check ETH network or VPN."
         else:

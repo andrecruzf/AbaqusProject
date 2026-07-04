@@ -25,6 +25,7 @@ module load stack/2024-06
 module load abaqus/2023
 
 PROJ_DIR="$SLURM_SUBMIT_DIR"
+EULER_SCRATCH_ROOT=${EULER_SCRATCH_ROOT:-$(python3 -c "import os, sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(getattr(config, 'EULER_SCRATCH_ROOT', '/cluster/scratch/' + os.environ.get('USER', '')))" 2>/dev/null || printf "/cluster/scratch/%s" "${USER:-$LOGNAME}")}
 
 # ── Resolve parameters (env override or config.py defaults) ───
 TEST_TYPE=${TEST_TYPE:-$(python3 -c "import sys; sys.path.insert(0,'$PROJ_DIR'); import config; print(config.TEST_TYPE)")}
@@ -48,7 +49,7 @@ echo "=============================================="
 
 for W in ${WIDTHS}; do
     JOB_NAME="${_test_cap}_W${W}_t${_t}_ang${_ang}"
-    ODB="/cluster/scratch/acruzfaria/${JOB_NAME}/${JOB_NAME}.odb"
+    ODB="${EULER_SCRATCH_ROOT%/}/${JOB_NAME}/${JOB_NAME}.odb"
 
     echo ""
     echo "--- ${JOB_NAME} ---"
@@ -62,7 +63,7 @@ for W in ${WIDTHS}; do
 
     # Copy all CSVs back to project output dir for archiving
     OUT_DIR="${PROJ_DIR}/${JOB_NAME}"
-    SCRATCH_DIR="/cluster/scratch/acruzfaria/${JOB_NAME}"
+    SCRATCH_DIR="${EULER_SCRATCH_ROOT%/}/${JOB_NAME}"
     if [ -d "$OUT_DIR" ]; then
         copy_result_file() {
             local f="$1"

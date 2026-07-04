@@ -11,11 +11,11 @@
 #   ./collect_results.sh nakazima 1.5 0 --large-csvs # also download strain_dome.csv
 # =============================================================
 
-EULER_USER="acruzfaria"
-EULER_HOST="euler.ethz.ch"
-EULER_DIR="/cluster/home/acruzfaria/AbaqusProject"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+EULER_USER="${EULER_USER:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_USER', 'acruzfaria'))")}"
+EULER_HOST="${EULER_HOST:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_HOST', 'euler.ethz.ch'))")}"
+EULER_DIR="${EULER_DIR:-$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(getattr(config, 'EULER_DIR', '/cluster/home/%s/AbaqusProject' % getattr(config, 'EULER_USER', '')))")}"
 
 DEFAULT_TEST_TYPE=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.TEST_TYPE)")
 DEFAULT_THICKNESS=$(python3 -c "import sys; sys.path.insert(0, '${SCRIPT_DIR}'); import config; print(config.BLANK_THICKNESS)")

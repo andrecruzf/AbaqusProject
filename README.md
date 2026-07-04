@@ -132,17 +132,19 @@ cd AbaqusProject
 
 Or copy the project folder to your machine if you received it as an archive.
 
-### 2. Edit deploy variables
+### 2. Edit Euler settings
 
-Open `deploy.sh` and update the three variables at the top:
+Open `config.py` and update the Euler connection block:
 
-```bash
-EULER_USER="your_eth_username"          # ← change this
-EULER_HOST="euler.ethz.ch"              # leave as-is
-EULER_DIR="/cluster/home/your_eth_username/AbaqusProject"  # ← change this
+```python
+EULER_USER = 'your_eth_username'
+EULER_HOST = 'euler.ethz.ch'
+EULER_PROJECT_NAME = 'AbaqusProject'
 ```
 
-Use the same values in any local helper script that connects to Euler.
+The deploy, sync, monitoring, movie, and post-processing helpers read these
+defaults from `config.py`. The home and scratch paths are derived from the
+configured user unless you explicitly override them with environment variables.
 
 ---
 
@@ -265,9 +267,9 @@ Download once done:
 
 ```bash
 # Full isometric view
-scp acruzfaria@euler.ethz.ch:/cluster/home/acruzfaria/AbaqusProject/<JOB_NAME>/<JOB_NAME>_movie.webm .
+scp YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/<JOB_NAME>/<JOB_NAME>_movie.webm .
 # Y=0 half-model cut view (punch visible through translucent tooling)
-scp acruzfaria@euler.ethz.ch:/cluster/home/acruzfaria/AbaqusProject/<JOB_NAME>/<JOB_NAME>_cut.webm .
+scp YOUR_ETH_USERNAME@euler.ethz.ch:/cluster/home/YOUR_ETH_USERNAME/AbaqusProject/<JOB_NAME>/<JOB_NAME>_cut.webm .
 ```
 
 Two animations are produced:
