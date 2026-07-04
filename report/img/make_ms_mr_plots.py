@@ -114,9 +114,12 @@ def _style_axes(ax: plt.Axes, xlabel: str, ylabel: str) -> None:
     ax.spines["right"].set_visible(False)
 
 
-def _save(fig: plt.Figure, stem: str) -> None:
+def _save(fig: plt.Figure, stem: str, *, bottom_margin: float | None = None) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    if bottom_margin is None:
+        fig.tight_layout()
+    else:
+        fig.tight_layout(rect=(0.0, bottom_margin, 1.0, 1.0))
     fig.savefig(OUT_DIR / f"{stem}.png", dpi=300)
     fig.savefig(OUT_DIR / f"{stem}.pdf")
     plt.close(fig)
@@ -171,7 +174,14 @@ def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
     _save(fig, stem)
 
 
-def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, float] | None = None) -> None:
+def _plot_energy(
+    jobs: list[Job],
+    stem: str,
+    title: str,
+    ylim: tuple[float, float] | None = None,
+    *,
+    legend_below: bool = False,
+) -> None:
     fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
     max_ratio = 0.0
@@ -189,8 +199,21 @@ def _plot_energy(jobs: list[Job], stem: str, title: str, ylim: tuple[float, floa
         ax.set_ylim(*ylim)
     _style_axes(ax, r"Simulation time $t$ [s]", r"$\mathrm{ALLKE}/\mathrm{ALLIE}$ [%]")
     ax.set_title(title)
-    ax.legend(loc="upper right", frameon=False, fontsize=8, ncol=2)
-    _save(fig, stem)
+    if legend_below:
+        handles, labels = ax.get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.02),
+            frameon=False,
+            fontsize=8,
+            ncol=3,
+        )
+        _save(fig, stem, bottom_margin=0.20)
+    else:
+        ax.legend(loc="upper right", frameon=False, fontsize=8, ncol=2)
+        _save(fig, stem)
 
 
 def _plot_forming_limit_points() -> None:
@@ -288,13 +311,31 @@ def main() -> None:
     )
     _plot_strain_path(MASS_SWEEP, "ms_mr_mass_scaling_strain_path", r"Mass-scaling sensitivity ($f_\mathrm{MR}=2$)")
     _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy", r"Energy-ratio history ($f_\mathrm{MR}=2$)")
-    _plot_energy(MASS_SWEEP, "ms_mr_mass_scaling_energy_zoom", r"Zoom near 5% criterion ($f_\mathrm{MR}=2$)", ylim=(0.0, 10.0))
+    _plot_energy(
+        MASS_SWEEP,
+        "ms_mr_mass_scaling_energy_zoom",
+        r"Zoom near 5% criterion ($f_\mathrm{MR}=2$)",
+        ylim=(0.0, 10.0),
+        legend_below=True,
+    )
     _plot_strain_path(MESH_SWEEP, "ms_mr_mesh_refinement_strain_path", r"Mesh-refinement sensitivity ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
     _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy", r"Energy-ratio history ($\Delta t_\mathrm{MS}=10^{-5}$ s)")
-    _plot_energy(MESH_SWEEP, "ms_mr_mesh_refinement_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-5}$ s)", ylim=(0.0, 10.0))
+    _plot_energy(
+        MESH_SWEEP,
+        "ms_mr_mesh_refinement_energy_zoom",
+        r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-5}$ s)",
+        ylim=(0.0, 10.0),
+        legend_below=True,
+    )
     _plot_strain_path(CONFIRM_SWEEP, "ms_mr_confirm_strain_path", r"Mesh-refinement confirmation ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
     _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy", r"Energy-ratio history ($\Delta t_\mathrm{MS}=10^{-6}$ s)")
-    _plot_energy(CONFIRM_SWEEP, "ms_mr_confirm_energy_zoom", r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-6}$ s)", ylim=(0.0, 10.0))
+    _plot_energy(
+        CONFIRM_SWEEP,
+        "ms_mr_confirm_energy_zoom",
+        r"Zoom near 5% criterion ($\Delta t_\mathrm{MS}=10^{-6}$ s)",
+        ylim=(0.0, 10.0),
+        legend_below=True,
+    )
     _plot_forming_limit_points()
     summary = pd.DataFrame(_summary_rows())
     OUT_DIR.mkdir(parents=True, exist_ok=True)
