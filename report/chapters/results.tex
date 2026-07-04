@@ -479,52 +479,47 @@ is reported together with the configuration that generated it.
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
 
-The sensitivity study determines suitable numerical parameters for the
-production simulations. All runs use the fixed punch velocity and smooth step
-profile of Chapter~\ref{chap:numerical_model}, frictionless punch contact,
-and the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter} punch
-as the single reference case. The two numerical controls varied are the
-mass-scaling target time increment and the mesh-refinement level. An
-$\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio below \SI{5}{\percent} is used as the
-quasi-static acceptance criterion. For the mass-scaling screening, the
-post-start maximum is used as a conservative metric. For the mesh-refinement
-confirmation sweep, this is complemented by the maximum in the final
-\SI{0.5}{\second} before the element-status fracture point, because the early
-acceleration peak is not representative of the forming-limit extraction. This
-split does not soften the mass-scaling selection, since for aggressive mass
-scaling the exceedance persists into the extraction window, with a late-window
-maximum of about \SI{11}{\percent} at
-$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$, whereas for the fine meshes at the
-accepted target the exceedance is confined to the early acceleration phase.
+The sensitivity study establishes the numerical parameters adopted for the
+production simulations. The investigation considers the mass-scaling target
+time increment and the mesh-refinement level, using the Nakazima
+\texttt{W100} specimen with the \SI{100}{\milli\meter} punch as the reference
+configuration. All simulations are performed with the numerical setup
+described in Chapter~\ref{chap:numerical_model}, including a fixed punch
+velocity, smooth step amplitude, and frictionless punch contact.
+
+The selected parameters are assessed in terms of their influence on the
+predicted response while ensuring quasi-static conditions. The ratio of kinetic
+to internal energy, $\mathrm{ALLKE}/\mathrm{ALLIE}$, is used as the primary
+indicator, with a target value below \SI{5}{\percent}. The results of the
+mass-scaling and mesh-sensitivity analyses are presented in the following
+sections and form the basis for the numerical settings used throughout the
+remainder of this work.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
 
-The mass-scaling sweep varies the target time increment while keeping the mesh
-refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
-$1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
-$1\times10^{-4}$\,\si{\second}.
+The mass-scaling study investigates the influence of the target time increment
+while keeping the mesh refinement fixed at $f_\mathrm{MR}=2$. Five target
+increments are considered:
+$1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$,
+$5\times10^{-5}$, and $1\times10^{-4}$\,\si{\second}.
 
-Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
-the present \texttt{W100} reference case. The full-range energy plot gives the overall
-magnitude of the inertial response, while the \SIrange{0}{10}{\percent} zoom
-resolves the neighbourhood of the \SI{5}{\percent} criterion. After the initial
-contact transient is omitted, only
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ remains below the
-\SI{5}{\percent} $\mathrm{ALLKE}/\mathrm{ALLIE}$ limit. The larger target time
-increments produce visibly similar strain paths over much of the process,
-but their energy ratios are too high for a quasi-static production setting.
-This quasi-static requirement is also the computationally expensive choice:
-Table~\ref{tab:mass_scaling_walltime} shows that the only target that passes
-the energy criterion, $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, costs about
-\SI{95}{\times} the solver wall-clock time of the fastest but non-quasi-static
-target, $\Delta t_\mathrm{MS}=\SI{1e-4}{\second}$.
-
+Figure~\ref{fig:ms_sweep_results} presents the corresponding
+$\mathrm{ALLKE}/\mathrm{ALLIE}$ ratios. The pronounced peaks near the end of
+the simulations coincide with specimen fracture and are therefore not
+representative of the quasi-static forming stage. Excluding these fracture
+events, only $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ satisfies the
+\SI{5}{\percent} quasi-static criterion. The next smallest target increment,
+$\Delta t_\mathrm{MS}=\SI{5e-6}{\second}$, exhibits only a moderate reduction
+in wall-clock time while exceeding the admissible energy ratio. Consequently,
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ is selected for all subsequent
+simulations despite the increased computational cost reported in
+Table~\ref{tab:mass_scaling_walltime}.
 \begin{table}[ht]
     \centering
     \small
-    \caption{Solver wall-clock time and quasi-staticity of the mass-scaling
-    sweep at $f_\mathrm{MR}=2$, on 24 CPUs. The energy ratio is the maximum
+    \caption{Solver CPU time and quasi-staticity of the mass-scaling
+    sweep at $f_\mathrm{MR}=2$. The energy ratio is the maximum
     $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting the first \SI{5}{\percent}
     of punch travel.}
     \label{tab:mass_scaling_walltime}
@@ -540,6 +535,9 @@ target, $\Delta t_\mathrm{MS}=\SI{1e-4}{\second}$.
         \bottomrule
     \end{tabular}
 \end{table}
+
+
+
 
 \begin{figure}[ht]
     \centering
@@ -744,18 +742,7 @@ checks across more geometries are left as future work
     \end{tabular}
 \end{table}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.8\linewidth]{img/results/ms_mr_forming_limit_points.png}
-    \caption[Extracted fracture forming-limit points of the numerical sweeps]{Extracted
-    element-status fracture points for the mass-scaling sweep (MS, at
-    $f_\mathrm{MR}=2$), the diagnostic mesh-refinement sweep (MR, at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$), and the confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The confirmation runs from
-    $f_\mathrm{MR}=1$ to $1.41$ cluster tightly, while the coarser meshes and
-    the aggressively mass-scaled targets deviate in major or minor strain.}
-    \label{fig:ms_mr_flp}
-\end{figure}
+
 
 \subsection{Friction-Factor Sensitivity Check}
 \label{sec:friction_sensitivity}
