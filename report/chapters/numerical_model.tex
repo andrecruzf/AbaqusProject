@@ -13,22 +13,15 @@ and submission logic, as described in Appendix~\ref{app:interface}.
 
 \subsection{Automated Workflow}
 
-The model generation is organised as a sequence of \software{Python} modules.
-The main script first reads the configuration and then creates the specimen,
-tools, assembly, material definition, analysis step, contact interactions,
-boundary conditions, output requests, and job definition. Each simulation
-therefore passes through the same sequence of operations, independent of the
-selected test type.
+For each case, the framework reads the master configuration and runs the same
+model generation sequence. The scripts create the geometry, material definition,
+contact setup, boundary conditions, output requests, and \software{Abaqus} job.
 
-After the model has been generated, the input file and the user material
-subroutine are placed in the simulation directory. Once the
-\software{Abaqus/Explicit} job has finished, the same post processing script
-reads the output database (ODB) and writes the force displacement data, energy
-histories, and strain paths. Forming limit point extraction is included as a
-development output, but it is not treated as a validated numerical result in
-this report. The resulting file structure
-is kept identical for all test configurations so that the results can be
-aggregated without additional manual work.
+After the model has been written, the input file and user material subroutine
+are submitted to \software{Abaqus/Explicit}. Once the job is complete, post
+processing extracts the compact result files used for evaluation. Forming limit
+point extraction is still a development output and is therefore treated
+cautiously in this report.
 
 \subsection{Integration with the ETH Euler Cluster}
 
