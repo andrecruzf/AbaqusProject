@@ -666,6 +666,84 @@ during the run and copied to the Euler home directory on completion:
   \item Home directory: \path{/cluster/home/<username>/}
 \end{itemize}
 
+\chapter{Surrogate Material Calibration}
+\label{app:material_calibration}
+
+The 46 VUMAT constants used for all simulations in this report originate from
+a chair internal calibration of the AA5182 batch \texttt{2023\_12\_21\_B} with
+\SI{3.0}{\milli\meter} sheet thickness. The constitutive framework follows
+Roth and Mohr~\cite{Roth2014}, combining a non associated Hill'48 formulation,
+mixed Swift Voce hardening, Johnson Cook type strain rate and temperature
+terms, and the Hosford and Coulomb fracture initiation model. The anisotropy
+was characterised with a YLD2000-2d yield function with exponent $m=8$, and
+the Hill'48 coefficients were derived from it by numerical differentiation,
+with the yield surface coefficients obtained from the stress ratios and the
+plastic potential coefficients from the $r$ values. The strain rate and
+temperature coefficients are zero in this calibration, so the constitutive
+response is rate and temperature independent. The fracture parameters of the
+\SI{0}{\degree} orientation are used in the simulations.
+Figure~\ref{fig:aa5182_calibration} reproduces the calibration overview and
+Table~\ref{tab:aa5182_parameters} lists the parameter set.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/aa5182_UT.png}
+        \caption{Uniaxial tension response.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/aa5182_YR_ratios.png}
+        \caption{Yield stress and $r$ value ratios versus loading angle.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.6\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/aa5182_HC_locus.png}
+        \caption{Hosford and Coulomb fracture locus.}
+    \end{subfigure}
+    \caption[AA5182 surrogate calibration overview]{Calibration overview of
+    the AA5182 surrogate material. (a) Uniaxial tension model fit, (b)
+    directional yield stress and $r$ value ratios, and (c) strain to fracture
+    versus stress triaxiality of the Hosford and Coulomb model.}
+    \label{fig:aa5182_calibration}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Surrogate AA5182 material parameters passed to the VUMAT. The
+    Johnson Cook coefficients $C_\mathrm{JC}$ and $m_\mathrm{JC}$ are zero, so
+    the rate and temperature terms are inactive.}
+    \label{tab:aa5182_parameters}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        Group & Parameters & Values \\
+        \midrule
+        Elastic and thermal & $E$, $\nu$, $c_p$, $\eta_\mathrm{TQ}$, $\rho$ &
+        \SI{71}{\giga\pascal}, 0.33, \SI{897}{\joule\per\kilogram\per\kelvin},
+        0.9, \SI{2780}{\kilogram\per\cubic\meter} \\
+        Yield surface & $P_{12}$, $P_{22}$, $P_{33}$ &
+        $-0.5013$, $0.9734$, $0.2318$ \\
+        Plastic potential & $G_{12}$, $G_{22}$, $G_{33}$ &
+        $-0.4133$, $0.5574$, $4.3917$ \\
+        Swift hardening & $A$, $\varepsilon_0$, $n$ &
+        \SI{665.5}{\mega\pascal}, $0.0059$, $0.361$ \\
+        Voce hardening & $\sigma_0$, $Q$, $C$ &
+        \SI{126.0}{\mega\pascal}, \SI{275.8}{\mega\pascal}, $9.85$ \\
+        Hardening weight & $\alpha$ & $0.01$ \\
+        Rate and temperature & $\dot{\varepsilon}_0$, $C_\mathrm{JC}$, $m_\mathrm{JC}$ &
+        \SI{e-3}{\per\second}, $0$, $0$ \\
+        Fracture initiation & $a$, $b_0$, $c$, $n_\mathrm{HC}$ &
+        $1.35$, $0.70$, $0.10$, $0.10$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 \chapter{User Interface}
 \label{app:interface}
 

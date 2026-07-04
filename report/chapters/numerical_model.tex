@@ -161,14 +161,19 @@ Appendix~\ref{app:numerical_implementation}.
 
 \subsection{Material Model}
 
-The sheet is described through a user material subroutine (VUMAT). Plasticity is
-modelled with a Hill'48 yield function and a non associated flow rule. The
-hardening law combines Swift and Voce terms, and fracture initiation follows the
-Hosford and Coulomb model.
+The sheet is described through a user material subroutine
+(VUMAT)~\cite{Roth2014}. Plasticity is modelled with a Hill'48 yield function
+and a non associated flow rule. The hardening law combines Swift and Voce
+terms, and fracture initiation follows the Hosford and Coulomb model. The
+subroutine also provides Johnson Cook type strain rate and temperature
+contributions, which are inactive in the present calibration, so the
+constitutive response is rate and temperature independent.
 
-The 46 material constants were taken from an existing calibration of AA5182, a
-comparable \mbox{5xxx series} aluminium alloy, since the AA5754 batch of the
-campaign had not yet been characterised. They are used here as a surrogate, so
+The 46 material constants were taken from an existing chair internal
+calibration of AA5182, a comparable \mbox{5xxx series} aluminium alloy, since
+the AA5754 batch of the campaign had not yet been characterised. The
+calibration overview and the full parameter set are reproduced in
+Appendix~\ref{app:material_calibration}. They are used here as a surrogate, so
 the numerical results serve to verify the framework rather than to predict the
 AA5754 forming limits quantitatively.
 
@@ -178,7 +183,10 @@ allows rolling direction and transverse direction simulations to be performed
 using the same numerical model without modifying the underlying implementation.
 
 Material degradation and fracture are represented through the internal damage
-variables of the VUMAT, which trigger element deletion upon failure. Besides
+variables of the VUMAT. The fracture indicator accumulates plastic strain
+weighted by the Hosford and Coulomb strain to fracture at the current stress
+state, and an element is deleted once the indicator reaches its critical
+value. Besides
 representing crack initiation, the resulting deletion pattern is used during
 post processing to identify the fracture location and distinguish valid dome
 centred fractures from failures occurring outside the evaluation region.
@@ -191,30 +199,30 @@ quasi static response therefore requires limiting the inertial effects
 introduced by the explicit solution procedure while keeping the computational
 cost within reasonable limits.
 
-The numerical behaviour is governed by three coupled quantities. These are the
-punch velocity, the mesh discretisation, and the applied mass scaling. A finer mesh
-reduces the stable time increment, increasing the computational cost, whereas a
-higher punch velocity or more aggressive mass scaling improves computational
-efficiency at the expense of increased inertial effects. To reduce this coupling
-to a tractable study, the punch velocity is fixed at
-\SI{5}{\milli\meter\per\second}, using the previous numerical setup of
+The numerical behaviour is governed by three coupled quantities, namely the
+punch velocity, the mesh discretisation, and the applied mass scaling. A finer
+mesh reduces the stable time increment and increases the computational cost,
+whereas a higher punch velocity or more aggressive mass scaling reduces the
+cost at the price of larger inertial effects. In the experiment the punch
+advances at roughly \SI{1}{\milli\meter\per\second} over a travel on the order
+of \SI{30}{\milli\meter}, so the physical forming event lasts on the order of
+\SI{30}{\second}, which is prohibitive at the stable time increment of an
+explicit analysis. The punch velocity is therefore fixed at
+\SI{5}{\milli\meter\per\second}, following the previous numerical setup of
 Sen~\cite{Sen2025} as a starting point rather than as a validation of
-quasi static behaviour. This value reflects a compromise between physical
-fidelity and computational cost. In the experiment the punch advances at roughly
-\SI{1}{\milli\meter\per\second}, and a typical test requires a punch travel on
-the order of \SI{30}{\milli\meter} before fracture, so the physical forming event
-lasts on the order of \SI{30}{\second}. Because \software{Abaqus/Explicit}
-advances the solution at the stable time increment, reproducing this duration
-at the true forming speed would require an excessive number of increments and a
-prohibitive run time. Increasing the punch velocity shortens the simulated
-process time in proportion and therefore reduces the cost, at the price of
-larger inertial effects. At \SI{5}{\milli\meter\per\second} the simulated
-process is reduced to about \SI{6}{\second}, corresponding to a factor of five
-reduction in process time. Fixing this value removes one degree of freedom in
-the explicit setup, so the scalar sensitivity study can focus on the two
-remaining numerical controls, which are mesh density and mass scaling. Whether the
-resulting simulations are sufficiently quasi static is not assumed from the
-punch speed. It is checked from the energy histories for each run.
+quasi static behaviour, which shortens the simulated process to about
+\SI{6}{\second}. Because the rate and temperature terms of the material model
+are inactive in the present calibration, the increased punch velocity affects
+the solution only through inertia. Fixing the velocity removes one degree of
+freedom, so the sensitivity study of Chapter~\ref{chap:results} varies only
+the mesh density and the mass scaling, and whether the resulting simulations
+are sufficiently quasi static is checked from the energy histories of each
+run.
+
+Mass scaling artificially modifies the material density so that the stable
+time increment reaches a prescribed target $\Delta t_\mathrm{MS}$. The choice
+of this target is the subject of the mass scaling study in
+Chapter~\ref{chap:results}.
 
 To verify the validity of each simulation, the kinetic and internal energy
 histories are extracted automatically during post processing. The ratio of
