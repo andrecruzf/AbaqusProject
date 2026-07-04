@@ -52,24 +52,33 @@ are selected through the configuration file.
 \subsection{Geometry, Contact and Boundary Conditions}
 
 To reduce the computational cost, only one quarter of the specimen is
-modelled. Symmetry boundary conditions are applied on the two cut planes,
-while all tooling components are represented as analytical rigid bodies. The
-forming motion is prescribed through the punch reference point, whereas the die
-and blank holder remain fixed. The outer blank edge is constrained to
-represent the clamping action of the experimental setup.
+modelled. This restriction is possible because all simulated cases use the
+\SI{0}{\degree} or \SI{90}{\degree} material orientation, for which the
+material axes coincide with the specimen axes. Symmetry boundary conditions
+are applied on the two cut planes, while all tooling components are
+represented as analytical rigid bodies. The forming motion is prescribed
+through the punch reference point, whereas the die and blank holder remain
+fixed. In the experimental setup, a toothed ring is indented into the outer
+radius of the blank in a preliminary clamping step, which prevents any draw in
+of the flange during the test. The model represents this clamping by fully
+constraining the blank along the innermost ring of the clamped outer region.
 
-Contact between the tools and the blank is modelled using hard normal contact
-with Coulomb friction. The same contact formulation is employed for the Nakazima
-and Marciniak configurations, while the Punch in Punch model activates the
-additional contact interactions associated with the second punch. Consequently,
-the overall modelling strategy remains identical across the three test
-configurations, with only the geometry and loading sequence being adapted.
+Contact between the tools and the blank is modelled through surface to surface
+contact pairs with kinematic enforcement of the hard normal constraint and a
+penalty regularised isotropic Coulomb friction model. The die and blank holder
+contacts use a Coulomb coefficient of \num{0.35}, adopted from the previous
+numerical setup of Sen~\cite{Sen2025}, while the punch to blank coefficient is
+treated as a study parameter and examined in
+Section~\ref{sec:friction_sensitivity}. The same contact formulation is
+employed for the Nakazima and Marciniak configurations, while the Punch in
+Punch model activates the additional contact interactions associated with the
+second punch.
 
 \subsection{Parameterised Mesh Generation}
 \label{sec:mesh_generation}
 
-The deformable sheet is discretised using eight node linear reduced integration
-hexahedral elements (C3D8R). A solid formulation is adopted because the
+The deformable sheet is discretised using linear hexahedral elements with
+reduced integration (C3D8R). A solid formulation is adopted because the
 constitutive model accounts for through thickness deformation, damage evolution,
 and element deletion.
 
@@ -108,22 +117,25 @@ applied to every geometry, the element size at a corresponding location is
 identical across all specimen widths and punch diameters. The specimen width
 only changes how far the outer sections extend. Second, the central zone keeps a
 constant fine resolution, so the region where fracture initiates is always
-resolved consistently. Through the thickness, a fixed number of element layers is
-used, which keeps the through thickness resolution constant as well.
+resolved consistently. Through the thickness, ten element layers are used for
+every blank, independent of the refinement factor. This count is an empirical
+choice that resolves the through thickness strain gradients of a developing
+neck. It is kept fixed because additional layers would act as a further mesh
+refinement and would reduce the stable time increment, so the through
+thickness resolution would otherwise couple directly into the computational
+cost.
 
 \begin{table}[H]
 \centering
 \caption{Default target element sizes of the concentric sections, from the pole
-outward, for the standard specimen family. The same sectioning is applied to
-every geometry, which makes the element size identical across specimen widths and
-punch diameters by construction.}
+outward, for the standard specimen family.}
 \label{tab:mesh_zones}
-\begin{tabular}{@{}llc@{}}\toprule[1.5pt]
+\begin{tabular}{@{}llc@{}}\toprule
 Section & Region & Target element size (\si{\milli\meter}) \\ \midrule
 Central & Pole/punch apex   & 0.2 \\
 Transition & Below the dome    & 0.4 \\
 Dome & Main stretched region   & 0.8 \\
-Flange & Clamped outer zone    & 1.2 \\ \bottomrule[1.5pt]
+Flange & Clamped outer zone    & 1.2 \\ \bottomrule
 \end{tabular}
 \end{table}
 
@@ -132,12 +144,11 @@ Flange & Clamped outer zone    & 1.2 \\ \bottomrule[1.5pt]
 For routine use and for mesh convergence studies, the whole mesh is refined or
 coarsened with a single global refinement factor. This factor multiplies the
 seed spacing of every section, while the section boundaries remain unchanged.
-It is therefore a spacing factor and not a direct multiplier of the element
-count. A factor of \num{2} doubles the in plane seed spacing. For a sheet
-surface this gives a fourfold larger in plane cell area and roughly fourfold
-fewer in plane cells, apart from small differences introduced by the partition
-geometry and the fixed through thickness layering. Values below \num{1} refine
-the mesh, while values above \num{1} coarsen it.
+A factor of \num{2} therefore doubles the in plane seed spacing, which gives a
+fourfold larger in plane cell area and roughly fourfold fewer in plane cells,
+apart from small differences introduced by the partition geometry and the
+fixed through thickness layering. Values below \num{1} refine the mesh, while
+values above \num{1} coarsen it.
 
 The target size of each section can also be chosen independently. This makes it
 possible to tune how quickly the elements coarsen from the fine pole towards
@@ -145,10 +156,6 @@ the flange and to concentrate elements where they are most needed. The global
 refinement factor is recovered as a particular choice within this same set of
 section controls. Example meshes illustrating both controls are given in
 Appendix~\ref{app:numerical_implementation}.
-
-The section boundaries and the section target sizes can be set either through
-the pipeline web interface or directly in its configuration, so that a mesh can
-be defined interactively or reproduced in a scripted study.
 
 \section{Numerical Formulation}
 
