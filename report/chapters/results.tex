@@ -190,16 +190,16 @@ applied.
     \label{fig:flc_norm}
 \end{figure}
 
-The intersection-line method is governed by two length scales. The first is the
-spacing between neighbouring intersection lines, fixed here at
-\SI{2}{\milli\meter}. The second is the neck-window width used for the ISO
-parabola fit, introduced through the constant $10$ in
-Eq.~\eqref{eq:din_window}. These choices do not represent the same physical
-scale. The line spacing controls how densely the strain field is sampled near
+The intersection-line method contains two length scales. The first is the
+spacing between neighbouring intersection lines, which remains fixed at
+\SI{2}{\milli\meter} throughout this study. The second is the neck-window width
+used for the ISO parabola fit, introduced through the constant $10$ in
+Eq.~\eqref{eq:din_window}. Only this second parameter is varied in the tuning
+below. The line spacing controls how densely the strain field is sampled near
 the crack path, whereas the fitting window controls how much of the neck
-profile is used to identify the limit strain. The latter is expected to depend
-on punch size because the strained dome and neck profile become narrower when
-the punch diameter $D$ decreases. A constant calibrated on the
+profile is used to identify the limit strain. The fitting window is expected
+to depend on punch size because the strained dome and neck profile become
+narrower when the punch diameter $D$ decreases. A constant calibrated on the
 $\varnothing$\SI{100}{\milli\meter} ISO punch is therefore not necessarily
 transferable to the \SI{80}{\milli\meter}, \SI{60}{\milli\meter}, and
 \SI{40}{\milli\meter} punches.
@@ -287,15 +287,16 @@ shows the corresponding re-evaluation.
 
 These observations indicate that the ISO~12004-2 evaluation, calibrated for a
 single standardised punch, cannot be transferred unchanged to a campaign that
-varies the punch diameter. The window width and, by the
-same argument, the intersection-line spacing should be made tunable and
-geometry-aware, scaling with the punch diameter and the sheet thickness,
-respectively. The $D/10$ rule is a first, deliberately simple candidate. A
-defensible parameter choice additionally requires verifying that the extracted
-limit is insensitive to the window in the neighbourhood of the selected value
-and cross-validating against the criteria of Sections~\ref{sec:vh_method}
-and~\ref{sec:minstoughton_method} (Volk--Hora and Min--Stoughton). This
-validation is left to future work.
+varies the punch diameter: the extracted \SI{40}{\milli\meter} limit reflects
+the fixed window as much as the material response. The $D/10$ rule is a first,
+deliberately simple candidate because it links the fitted neck window to the
+punch diameter while preserving the standard value for the
+$\varnothing$\SI{100}{\milli\meter} punch. The intersection-line spacing was
+not changed in this study. Since smaller punches may also create a thinner
+neck region, the fixed \SI{2}{\milli\meter} spacing should be checked in a
+separate sensitivity study. A defensible parameter choice additionally requires
+verifying that the extracted limit is insensitive to the window in the
+neighbourhood of the selected value. This validation is left to future work.
 
 \section{Task II: Min--Stoughton Curvature Criterion}
 \label{sec:results_task2}
