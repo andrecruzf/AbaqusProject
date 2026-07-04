@@ -162,12 +162,9 @@ Appendix~\ref{app:numerical_implementation}.
 \subsection{Material Model}
 
 The sheet is described through a user material subroutine
-(VUMAT)~\cite{Roth2014}. Plasticity is modelled with a Hill'48 yield function
+(VUMAT). Plasticity is modelled with a Hill'48 yield function
 and a non associated flow rule. The hardening law combines Swift and Voce
-terms, and fracture initiation follows the Hosford and Coulomb model. The
-subroutine also provides Johnson Cook type strain rate and temperature
-contributions, which are inactive in the present calibration, so the
-constitutive response is rate and temperature independent.
+terms, and fracture initiation follows the Hosford and Coulomb model. 
 
 The 46 material constants were taken from an existing chair internal
 calibration of AA5182, a comparable \mbox{5xxx series} aluminium alloy, since
