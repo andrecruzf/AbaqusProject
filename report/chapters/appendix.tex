@@ -398,8 +398,7 @@ steps branch internally on test type, as noted below. A separate
 
 The project is hosted on GitHub (\texttt{andrecruzf/AbaqusProject}). The tree
 below shows the structure of the submitted code, with the simulation pipeline
-at the repository root, the standalone Min--Stoughton workflow, and the two
-user interfaces.
+at the repository root and the standalone Min--Stoughton workflow.
 
 \lstset{language={},numbers=none}
 \begin{lstlisting}[frame=lines,basicstyle=\ttfamily\footnotesize]
@@ -425,22 +424,19 @@ AbaqusProject/
 |-- app.py                       Streamlit interface (this appendix)
 |-- Naka_Marciniak_Geometries/,
 |   PiP_Geometries/, PiP_Punches/  blank and punch geometry files
-|-- Post_processing_Nakazima_tests/
-|   `-- Min-Stroughton_post_pro/ standalone Min-Stoughton workflow
-|       |-- dic_loader.py            VIC-3D import
-|       |-- region_selector.py       crack line, neck centre, point matrix
-|       |-- curvature_matrix.py      matrix tracking across frames
-|       |-- nakazima_transform.py    punch-centred (D, R_out) transform
-|       |-- reference_subtraction.py Marciniak reference subtraction
-|       |-- sac_preparation.py       SAC and column construction
-|       |-- circle_fitting.py        column circle fits to C_pm(t)
-|       |-- onset_detection.py       onset criterion
-|       |-- limit_strains.py         limit strain extraction
-|       |-- vic_project_metadata.py  specimen metadata resolution
-|       `-- run_sensitivity_study.py Euler parameter sweep driver
-`-- GUI_2026_06_29/              laboratory FLC identification GUI
-    |-- main.py                      ISO 12004-2 and Volk-Hora evaluation
-    `-- functs/min_stoughton_runner.py  Min-Stoughton launcher
+`-- Post_processing_Nakazima_tests/
+    `-- Min-Stroughton_post_pro/ standalone Min-Stoughton workflow
+        |-- dic_loader.py            VIC-3D import
+        |-- region_selector.py       crack line, neck centre, point matrix
+        |-- curvature_matrix.py      matrix tracking across frames
+        |-- nakazima_transform.py    punch-centred (D, R_out) transform
+        |-- reference_subtraction.py Marciniak reference subtraction
+        |-- sac_preparation.py       SAC and column construction
+        |-- circle_fitting.py        column circle fits to C_pm(t)
+        |-- onset_detection.py       onset criterion
+        |-- limit_strains.py         limit strain extraction
+        |-- vic_project_metadata.py  specimen metadata resolution
+        `-- run_sensitivity_study.py Euler parameter sweep driver
 \end{lstlisting}
 
 \section{Configurable Simulation Parameters}
