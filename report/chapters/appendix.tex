@@ -759,27 +759,40 @@ Table~\ref{tab:aa5182_parameters} lists the parameter set.
 \label{app:interface}
 
 The framework includes a graphical interface, built with \software{Streamlit},
-that acts as a front-end to the configuration file described in
+that acts as a front end to the configuration file described in
 Chapter~\ref{chap:numerical_model}. It is an operational prototype that makes
 the pipeline more convenient to use and provides a basis for future
-development. The interface is organised into three working areas presented
-below, namely job submission, job monitoring, and results inspection, together
-with an experimental AI assistant. Each control writes the corresponding
+development. The interface is organised around Euler login, job submission,
+job monitoring, and results inspection. Each control writes the corresponding
 configuration value, so a case prepared in the interface is equivalent to one
 configured directly in the configuration file.
+
+\section{Euler Login}
+
+The login view (Figure~\ref{fig:gui_login}) selects the Euler account and the
+SSH authentication mode used by the submission, monitoring, and synchronisation
+commands.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\linewidth]{img/gui_login.png}
+    \caption{Euler login view with the selected ETH user, host, and SSH
+authentication mode.}
+    \label{fig:gui_login}
+\end{figure}
 
 \section{Job Submission}
 
 The job-submission view collects all parameters of a single case. The first
-block (Figure~\ref{fig:gui_submit_params}) exposes the test configuration: the
-test type, specimen width, sheet thickness, orientation angle, punch diameter,
-mesh factor, through-thickness seeds, mass-scaling target, punch speed, punch
-travel, velocity profile, friction, and the symmetry option.
+block (Figure~\ref{fig:gui_submit_params}) exposes the test configuration,
+including the test type, specimen width, sheet thickness, orientation angle,
+punch diameter, mesh factor, through-thickness seeds, mass-scaling target,
+punch speed, punch travel, velocity profile, friction, and the symmetry option.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{img/gui_submit_params.png}
-    \caption{Job submission: the case-parameter block of the Submit Job view.}
+    \caption{Job submission view with the main case parameters.}
     \label{fig:gui_submit_params}
 \end{figure}
 
@@ -790,8 +803,8 @@ sizes and partition controls described in Chapter~\ref{chap:numerical_model}.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.68\linewidth]{img/gui_mesh_settings.png}
-    \caption{Job submission: the advanced mesh-settings panel, exposing the
-mesh-zone layout and the per-section seeding controls.}
+    \caption{Advanced mesh-settings panel with the partition and target-size
+controls.}
     \label{fig:gui_mesh_settings}
 \end{figure}
 
@@ -802,40 +815,67 @@ which the user can accept or override before submission.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{img/gui_computational.png}
-    \caption{Job submission: the computational-settings block, which estimates
-and suggests the cluster resources for the selected case.}
+    \caption{Computational-settings block with resource suggestions and
+submission controls.}
     \label{fig:gui_computational}
 \end{figure}
 
 \section{Job Monitoring}
 
 The job-monitoring view (Figure~\ref{fig:gui_job_status}) queries the Euler queue
-and lists the user's jobs with their state, elapsed time, time limit, and node
-allocation. The state column is colour-coded, with distinct colours for running,
-pending, completed, and failed jobs, and a progress estimate is shown for each
-running solver job.
+and lists active jobs when present. The view can refresh automatically and uses
+the same authenticated Euler account as the submission and synchronisation
+commands.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{img/gui_job_status.png}
-    \caption{Job monitoring: the Euler queue with the colour-coded job-state
-column (green for running jobs) and the per-job progress estimate.}
+    \caption{Job-monitoring view connected to the Euler queue.}
     \label{fig:gui_job_status}
 \end{figure}
 
 \section{Results}
 
 The results view (Figure~\ref{fig:gui_results}) synchronises the processed
-outputs from the cluster and presents them in three modes, namely a single-job
-inspector, an FLC aggregation, and a sensitivity-study comparison. Jobs are
-sorted and selected from a list before their force--displacement curves, strain
-paths, forming-limit points, and diagnostic media are displayed.
+outputs from the cluster and presents them in two main modes, namely a
+single-job inspector and an FLD aggregation. Jobs are sorted and selected from a
+list before their force--displacement curves, strain paths, forming-limit
+points, and diagnostic media are displayed.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{img/gui_results.png}
-    \caption{Results inspection: the Results Viewer, showing the cluster
-synchronisation, the single-job, FLC, and sensitivity view modes, and the job
-selector.}
+    \caption{Results overview with Euler synchronisation, the view selector, and
+job sorting controls.}
     \label{fig:gui_results}
+\end{figure}
+
+The single-job result panel (Figure~\ref{fig:gui_results_panel}) collects the
+main scalar plots and forming-limit diagnostics in one tabbed view.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results_panel.png}
+    \caption{Single-job result panel with force--displacement, energy, strain
+path, Volk--Hora, forming-limit, cluster-location, and diagnostics tabs.}
+    \label{fig:gui_results_panel}
+\end{figure}
+
+The same results area can also display rendered ODB movies and mesh snapshots,
+as shown in Figures~\ref{fig:gui_results_movie}
+and~\ref{fig:gui_results_mesh}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results_movie.png}
+    \caption{Movie view with synchronised full and section views of the
+deforming specimen.}
+    \label{fig:gui_results_movie}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results_mesh.png}
+    \caption{Mesh view with the isometric and top-view mesh renders.}
+    \label{fig:gui_results_mesh}
 \end{figure}
