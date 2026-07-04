@@ -27,9 +27,8 @@ interpreted primarily as orientation effects.
 
 For each orientation and thickness, two complete campaigns of seven specimen
 widths were performed, and the forming-limit points reported here are the mean
-over the two campaigns. Averaging over two independent sets reduces the
-influence of test-specific scatter, so that the reported curve is less dependent
-on the condition of one individual set. The limit points were determined from
+over the two campaigns, which reduces the influence of test specific scatter.
+The limit points were determined from
 the DIC strain fields using the ISO~12004-2 intersection-line method
 described in Section~\ref{sec:din_method}. The same evaluation pipeline was
 applied throughout this study, including the robustness and accuracy selection
@@ -67,16 +66,13 @@ limit curves for the four thicknesses.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_d}
     \end{subfigure}
-    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. The laboratory suffix encodes the in-plane angle of the specimen long axis relative to RD: \texttt{000} for \SI{0}{\degree} and \texttt{090} for \SI{90}{\degree}. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method under the robustness and accuracy criteria.}
+    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method under the robustness and accuracy criteria.}
     \label{fig:rd_vs_td}
 \end{figure}
 
 To quantify the visual overlap in Figure~\ref{fig:rd_vs_td}, the repeat-level
-ISO~12004-2 average strain values were extracted directly from the TDRD result files
-\texttt{all\_results\_2026\_04\_13\_A--D.txt}. For every material and specimen
-width, the usable repetitions were averaged separately for
-\texttt{E0\_RM00\_000} and \texttt{E0\_RM00\_090}; the curve in
-Figure~\ref{fig:rd_vs_td} therefore represents the mean response. The
+ISO~12004-2 average strain values were extracted from the campaign result
+files and averaged separately for each orientation. The
 repeat-level values are listed in Table~\ref{tab:rd_td_repeat_values}. Because
 the campaign contains at most two usable repetitions per point, the standard
 deviations are interpreted as descriptive repeat scatter rather than as a
@@ -97,8 +93,7 @@ Table~\ref{tab:rd_td_repeat_values}.
     \setlength{\tabcolsep}{6pt}
     \caption{RD--TD separation $d_{\mathrm{RD-TD}}$ for each specimen geometry
     and sheet thickness, for the \SI{100}{\milli\meter} punch, expressed in
-    strain units in the forming-limit diagram. The values are reported per
-    geometry and are not averaged across widths.}
+    strain units in the forming-limit diagram.}
     \label{tab:rd_td_summary}
     \begin{tabular}{lcccc}
         \toprule
@@ -292,6 +287,26 @@ geometries, while the final interpretation should remain criterion aware.
     \label{fig:flc_vh_pr_th}
 \end{figure}
 
+The intersection-line method contains two fixed length-scale parameters: the
+spacing between intersection lines, \SI{2}{\milli\meter}, and the constant
+factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These
+correspond to two physically distinct scales. The fitting window is governed by
+the extent of the strained dome, which scales with the punch diameter $D$,
+whereas the excluded near-crack zone is governed by the neck width, which
+scales with the sheet thickness $t$. The fixed constant captures neither.
+Alternative fixed window constants, including the 10, 9, 8, and 7 variants
+inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift
+the extracted curves but do not introduce a geometric length-scale relation.
+A minimal, standard-consistent generalisation therefore replaces the constant
+with $D/10$, so that the window width becomes
+$\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to
+the standard value for the $\varnothing$\SI{100}{\milli\meter} punch
+($100/10=10$). Figure~\ref{fig:flc_pscaled} shows the limit curves
+re-evaluated with this punch-scaled window. Scaling the window with the punch
+diameter markedly shifts the extracted \SI{40}{\milli\meter} limit, which
+confirms that its position under the standard evaluation is governed largely by
+the window choice rather than by the material.
+
 \begin{figure}[H]
     \centering
     \begin{subfigure}[t]{0.49\textwidth}
@@ -326,26 +341,6 @@ geometries, while the final interpretation should remain criterion aware.
     \caption[Forming limit curves re-evaluated with smaller fixed window constants]{Forming limit curves re-evaluated with the smaller fixed window constants 10, 9, 8, and 7 from the preliminary window study, for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}. Reducing the constant shifts the extracted curves relative to the standard constant-10 evaluation, confirming the sensitivity of the limit to the window factor, but the fixed values introduce no geometric length-scale relation.}
     \label{fig:flc_wvar}
 \end{figure}
-
-The intersection-line method contains two fixed length-scale parameters: the
-spacing between intersection lines, \SI{2}{\milli\meter}, and the constant
-factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These
-correspond to two physically distinct scales. The fitting window is governed by
-the extent of the strained dome, which scales with the punch diameter $D$,
-whereas the excluded near-crack zone is governed by the neck width, which
-scales with the sheet thickness $t$. The fixed constant captures neither.
-Alternative fixed window constants, including the 10, 9, 8, and 7 variants
-inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift
-the extracted curves but do not introduce a geometric length-scale relation.
-A minimal, standard-consistent generalisation therefore replaces the constant
-with $D/10$, so that the window width becomes
-$\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to
-the standard value for the $\varnothing$\SI{100}{\milli\meter} punch
-($100/10=10$). Figure~\ref{fig:flc_pscaled} shows the limit curves
-re-evaluated with this punch-scaled window. Scaling the window with the punch
-diameter markedly shifts the extracted \SI{40}{\milli\meter} limit, which
-confirms that its position under the standard evaluation is governed largely by
-the window choice rather than by the material.
 
 \begin{figure}[H]
     \centering
@@ -406,9 +401,8 @@ rolling-direction campaign of all four sheet thicknesses, A
 \SI{100}{\milli\meter} punch. Each thickness provides the seven Nakazima widths
 from \texttt{W020} to \texttt{W200} in two repetitions, so the data set contains
 \num{56} DIC samples. The runs were executed on the ETH Euler cluster directly
-from the \software{VIC-3D} exports, and the sheet thickness was taken from the
-campaign code stored in each \texttt{sample\_ID.xml}, because the numeric
-thickness field in that file is left at zero. Unless stated otherwise all runs
+from the \software{VIC-3D} exports, with the specimen metadata resolved as
+described in Table~\ref{tab:ms_constants}. Unless stated otherwise all runs
 use $W_X=\SI{2}{\milli\meter}$,
 $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, $n=8$, and $\alpha=0.1$ so that
 $\Delta=\alpha\,\mathrm{SAC}=\SI{5e-5}{\per\milli\meter}$, together with the
@@ -422,11 +416,15 @@ reference specimens, the narrow \texttt{W020} sample and the wide \texttt{W200}
 sample. Tables~\ref{tab:minstoughton_w020_wy_sweep}
 and~\ref{tab:minstoughton_w200_wy_sweep} report this sweep. For both samples the
 setting $W_Y=\SI{15}{\milli\meter}$ gives the closest agreement with the
-ISO~12004-2 average necking result, and larger matrix lengths lead to earlier
-and lower onsets. The \texttt{W020} coverage decreases as $W_Y$ increases
-because the requested matrix extends beyond the valid DIC field for the narrow
-specimen. This value $W_Y=\SI{15}{\milli\meter}$ is therefore used for the
-campaign analysis that follows.
+ISO~12004-2 average necking result. It should be noted that this choice is
+agreement driven rather than stability driven, since the longer matrices form
+a plateau with an identical onset for \texttt{W020} while
+$W_Y=\SI{15}{\milli\meter}$ deviates from it. The \texttt{W020} coverage also
+decreases as $W_Y$ increases because the requested matrix extends beyond the
+valid DIC field for the narrow specimen. The value
+$W_Y=\SI{15}{\milli\meter}$ is nevertheless used for the campaign analysis
+that follows, and the sweep of Section~\ref{sec:ms_sweep_thickness} revisits
+the parameter choice per thickness.
 
 \begin{table}[H]
     \centering
@@ -484,7 +482,9 @@ other on these two reference specimens.
     \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
     $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
     necking outputs for the same experimental DIC samples. The table label
-    ``ISO avg.'' denotes the ISO~12004-2 average necking result.}
+    ``ISO avg.'' denotes the ISO~12004-2 average necking result, whose frame
+    is the last frame before fracture on which the position based
+    intersection line evaluation operates (Section~\ref{sec:din_method}).}
     \label{tab:minstoughton_vh_din_compare}
     \begin{tabular}{l l c c c c c}
         \toprule
@@ -581,23 +581,23 @@ rather than being intrinsic, a parameter sweep was run over all four thicknesses
 $M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
 $\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
 $\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
-was scored by its detection rate and, as a single accuracy measure, by the mean
+was scored by its detection rate and, as a single agreement measure, by the mean
 Euclidean distance in the forming-limit diagram,
 $d_{\mathrm{ISO}}=\big\langle\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}\big\rangle$,
 of the curvature point to the ISO~12004-2 average over the detected widths, so
 that both the major and the minor limit strain enter the ranking.
-Table~\ref{tab:ms_sweep_thickness} compares the standard set with the most
-accurate set (minimum $d_{\mathrm{ISO}}$, detecting at least 13 of the 14
-samples) for each thickness; the complete sweep is tabulated in
+Table~\ref{tab:ms_sweep_thickness} compares the standard set with the best
+agreeing set (minimum $d_{\mathrm{ISO}}$, detecting at least 13 of the 14
+samples) for each thickness. The complete sweep is tabulated in
 Appendix~\ref{app:ms_sweep}.
 
 \begin{table}[H]
     \centering
     \small
     \caption[Min--Stoughton parameter sweep across thicknesses]{Standard versus
-    most accurate parameter set per thickness from the sweep. The standard
-    set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$; the most
-    accurate set minimises $d_{\mathrm{ISO}}$ subject to detecting at least 13 of
+    best agreeing parameter set per thickness from the sweep. The standard
+    set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$, and the
+    best agreeing set minimises $d_{\mathrm{ISO}}$ subject to detecting at least 13 of
     14 samples. Detection is the number of samples with a detected onset (of 14),
     and $d_{\mathrm{ISO}}$ is the mean forming-limit-diagram distance
     $\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}$ of the
@@ -605,7 +605,7 @@ Appendix~\ref{app:ms_sweep}.
     \label{tab:ms_sweep_thickness}
     \begin{tabular}{c c c l c c}
         \toprule
-        & \multicolumn{2}{c}{Standard set} & \multicolumn{3}{c}{Most accurate set (det.\ $\geq 13$)} \\
+        & \multicolumn{2}{c}{Standard set} & \multicolumn{3}{c}{Best agreeing set (det.\ $\geq 13$)} \\
         \cmidrule(lr){2-3}\cmidrule(lr){4-6}
         Thickness & Det. & $d_{\mathrm{ISO}}$ & $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Det. & $d_{\mathrm{ISO}}$ \\
         \midrule
@@ -622,24 +622,24 @@ the thinner sheets the fourteenth sample is the stubborn second repetition of
 the biaxial \texttt{W200} geometry, and the only sets that capture it place
 \texttt{W200} far from the reference: for class~B the best full-detection set
 reaches $d_{\mathrm{ISO}}=\num{0.036}$, with the \texttt{W200} point alone
-\num{0.081} in strain from the ISO~12004-2 average. Allowing at most one
-undetected sample, the most accurate set per thickness gives
-$d_{\mathrm{ISO}}=\num{0.018}$ (A), \num{0.019} (B), \num{0.019} (C, which also
-detects all fourteen), and \num{0.036} (D). For class~B the standard set is
-already the most accurate, so tuning brings no gain; class~C benefits most, its
-distance dropping from \num{0.037} to \num{0.019} once the threshold multiplier
-is raised to $\alpha=0.20$ with a longer matrix ($W_Y=\SI{25}{\milli\meter}$),
-and class~D improves from \num{0.051} to \num{0.036}. A larger threshold delays
-the detected onset, which raises the extracted strain and counteracts the
-underestimation seen in Section~\ref{sec:ms_campaign}. The parameters were
-selected by minimising the distance to the ISO~12004-2 average rather than
-validated against an independent reference, so the values are indicative; a
-thickness-dependent parameter choice, with a larger curvature threshold for
-thicker sheets, is the recommended path before the curvature method is used for
+\num{0.081} in strain from the ISO~12004-2 average. For class~B the standard
+set is already the best agreeing one, so tuning brings no gain. Class~C
+benefits most, its distance dropping from \num{0.037} to \num{0.019} once the
+threshold multiplier is raised to $\alpha=0.20$ with a longer matrix
+($W_Y=\SI{25}{\milli\meter}$), and class~D improves from \num{0.051} to
+\num{0.036}. A larger threshold delays the detected onset, which raises the
+extracted strain and counteracts the underestimation seen in
+Section~\ref{sec:ms_campaign}. The parameters were selected by minimising the
+distance to the ISO~12004-2 average rather than validated against an
+independent reference, so the values are indicative. A held out validation,
+for example tuning on the first repetition and evaluating on the second, is
+the natural next step before these sets are adopted. A thickness-dependent
+parameter choice, with a larger curvature threshold for thicker sheets,
+remains the recommended path before the curvature method is used for
 production forming-limit extraction.
 
 Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
-when each thickness uses its most accurate set from
+when each thickness uses its best agreeing set from
 Table~\ref{tab:ms_sweep_thickness}, in place of the single standard set of
 Figure~\ref{fig:flc_ms_comparison}. The curvature curve now follows the
 ISO~12004-2 and Volk--Hora references closely across the whole diagram, including
@@ -655,7 +655,7 @@ point away from the reference.
     \caption[Forming-limit comparison with the best parameter set per thickness]{Forming-limit
     diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
     Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
-    using each thickness's most accurate parameter set (detection $\geq 13/14$) from
+    using each thickness's best agreeing parameter set (detection $\geq 13/14$) from
     Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
     single standard set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
     mean over the two repetitions of a width.}
@@ -666,72 +666,26 @@ point away from the reference.
 \label{sec:numerical_results}
 
 This section reports the verification status of the numerical framework rather
-than a completed numerical FLC campaign. The surrogate material calibration
-discussed in Chapter~\ref{chap:numerical_model}
-means that the runs are interpreted as framework-verification cases rather than
-quantitative predictions for the AA5754 experimental campaign. For each selected
-configuration, the
-pipeline creates the \software{Abaqus} model, submits the solver job on the
-Euler cluster, runs the ODB-based post-processing, and synchronises a structured
-set of result artefacts. The same interface is used for the Nakazima,
-Marciniak, and Punch-in-Punch configurations, so that specimen width, sheet
-thickness, punch radius, punch travel, material orientation, mass scaling, and
-mesh refinement can be varied without changing the post-processing schema. Each
-completed simulation is written to the same set of data products
-(\texttt{punch\_fd.csv}, \texttt{energy\_data.csv},
-\texttt{strain\_path.csv}, \texttt{forming\_limits.csv}, diagnostic figures,
-and movies). This common structure is the basis for later comparison with the
-Task~I experiments and for transfer to the Task~II identification framework.
-The architecture itself was described in Chapter~\ref{chap:numerical_model} and
-is not repeated here.
-
-\subsection{Configuration Traceability}
-
-Since the numerical framework is highly parameterised, each future numerical
-result must be reported together with the configuration that generated it. The
-full inventory of adjustable settings is given in
-Appendix~\ref{app:configuration_parameters}. For a completed sensitivity or FLC
-comparison, the reported configuration should include at least the specimen
-geometry, sheet thickness, punch diameter, material orientation, punch-motion
-profile, mesh-refinement factor, mass-scaling target, and selected
-post-processing options. This preserves traceability without repeating the full
-framework description in the results chapter.
-
-\subsection{Quasi-Static Validation}
-\label{sec:quasi_static_validation}
-
-The simulations are carried out using \software{Abaqus/Explicit} and must
-therefore be checked for quasi-static behaviour. For this purpose, the ratio
-between kinetic energy and internal energy,
-$\mathrm{ALLKE}/\mathrm{ALLIE}$, is monitored throughout the forming step. A
-ratio below \SI{5}{\percent} is used as the acceptance criterion for the
-planned sensitivity sweeps.
-
-The way the punch motion is ramped over time also influences the inertial
-response, and two velocity profiles were implemented for comparison. In the
-smooth-step profile the punch velocity rises gradually from zero to a peak at
-mid-stroke and returns to zero, whereas in the constant-velocity profile the
-punch advances at a steady speed with only short smooth ramps at the start and
-end of the stroke. The choice between them is a trade-off. The smooth-step
-profile is numerically conservative because its gradual acceleration and
-deceleration reduce inertial disturbances. The constant-velocity profile is
-closer to the physical test bench because it reproduces steady punch advance
-during forming, but it relies on the end ramps to avoid an inertial spike at
-first punch contact. In both cases a gradual onset is essential, as an
-instantaneous velocity step at first contact would increase the kinetic energy
-and violate the quasi-static assumption.
+than a completed numerical FLC campaign. Because the material constants are
+the AA5182 surrogate of Chapter~\ref{chap:numerical_model}, the runs are
+interpreted as framework verification cases rather than quantitative
+predictions for the AA5754 campaign. The framework, its outputs, and the full
+inventory of adjustable settings are described in
+Chapter~\ref{chap:numerical_model} and
+Appendix~\ref{app:configuration_parameters}, and each numerical result below
+is reported together with the configuration that generated it.
 
 \subsection{Sensitivity Study}
 \label{sec:sensitivity_study}
 
-The current sensitivity study is designed to determine suitable numerical
-parameters for the production simulations. The punch velocity is held fixed at
-\SI{5}{\milli\meter\per\second}, as established alongside the quasi-static
-solution strategy in Chapter~\ref{chap:numerical_model}, so that one degree of
-freedom is fixed and the two remaining numerical controls can be studied
-separately: the mass-scaling target time increment and the mesh-refinement
-level. The runs use the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter}
-punch as the scalar reference case.
+The sensitivity study determines suitable numerical parameters for the
+production simulations. All runs use the fixed punch velocity and smooth step
+profile of Chapter~\ref{chap:numerical_model}, frictionless punch contact,
+and the Nakazima \texttt{W100} specimen with the \SI{100}{\milli\meter} punch
+as the single reference case. The two numerical controls varied are the
+mass-scaling target time increment and the mesh-refinement level. An
+$\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio below \SI{5}{\percent} is used as the
+quasi-static acceptance criterion throughout.
 
 \subsubsection{Mass Scaling Analysis}
 \label{sec:mass_scaling_analysis}
@@ -739,12 +693,7 @@ punch as the scalar reference case.
 The mass-scaling sweep varies the target time increment while keeping the mesh
 refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
-$1\times10^{-4}$\,\si{\second}. The comparison is based on the
-$\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio and on the extracted forming-limit point.
-Increasing the target time increment reduces the computational cost, but also
-increases the risk of inertial effects. The final value will therefore be
-chosen as the largest time increment that still satisfies the quasi-static
-energy criterion without changing the failure strain appreciably.
+$1\times10^{-4}$\,\si{\second}.
 
 Figure~\ref{fig:ms_sweep_results} shows that this criterion is restrictive for
 the present \texttt{W100} reference case. The full-range energy plot gives the overall
@@ -822,18 +771,16 @@ evaluated refinement factors are $1$, $2$, and $3$. The meshes are generated
 automatically by sweeping the global refinement factor of
 Section~\ref{sec:mesh_generation}, which scales all section sizes together while
 leaving the sectioning unchanged (Figure~\ref{fig:mesh_mr_sweep}). Since strain
-localisation is mesh-sensitive, the production mesh will be selected as the
-coarsest discretisation for which the extracted forming-limit point has
-converged, that is, the largest element size beyond which further refinement no
-longer changes the failure strain appreciably.
+localisation is mesh sensitive, the production mesh should be the coarsest
+discretisation for which the extracted forming-limit point has converged.
 
 The strain paths in Figure~\ref{fig:mr_sweep_results} are close over most of
-the deformation history, indicating that the scalar \texttt{W100} response is not
+the deformation history, indicating that the \texttt{W100} response is not
 strongly affected by the tested mesh-refinement factors before the final
 localisation stage. The accompanying energy overview and
 \SIrange{0}{10}{\percent} zoom also show that the fixed
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ target is not yet an acceptable
-quasi-static setting for this mesh study; increasing $f_\mathrm{MR}$ reduces the
+quasi-static setting for this mesh study. Increasing $f_\mathrm{MR}$ reduces the
 energy ratio, but the curves remain above the \SI{5}{\percent} limit over part
 of the simulation. A production mesh choice should therefore be confirmed with a
 mesh-refinement sweep repeated at the accepted mass-scaling target.
@@ -897,7 +844,7 @@ mesh-refinement sweeps. The target is the least computationally expensive
 configuration that satisfies both the quasi-static energy criterion and the
 strain-convergence criterion.
 
-For the completed \texttt{W100} scalar runs, the mass-scaling sweep identifies
+For the completed \texttt{W100} reference runs, the mass-scaling sweep identifies
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ as the only tested target satisfying
 the \SI{5}{\percent} energy criterion. The mesh-refinement sweep at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is useful as a discretisation
@@ -1001,10 +948,11 @@ punch travel of \SI{32}{\milli\meter}. Only the punch--blank Coulomb
 coefficient $\mu_\mathrm{punch}$ was varied, from 0 to 0.25. The die and
 blank-holder contact coefficient remained at the default value of 0.35. This
 is therefore a single-width sensitivity check rather than a calibrated
-numerical FLC. The mesh is the finest tested in the confirmation sweep of
-Section~\ref{sec:selection_numerical_parameters}, not the production default
-$f_\mathrm{MR}=2$, which is consistent with all six runs remaining above the
-\SI{5}{\percent} quasi-static energy criterion below.
+numerical FLC. The runs use the finest mesh of the confirmation sweep of
+Section~\ref{sec:selection_numerical_parameters} rather than the production
+default $f_\mathrm{MR}=2$, which explains why all six runs remain above the
+\SI{5}{\percent} energy criterion in
+Table~\ref{tab:friction_sensitivity_summary}.
 
 \begin{figure}[ht]
     \centering
@@ -1024,20 +972,23 @@ $f_\mathrm{MR}=2$, which is consistent with all six runs remaining above the
 \end{figure}
 
 The strain paths in Figure~\ref{fig:friction_sensitivity_results} show that
-the extracted fracture strain is affected by the assumed punch--blank friction,
-and that the response is not monotonic over the investigated range. The
-frictionless case, $\mu_\mathrm{punch}=0$, gives the highest extracted fracture
-strain of the sweep, and the strain decreases smoothly as friction increases
-from $\mu_\mathrm{punch}=0$ to $0.10$. The $\mu_\mathrm{punch}=0.05$ case
-breaks this trend, failing far earlier than both its frictionless and
-higher-friction neighbours, so it stands out as an isolated anomaly rather than
-part of a genuine non-monotonic dependence on friction. Above
-$\mu_\mathrm{punch}=0.10$, increasing friction gradually reduces the extracted
-fracture strain and failure travel, consistent with the frictionless-to-0.10
-trend. The punch-force histories, however, remain nearly coincident up to the
-late forming stage for $\mu_\mathrm{punch}=0.10$--0.25. The main difference
-between these runs is therefore not a large change in the global force level,
-but a shift in the localisation and extracted failure point.
+the extracted fracture point depends strongly on the assumed punch--blank
+friction. The automated fracture-location classification of the post
+processing explains this dependence. Only the frictionless case produces a
+valid dome-centred fracture, while every run with nonzero punch friction
+fails outside the dome evaluation zone, at two distinct locations on the
+specimen (Table~\ref{tab:friction_sensitivity_summary}). This is consistent
+with the physical role of punch friction in the Nakazima test, which
+restrains the apex and shifts the straining towards the surrounding material.
+The extracted fracture strains of the nonzero-friction runs therefore
+describe different failure sites rather than a single dome-formability trend,
+and the early failure of the $\mu_\mathrm{punch}=0.05$ case at
+$U_3=\SI{18.6}{\milli\meter}$ is an early failure at one of these off-dome
+sites rather than an anomaly among comparable dome fractures. The punch-force
+histories remain nearly coincident up to the late forming stage for
+$\mu_\mathrm{punch}=0.10$--0.25, so the main effect of the friction level is
+a shift of the failure site and failure instant rather than a change of the
+global force response.
 
 \begin{table}[ht]
     \centering
@@ -1047,58 +998,49 @@ but a shift in the localisation and extracted failure point.
     force maximum is evaluated only up to the extracted fracture time. The
     energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ after omitting
     the first \SI{5}{\percent} of the prescribed punch travel and before the
-    extracted fracture point.}
+    extracted fracture point. Location is the fracture-location class assigned
+    by the post processing.}
     \label{tab:friction_sensitivity_summary}
-    \begin{tabular}{c c c c c c}
+    \begin{tabular}{c c c c c c c}
         \toprule
         $\mu_\mathrm{punch}$ &
+        Location &
         $\varepsilon_1^\mathrm{f}$ &
         $\varepsilon_2^\mathrm{f}$ &
         $U_3^\mathrm{f}$ &
         $F_{3,\max}$ &
         $\max(\mathrm{ALLKE}/\mathrm{ALLIE})$ \\
-        & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] \\
+        & & & & [\si{\milli\meter}] & [\si{\kilo\newton}] & [\si{\percent}] \\
         \midrule
-        0.00 & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 \\
-        0.05 & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 \\
-        0.10 & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 \\
-        0.15 & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 \\
-        0.20 & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 \\
-        0.25 & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 \\
+        0.00 & dome         & 0.238 & 0.184 & 31.49 & 16.69 & 13.3 \\
+        0.05 & outside dome & 0.115 & 0.047 & 18.57 &  6.90 & 13.3 \\
+        0.10 & outside dome & 0.231 & 0.082 & 30.61 & 16.65 & 13.4 \\
+        0.15 & outside dome & 0.193 & 0.078 & 29.65 & 16.13 & 13.5 \\
+        0.20 & outside dome & 0.187 & 0.053 & 28.82 & 15.52 & 13.6 \\
+        0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21 & 13.6 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The friction check therefore supports two conclusions. First, the
-$\mu_\mathrm{punch}=0.05$ case is the outlier of the sweep rather than
-$\mu_\mathrm{punch}=0$: the frictionless run reaches the deepest punch travel
-and the highest fracture strain, in line with a smooth reduction in formability
-as friction increases from $0$ to $0.10$, so a low but nonzero coefficient such
-as $0.05$ should not be assumed safe by interpolation between the frictionless
-and higher-friction cases. Second, the available \texttt{W120} sweep is not
-sufficient to identify an optimal coefficient beyond this: the intermediate and
-high-friction cases have similar force histories, and all six runs remain above
-the \SI{5}{\percent} quasi-static energy criterion because they were run at
-$f_\mathrm{MR}=1$ rather than the accepted production mesh. A defensible
-friction choice should therefore be calibrated against the experimental
+The friction check therefore shows that the assumed punch friction controls
+where the specimen fails before it controls how much the dome can be
+stretched. For this \texttt{W120} geometry, any nonzero punch friction moves
+the failure outside the dome evaluation zone, so a numerical FLC campaign
+with realistic friction must expect off-dome fractures, which the automated
+fracture-location classification already detects and flags. The frictionless
+baseline, which matches the PTFE and lanolin lubrication of the experiments,
+is the only case of this sweep that yields a valid dome-centred limit point.
+A defensible friction choice should be calibrated against the experimental
 force--displacement response and then rechecked at the production settings
-$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, $f_\mathrm{MR}=2$.
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=2$.
 
 \subsection{Current Numerical Output Status}
 \label{sec:numerical_output_status}
 
-At the present report stage, the numerical runs are used to verify the pipeline
-rather than to construct final numerical forming-limit curves. The verified
-outputs are the automated model generation, cluster submission,
-post-processing file structure, energy-history extraction, force--displacement
-export, strain-path export, and diagnostic visualisation output. These checks
-show that the framework can generate the data required for a numerical FLC
-campaign, but they do not yet establish a validated numerical forming limit for
-the Nakazima, Marciniak, or Punch-in-Punch configurations.
-
-A final numerical results section would require three additional items: a
-completed mass-scaling sweep satisfying the quasi-static energy criterion, a
-completed mesh-refinement sweep demonstrating convergence of the extracted
-failure strain, and production simulations across the relevant specimen widths.
-Only after these steps can the numerical forming-limit points be compared
-directly with the experimental FLCs from Task~I.
+At the present report stage, the numerical runs verify the pipeline rather
+than construct final numerical forming-limit curves. With the mass-scaling
+target settled at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, two items remain
+before the numerical forming-limit points can be compared directly with the
+experimental FLCs from Task~I, namely a mesh-refinement study that
+demonstrates convergence of the extracted failure strain, and production
+simulations across the relevant specimen widths at the accepted settings.
