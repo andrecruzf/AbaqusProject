@@ -190,25 +190,30 @@ applied.
     \label{fig:flc_norm}
 \end{figure}
 
-The intersection-line method contains two fixed length-scale parameters: the
-spacing between intersection lines, \SI{2}{\milli\meter}, and the constant
-factor of $10$ in the window width of Eq.~\eqref{eq:din_window}. These
-correspond to two physically distinct scales. The fitting window is governed by
-the extent of the strained dome, which scales with the punch diameter $D$,
-whereas the excluded near-crack zone is governed by the neck width, which
-scales with the sheet thickness $t$. The fixed constant captures neither.
-Alternative fixed window constants, including the 10, 9, 8, and 7 variants
-inspected in the preliminary window study (Figure~\ref{fig:flc_wvar}), shift
-the extracted curves but do not introduce a geometric length-scale relation.
-A minimal, standard-consistent generalisation therefore replaces the constant
-with $D/10$, so that the window width becomes
-$\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$ and reduces to
-the standard value for the $\varnothing$\SI{100}{\milli\meter} punch
-($100/10=10$). Figure~\ref{fig:flc_pscaled} shows the limit curves
-re-evaluated with this punch-scaled window. Scaling the window with the punch
-diameter markedly shifts the extracted \SI{40}{\milli\meter} limit, which
-confirms that its position under the standard evaluation is governed largely by
-the window choice rather than by the material.
+The intersection-line method is governed by two length scales. The first is the
+spacing between neighbouring intersection lines, fixed here at
+\SI{2}{\milli\meter}. The second is the neck-window width used for the ISO
+parabola fit, introduced through the constant $10$ in
+Eq.~\eqref{eq:din_window}. These choices do not represent the same physical
+scale. The line spacing controls how densely the strain field is sampled near
+the crack path, whereas the fitting window controls how much of the neck
+profile is used to identify the limit strain. The latter is expected to depend
+on punch size because the strained dome and neck profile become narrower when
+the punch diameter $D$ decreases. A constant calibrated on the
+$\varnothing$\SI{100}{\milli\meter} ISO punch is therefore not necessarily
+transferable to the \SI{80}{\milli\meter}, \SI{60}{\milli\meter}, and
+\SI{40}{\milli\meter} punches.
+
+As a diagnostic, the window sensitivity is first checked with deliberately
+smaller fixed constants. Figure~\ref{fig:flc_wvar} compares constants 10, 9, 8,
+and 7. This is not a recalibration, but a way to test whether a reduced window
+moves the curves towards a more consistent punch-diameter ordering. The
+observed shift motivates a simple geometry-scaled candidate, replacing the
+fixed constant by $D/10$. The window width then becomes
+$\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$, which
+preserves the standard value for the $\varnothing$\SI{100}{\milli\meter} punch
+and reduces the window for the smaller punches. Figure~\ref{fig:flc_pscaled}
+shows the corresponding re-evaluation.
 
 \begin{figure}[H]
     \centering
