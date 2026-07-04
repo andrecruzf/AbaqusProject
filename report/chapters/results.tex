@@ -601,8 +601,9 @@ dynamic or drop below the criterion too late.
 After the mass-scaling sweep, the mesh check is repeated at
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
 $f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$. The fine-side checks
-$f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close fracture strains, while the
-coarser settings remain higher in $\varepsilon_1^\mathrm{f}$
+$f_\mathrm{MR}=1$, $1.25$, and $1.41$ give close fracture strains, with
+successive changes in $\varepsilon_1^\mathrm{f}$ of at most \SI{3}{\percent},
+while the step to $f_\mathrm{MR}=2$ changes it by \SI{19}{\percent}
 (Table~\ref{tab:confirm_sweep_summary}). This improves the consistency of the
 fine-side range, but it still does not demonstrate full mesh convergence. The setting
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is therefore
@@ -644,20 +645,19 @@ of $f_\mathrm{MR}=1$.
     \centering
     \small
     \caption{Mesh-refinement confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The late energy ratio is the
-    maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final \SI{0.5}{\second}
-    before the extracted fracture point. The cost is the product of solver
-    wall-clock time and allocated CPUs.}
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The relative change
+    $\Delta\varepsilon_1^\mathrm{f}$ is taken with respect to the next finer
+    mesh in the sweep.}
     \label{tab:confirm_sweep_summary}
-    \begin{tabular}{c c c c c}
+    \begin{tabular}{c c c c}
         \toprule
-        $f_\mathrm{MR}$ & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Cost [CPU\,h] \\
+        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ \\
         \midrule
-        1    & 0.75 & 0.201 & 0.097 & 960 \\
-        1.25 & 0.18 & 0.207 & 0.096 & 371 \\
-        1.41 & 0.19 & 0.205 & 0.097 & 252 \\
-        2    & 0.22 & 0.244 & 0.096 & 502 \\
-        3    & 0.27 & 0.219 & 0.097 & 305 \\
+        1    & 0.201 & --      & 0.097 \\
+        1.25 & 0.207 & $+3.0$  & 0.096 \\
+        1.41 & 0.205 & $-1.0$  & 0.097 \\
+        2    & 0.244 & $+19.0$ & 0.096 \\
+        3    & 0.219 & $-10.2$ & 0.097 \\
         \bottomrule
     \end{tabular}
 \end{table}
