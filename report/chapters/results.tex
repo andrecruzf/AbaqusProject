@@ -767,10 +767,19 @@ reference case is quasi static by the energy criterion and its fracture
 strain lies within \SI{1.9}{\percent} of the finest tested mesh at
 \SI{63}{\percent} of its run time. The evaluation artifacts identified above
 are labelled by the post-processing outputs and kept out of any
-dome-formability reading. A numerical FLC is not yet constructed, since the
-material constants remain the AA5182 surrogate of
-Chapter~\ref{chap:numerical_model}. The calibration and campaign steps that
-follow from this configuration are outlined in
+dome-formability reading. A numerical FLC is not yet constructed. The material constants remain the
+AA5182 surrogate of Chapter~\ref{chap:numerical_model}, and the
+element-status extraction returns fracture strains, so a first curve through
+these points would be a fracture forming limit curve (FFLC) rather than a
+necking-based FLC. For the working configuration the difference is
+substantial, since the fracture point lies at
+$\varepsilon_1^\mathrm{f}=0.205$ while the Volk Hora logic and the
+damage-based \texttt{SDV6} limit both place the necking onset near
+$\varepsilon_1=0.17$. These onset estimates are less mesh sensitive than the
+fracture points, staying between 0.169 and 0.176 across the confirmation
+sweep, but the Volk Hora detection is not yet robust, since it drops to an
+implausible 0.070 on the finest mesh. The calibration, campaign, and
+onset-detection steps that follow from this configuration are outlined in
 Chapter~\ref{chap:future_work}.
 
 \begin{table}[H]
