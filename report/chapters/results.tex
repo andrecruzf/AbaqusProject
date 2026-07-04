@@ -503,25 +503,6 @@ targets reduce wall time but still shift the extracted fracture point relative
 to the conservative run. The follow-up checks therefore use
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.
 
-\begin{table}[H]
-    \centering
-    \small
-    \caption{Mass-scaling screening batch at $f_\mathrm{MR}=2$, on 24 CPUs.
-    The late energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over
-    the final \SI{0.5}{\second} before the extracted fracture point.}
-    \label{tab:mass_scaling_walltime}
-    \begin{tabular}{c c c c c}
-        \toprule
-        $\Delta t_\mathrm{MS}$ [\si{\second}] & Late energy [\si{\percent}] & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ & Wall-clock time [\si{\hour}] \\
-        \midrule
-        $1\times10^{-6}$ &   0.22 & 0.244 & 0.096 & 20.9 \\
-        $5\times10^{-6}$ &   1.64 & 0.188 & 0.095 &  4.0 \\
-        $1\times10^{-5}$ &   4.86 & 0.210 & 0.098 &  2.0 \\
-        $5\times10^{-5}$ &  91.6  & 0.233 & 0.102 &  0.4 \\
-        $1\times10^{-4}$ & 251.8  & 0.227 & 0.123 &  0.2 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
 
 \begin{figure}[H]
     \centering
