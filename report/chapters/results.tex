@@ -600,24 +600,34 @@ dynamic or drop below the criterion too late.
 
 After the mass-scaling sweep, the mesh check is repeated at
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
-$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$.
-Table~\ref{tab:confirm_sweep_summary} collects the extracted fracture strains,
-their relative changes between successive refinement levels, and the
-computational cost of each run, and this table determines the working
-configuration. The minor strain is insensitive to the mesh, since
+$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$, and the working configuration
+is selected from this sweep. At this target the energy criterion no longer
+discriminates between the meshes. Every run stays below the
+\SI{5}{\percent} guideline over the forming window in
+Figure~\ref{fig:confirm_sweep_results}, with late energy ratios below
+\SI{1}{\percent}. The selection therefore rests on the fracture strains and
+run times in Table~\ref{tab:confirm_sweep_summary}.
+
+The minor strain is insensitive to the mesh, since
 $|\Delta\varepsilon_2^\mathrm{f}|$ stays below \SI{1.5}{\percent} across the
-sweep, so the assessment rests on $\varepsilon_1^\mathrm{f}$. The fine-side
-settings $f_\mathrm{MR}=1$, $1.25$, and $1.41$ form a plateau with successive
-changes of $+2.6$ and \SI{-0.7}{\percent}, while the step to $f_\mathrm{MR}=2$
-raises $\varepsilon_1^\mathrm{f}$ by \SI{19.1}{\percent} and the step to
-$f_\mathrm{MR}=3$ lowers it again by \SI{10.2}{\percent}, so the coarse side
-is not converged. The run time falls monotonically with coarsening, from 40.7
-to \SI{13.0}{\hour}, even though the coarser cases were allocated fewer cores.
-The coarsest and cheapest member of the plateau is $f_\mathrm{MR}=1.41$, which
-changes $\varepsilon_1^\mathrm{f}$ by only \SI{1.9}{\percent} relative to
-$f_\mathrm{MR}=1$ while shortening the run from 40.7 to \SI{25.5}{\hour} on 10
-instead of 18 cores, whereas the next coarser setting leaves the plateau. The
-setting $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is
+sweep, so mesh convergence is judged on $\varepsilon_1^\mathrm{f}$. The
+fine-side settings $f_\mathrm{MR}=1$, $1.25$, and $1.41$ form a plateau with
+successive changes of $+2.6$ and \SI{-0.7}{\percent}. The step to
+$f_\mathrm{MR}=2$ raises $\varepsilon_1^\mathrm{f}$ by \SI{19.1}{\percent} and
+the step to $f_\mathrm{MR}=3$ lowers it again by \SI{10.2}{\percent}. This
+non-monotonic coarse-side behaviour shows that the coarse meshes do not
+resolve the strain localisation at the fracture site, so the coarse side is
+not converged. The run time falls monotonically with coarsening, from 40.7 to
+\SI{13.0}{\hour}, and the coarser runs were also allocated fewer cores, 18
+down to 4, so the time differences still understate the true cost
+differences.
+
+The choice therefore falls on the coarsest and cheapest member of the
+plateau, $f_\mathrm{MR}=1.41$. It changes $\varepsilon_1^\mathrm{f}$ by only
+\SI{1.9}{\percent} relative to $f_\mathrm{MR}=1$ while shortening the run
+from 40.7 to \SI{25.5}{\hour} on fewer cores, whereas the next coarser
+setting leaves the plateau. The setting
+$\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$ is
 therefore used as a working compromise rather than as a converged production
 mesh. Since $f_\mathrm{MR}$ scales seed spacing,
 $f_\mathrm{MR}=1.41\approx\sqrt{2}$ gives about half the in-plane element count
@@ -659,18 +669,17 @@ of $f_\mathrm{MR}=1$.
     $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The relative changes
     $\Delta\varepsilon_1^\mathrm{f}$ and $\Delta\varepsilon_2^\mathrm{f}$ are
     taken with respect to the next finer mesh in the sweep. The wall-clock
-    time and the allocated core count of each run are taken from the cluster
-    accounting.}
+    time of each run is taken from the cluster accounting.}
     \label{tab:confirm_sweep_summary}
-    \begin{tabular}{c c c c c c c}
+    \begin{tabular}{c c c c c c}
         \toprule
-        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ & $\Delta\varepsilon_2^\mathrm{f}$ [\si{\percent}] & Time [\si{\hour}] & Cores \\
+        $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ & $\Delta\varepsilon_2^\mathrm{f}$ [\si{\percent}] & Time [\si{\hour}] \\
         \midrule
-        1    & 0.201 & --      & 0.097 & --     & 40.7 & 18 \\
-        1.25 & 0.207 & $+2.6$  & 0.096 & $-1.4$ & 31.2 & 12 \\
-        1.41 & 0.205 & $-0.7$  & 0.097 & $+0.9$ & 25.5 & 10 \\
-        2    & 0.244 & $+19.1$ & 0.096 & $-0.7$ & 21.0 & \phantom{0}6 \\
-        3    & 0.219 & $-10.2$ & 0.097 & $+1.0$ & 13.0 & \phantom{0}4 \\
+        1    & 0.201 & --      & 0.097 & --     & 40.7 \\
+        1.25 & 0.207 & $+2.6$  & 0.096 & $-1.4$ & 31.2 \\
+        1.41 & 0.205 & $-0.7$  & 0.097 & $+0.9$ & 25.5 \\
+        2    & 0.244 & $+19.1$ & 0.096 & $-0.7$ & 21.0 \\
+        3    & 0.219 & $-10.2$ & 0.097 & $+1.0$ & 13.0 \\
         \bottomrule
     \end{tabular}
 \end{table}
