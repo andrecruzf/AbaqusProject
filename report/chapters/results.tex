@@ -769,16 +769,19 @@ are labelled by the post-processing outputs and kept out of any
 dome-formability reading. A numerical FLC is not yet constructed. The material constants remain the
 AA5182 surrogate of Chapter~\ref{chap:numerical_model}, and the
 element-status extraction returns fracture strains, so a first curve through
-these points would be a fracture forming limit curve (FFLC) rather than a
-necking-based FLC. For the working configuration the difference is
-substantial, since the fracture point lies at
-$\varepsilon_1^\mathrm{f}=0.205$ while the Volk Hora logic and the
-damage-based \texttt{SDV6} limit both place the necking onset near
-$\varepsilon_1=0.17$. These onset estimates are less mesh sensitive than the
-fracture points, staying between 0.169 and 0.176 across the confirmation
-sweep, but the Volk Hora detection is not yet robust, since it drops to an
-implausible 0.070 on the finest mesh. The calibration, campaign, and
-onset-detection steps that follow from this configuration are outlined in
+these points is a fracture forming limit curve (FFLC) rather than a
+necking-based FLC. Figure~\ref{fig:fflc_example} shows such an exploratory
+FFLC from a width campaign at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and
+$f_\mathrm{MR}=1$, together with the Volk Hora onset estimates of the same
+runs. The FFLC lies above the onset curve, as expected since fracture
+follows necking, and for the working configuration the gap is substantial,
+with the fracture point at $\varepsilon_1^\mathrm{f}=0.205$ against a Volk
+Hora onset near $\varepsilon_1=0.17$. The example also shows the current
+limits of the onset detection. The \texttt{W200} and \texttt{W120} strain
+paths cross on the biaxial side, and the Volk Hora fit fails for
+\texttt{W200}, which leaves the onset curve without its equi-biaxial point.
+A necking-based FLC comparable with the ISO evaluated experiments therefore
+requires the calibration, campaign, and onset-detection steps outlined in
 Chapter~\ref{chap:future_work}.
 
 \begin{table}[H]
@@ -800,3 +803,17 @@ Chapter~\ref{chap:future_work}.
         \bottomrule
     \end{tabular}
 \end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/results/fflc_example_ms1e6_mr1.pdf}
+    \caption[Exploratory numerical FFLC and Volk Hora onset estimates]{Exploratory numerical forming limit diagram for the
+    \SI{100}{\milli\meter} punch at $t=\SI{1.5}{\milli\meter}$,
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, and $f_\mathrm{MR}=1$, with
+    the AA5182 surrogate constants. The solid curve connects the
+    element-status fracture points (FFLC) and the dashed curve the Volk Hora
+    onset estimates. The Volk Hora fit fails for the \texttt{W200} case, and
+    the \texttt{W200} and \texttt{W120} strain paths cross on the biaxial
+    side.}
+    \label{fig:fflc_example}
+\end{figure}
