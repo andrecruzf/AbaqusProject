@@ -437,6 +437,7 @@ Test configuration & Nakazima, Marciniak, Punch-in-Punch & Select forming setup 
 Specimen geometry & Width, thickness, geometry source & Build the tested blank \\
 Tool geometry & Punch radius, punch variant, die radii & Study tooling and size effects \\
 Process conditions & Punch travel, speed, friction & Match or vary test conditions \\
+Material constants & 46 VUMAT constants, density & Define the constitutive and fracture behaviour \\
 Material orientation & Rolling/transverse angle & Evaluate anisotropy effects \\
 Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial resolution \\
 Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
@@ -616,17 +617,32 @@ for all configurations:
 \subsection{Post-Processing File Catalogue}
 \label{app:postproc_catalogue}
 
-A single post-processing script reads the ODB and writes the following files,
-which are identical in schema across all test configurations:
-\begin{tabbing}
- \hspace*{4.0cm} \= \kill
- \texttt{punch\_fd.csv}       \> Punch force--displacement history \\[0.5ex]
- \texttt{energy\_data.csv}    \> Whole-model energy histories and the ALLKE/ALLIE ratio \\[0.5ex]
- \texttt{global.csv}          \> Per-frame global summary quantities \\[0.5ex]
- \texttt{strain\_path.csv}    \> Major/minor strain path of the critical dome element \\[0.5ex]
- \texttt{elout.csv}           \> Local history output of the apex element set \\[0.5ex]
- \texttt{forming\_limits.csv} \> Extracted fracture, Volk--Hora, and damage-based limit points
-\end{tabbing}
+A single post-processing script reads the ODB and writes a result folder with
+a schema that is identical across all test configurations. The tree below
+shows the full file set of one job. The mesh renders, animations, and static
+plot set are present when the corresponding optional steps are enabled.
+
+\lstset{language={},numbers=none}
+\begin{lstlisting}[frame=lines,basicstyle=\ttfamily\footnotesize]
+FLC_<case>/                      case folder with the aggregated FLC plot
+`-- <job>/                       result folder of one solver run
+    |-- punch_fd.csv             punch force-displacement history
+    |-- energy_data.csv          whole-model energies and ALLKE/ALLIE ratio
+    |-- global.csv               per-frame summary (U3, RF3, energies,
+    |                            max damage, fracture type)
+    |-- strain_path.csv          major/minor strain path of the critical element
+    |-- elout.csv                apex element history (strains, stresses, SDVs)
+    |-- forming_limits.csv       fracture, Volk-Hora, and damage-based limit points
+    |-- strain_cluster.csv       histories of the selected evaluation-zone elements
+    |-- strain_cluster_faces.csv top-face polygons of the cluster elements
+    |-- strain_neighborhood.csv  histories of the elements around the fracture centre
+    |-- specimen_outline.csv     undeformed specimen outline for plot overlays
+    |-- <job>_mesh.png           mesh verification render, isometric view
+    |-- <job>_mesh_top.png       mesh verification render, top view
+    |-- <job>_movie.webm         EQPS animation
+    |-- <job>_cut.webm           section-view animation
+    `-- postproc_plots.pdf       static diagnostic plot set
+\end{lstlisting}
 
 \section{Running a Simulation Campaign}
 
