@@ -9,13 +9,13 @@ four themes and ordered by priority within each.
   \item \textbf{Extend the mesh-size study beyond the reference case.} The
   production settings ($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$,
   $f_\mathrm{MR}=2$) are now fixed for the \texttt{W100} scalar reference case
-  (Section~\ref{sec:selection_numerical_parameters}), but the two-point
-  $f_\mathrm{MR}=2$--$3$ comparison could not confirm mesh convergence because
-  $f_\mathrm{MR}=1$ violates the quasi-static criterion at this mass-scaling
-  target. The next step is to extend the coarse-side sweep to
-  $f_\mathrm{MR}=4$, and separately test whether a smaller
-  $\Delta t_\mathrm{MS}$ keeps $f_\mathrm{MR}=1$ quasi-static so that a valid
-  fine-mesh reference becomes available; the confirmation sweep should then be
+  (Section~\ref{sec:selection_numerical_parameters}), but mesh convergence
+  could not be confirmed. The additional $f_\mathrm{MR}=1.25$ and $1.41$
+  checks still violate the quasi-static criterion, $f_\mathrm{MR}=1.5$ did not
+  yield a post-processed result, and only $f_\mathrm{MR}=2$ and $3$ are valid
+  at this mass-scaling target. The next step is to test whether a smaller
+  $\Delta t_\mathrm{MS}$ keeps the fine meshes quasi-static, and to extend the
+  coarse-side sweep to $f_\mathrm{MR}=4$. The confirmation sweep should then be
   repeated for the other relevant thicknesses and punch configurations. The
   present sweep only varies the single global refinement factor; the
   independent per-section sizing of Section~\ref{sec:mesh_generation} (central,
