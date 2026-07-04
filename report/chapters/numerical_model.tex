@@ -1,28 +1,15 @@
 \chapter{Automated Numerical Framework}\label{chap:numerical_model}
 
 \section{Framework Architecture}
-\subsection{Central Configuration}
+\subsection{Master Configuration File}
 
-The framework is controlled through a central configuration file, which acts as
-the primary control point of the numerical model. It defines the selected test
-configuration, specimen dimensions, punch setup, mesh controls, material
-orientation, contact parameters, loading conditions, solver settings, and
-post processing options. Parameters that are expected to change between
-campaigns are exposed there, while the implementation of the model building
-steps remains fixed.
-
-This separation reduces the risk of introducing unintended differences between
-simulation cases. For example, a change in sheet thickness, punch diameter, or
-mesh refinement factor does not require editing the \software{Abaqus} model
-manually. The complete list of available configuration groups is given in
-Appendix~\ref{app:configuration_parameters}.
-
-In addition to editing this configuration directly, the framework provides a
-graphical interface, built with \software{Streamlit}, that exposes the same
-parameters through interactive controls and submits the selected case to the
-cluster. It is an operational prototype that drives the same underlying pipeline
-as the configuration file, so a case prepared in the interface is equivalent to
-one configured by hand. Its layout and views are described in
+The numerical framework is controlled from a master configuration file. It
+defines the test type, specimen dimensions, punch setup, mesh controls, material
+orientation, loading conditions, solver resources, Euler paths, and post
+processing settings. Campaign parameters can therefore be changed in one place,
+while the model generation scripts remain fixed. An alpha version of the
+\software{Streamlit} interface provides a graphical front end that drives the
+same configuration and submission logic, as described in
 Appendix~\ref{app:interface}.
 
 \subsection{Automated Workflow}
