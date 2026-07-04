@@ -10,7 +10,8 @@ for generating controlled simulation data for the same specimen and punch
 configurations.
 
 The experimental campaign compared the rolling and transverse directions for
-every specimen geometry and sheet thickness. The RD and TD mean forming-limit
+every specimen geometry and sheet thickness with the standard
+\SI{100}{\milli\meter} punch. The RD and TD mean forming-limit
 points differ by no more than \num{0.019} in major and \num{0.017} in minor
 strain across all seven widths and four thicknesses, of the same order as the
 per-geometry repeat scatter, with the largest difference at the equi-biaxial
@@ -32,16 +33,25 @@ of the ISO~12004-2 and Volk--Hora results. However, the sensitivity to matrix
 length, reference-frame choice, and DIC coverage means that the method is not
 yet calibrated for production FLC extraction.
 
-On the numerical side, the main implemented result is a reproducible and
-extensible finite element analysis (FEA) pipeline. The model-generation step creates the tooling,
-specimen, contact definitions, material assignment, output requests, and
-boundary conditions automatically. Solver jobs are submitted through
-\software{SLURM}, and the post-processing stage extracts force--displacement
-histories, energy histories, strain paths, forming-limit points, and diagnostic
-media from the \software{Abaqus} output database.
+On the numerical side, a reproducible finite element analysis (FEA) pipeline
+now covers the full chain from automated model generation through
+\software{SLURM} execution to post-processing of the \software{Abaqus}
+output database. The sensitivity studies fixed a verified working
+configuration at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and
+$f_\mathrm{MR}=1.41$, which is quasi static by the energy criterion and
+reproduces the fracture strain of the finest tested mesh within
+\SI{1.9}{\percent} at \SI{63}{\percent} of its run time. The friction check
+showed that only frictionless punch contact keeps the fracture dome-centred,
+while any nonzero friction moves the failure site off the dome and the
+strain path toward plane strain, which supports the frictionless baseline
+for the lubricated experiments. The fracture-based extraction already yields
+an exploratory fracture forming limit curve (FFLC), and a necking-based FLC
+comparable with the ISO evaluation awaits a robust onset detection.
 
 In summary, the report connects the experimental, data-evaluation, and
-simulation parts of the project into one workflow. The remaining work is mainly
-quantitative: completing the numerical sensitivity studies, validating the
-simulation output against the experimental FLCs, and refining the identification
-criteria once larger datasets are available.
+simulation parts of the project into one workflow. The remaining work is
+mainly quantitative: calibrating the punch friction and the AA5754 material
+constants, running the width campaign with validation against the measured
+force responses and failure locations, and hardening the necking-onset
+detection so that the campaign yields a necking-based FLC rather than only a
+fracture curve.
