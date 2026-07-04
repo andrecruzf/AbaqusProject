@@ -50,6 +50,8 @@ MESH_SWEEP = [
 # target (MS1, Delta t = 1e-6 s) identified from MASS_SWEEP.
 CONFIRM_SWEEP = [
     Job("confirm", r"$f_\mathrm{MR}=1$", 1e-6, 1, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6/Naka100_W100_t1p5_ang0_ms1e6"),
+    Job("confirm", r"$f_\mathrm{MR}=1.25$", 1e-6, 1.25, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr1p25_pd32/Naka100_W100_t1p5_ang0_ms1e6_mr1p25_pd32"),
+    Job("confirm", r"$f_\mathrm{MR}=1.41$", 1e-6, 1.41, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr1p41_pd32/Naka100_W100_t1p5_ang0_ms1e6_mr1p41_pd32"),
     Job("confirm", r"$f_\mathrm{MR}=2$", 1e-6, 2, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr2/Naka100_W100_t1p5_ang0_ms1e6_mr2"),
     Job("confirm", r"$f_\mathrm{MR}=3$", 1e-6, 3, "FLC_output/FLC_Naka100_t1p5_ang0_ms1e6_mr3/Naka100_W100_t1p5_ang0_ms1e6_mr3"),
 ]
@@ -123,6 +125,10 @@ def _save(fig: plt.Figure, stem: str) -> None:
     plt.close(fig)
 
 
+def _format_mr(mr: float) -> str:
+    return f"{mr:g}"
+
+
 def _plot_strain_path(jobs: list[Job], stem: str, title: str) -> None:
     fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
     cmap = plt.get_cmap("tab10")
@@ -190,7 +196,7 @@ def _plot_forming_limit_points() -> None:
         fracture = _limit_row(job)
         if fracture is None:
             continue
-        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=plt.get_cmap("Greens")(0.35 + 0.15 * idx), linestyle="None", label=f"Confirm MR {int(job.mr)}")
+        ax.plot(fracture["eps2_minor"], fracture["eps1_major"], marker="^", color=plt.get_cmap("Greens")(0.35 + 0.15 * idx), linestyle="None", label=f"Confirm MR {_format_mr(job.mr)}")
     _style_axes(ax, r"Minor strain $\varepsilon_2$ [-]", r"Major strain $\varepsilon_1$ [-]")
     ax.set_title("Extracted fracture forming-limit points")
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, fontsize=7)
