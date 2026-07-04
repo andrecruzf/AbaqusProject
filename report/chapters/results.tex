@@ -308,110 +308,26 @@ from \texttt{W020} to \texttt{W200} in two repetitions, so the data set contains
 from the \software{VIC-3D} exports, with the specimen metadata resolved as
 described in Table~\ref{tab:ms_constants}. 
 
-\subsection{Parameter selection on the reference specimens}
-\label{sec:ms_reference}
+The first runs on the end-member \texttt{W020} and \texttt{W200} samples were
+used mainly to check that the Nakazima branch, metadata handling, frame
+selection, and comparison to the existing ISO~12004-2 and Volk--Hora outputs
+worked consistently. They are therefore not treated as a calibration result in
+the main text. The assessment below starts from the full \num{56}-sample
+campaign.
 
-The sensitivity to the matrix length $W_Y$ was studied first on the two
-reference specimens, the narrow \texttt{W020} sample and the wide \texttt{W200}
-sample. Tables~\ref{tab:minstoughton_w020_wy_sweep}
-and~\ref{tab:minstoughton_w200_wy_sweep} report this sweep. For both samples the
-setting $W_Y=\SI{15}{\milli\meter}$ gives the closest agreement with the
-ISO~12004-2 average necking result. It should be noted that this choice is
-agreement driven rather than stability driven, since the longer matrices form
-a plateau with an identical onset for \texttt{W020} while
-$W_Y=\SI{15}{\milli\meter}$ deviates from it. The \texttt{W020} coverage also
-decreases as $W_Y$ increases because the requested matrix extends beyond the
-valid DIC field for the narrow specimen. The value
-$W_Y=\SI{15}{\milli\meter}$ is nevertheless used for the campaign analysis
-that follows, and the sweep of Section~\ref{sec:ms_sweep_thickness} revisits
-the parameter choice per thickness.
-
-\begin{table}[H]
-    \centering
-    \small
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W020} DIC sample using
-    $W_X=\SI{2}{\milli\meter}$, $\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$,
-    $n=8$, $M=0.8$, and $\alpha=0.1$. Coverage is the fraction of requested
-    paper-grid matrix points found in the valid DIC field.}
-    \label{tab:minstoughton_w020_wy_sweep}
-    \begin{tabular}{c c c c c c c}
-        \toprule
-        $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \midrule
-        10 & $9\times37$  & 0.988 & 368 & 25.150 & 0.2270 & -0.0655 \\
-        15 & $9\times55$  & 0.879 & 415 & 26.326 & 0.3043 & -0.0897 \\
-        20 & $9\times72$  & 0.796 & 393 & 25.775 & 0.2325 & -0.0670 \\
-        25 & $9\times90$  & 0.719 & 393 & 25.775 & 0.2325 & -0.0670 \\
-        30 & $9\times108$ & 0.599 & 393 & 25.775 & 0.2325 & -0.0670 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\begin{table}[H]
-    \centering
-    \small
-    \caption{Min--Stoughton $W_Y$ sweep for the \texttt{W200} DIC sample using
-    the same settings as Table~\ref{tab:minstoughton_w020_wy_sweep}.}
-    \label{tab:minstoughton_w200_wy_sweep}
-    \begin{tabular}{c c c c c c c}
-        \toprule
-        $W_Y$ (\si{\milli\meter}) & Matrix & Coverage & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \midrule
-        10 & $8\times37$  & 1.000 & 489 & 39.601 & 0.2924 & 0.2623 \\
-        15 & $8\times54$  & 1.000 & 554 & 42.476 & 0.3816 & 0.3179 \\
-        20 & $8\times72$  & 1.000 & 489 & 39.601 & 0.2923 & 0.2623 \\
-        25 & $8\times90$  & 1.000 & 494 & 40.101 & 0.3050 & 0.2717 \\
-        30 & $8\times107$ & 1.000 & 499 & 40.601 & 0.3186 & 0.2813 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-The onset frame of the curvature criterion can be compared directly with the
-stored ISO~12004-2 and Volk--Hora necking frames for the two reference
-specimens, as summarised in Table~\ref{tab:minstoughton_vh_din_compare}. For
-\texttt{W020} the Min--Stoughton onset occurs three frames before the
-ISO~12004-2 average result and one frame after the Volk--Hora result. For
-\texttt{W200} the Min--Stoughton onset occurs five frames after the ISO~12004-2
-average result, while Volk--Hora detects necking later and at a higher strain.
-The three criteria therefore localise the onset within a few frames of each
-other on these two reference specimens.
-
-\begin{table}[H]
-    \centering
-    \small
-    \caption[Preliminary Min--Stoughton comparison with ISO~12004-2 and Volk--Hora]{Preliminary comparison between the Min--Stoughton result at
-    $W_Y=\SI{15}{\milli\meter}$ and the existing ISO~12004-2 and Volk--Hora
-    necking outputs for the same experimental DIC samples. The table label
-    ``ISO avg.'' denotes the ISO~12004-2 average necking result, whose frame
-    is the last frame before fracture on which the position based
-    intersection line evaluation operates (Section~\ref{sec:din_method}).}
-    \label{tab:minstoughton_vh_din_compare}
-    \begin{tabular}{l l c c c c c}
-        \toprule
-        Specimen & Method & $W_Y$ (\si{\milli\meter}) & Frame & Time (\si{\second}) & $\varepsilon_1$ & $\varepsilon_2$ \\
-        \midrule
-        \texttt{W020} & Min--Stoughton & 15 & 415 & 26.326 & 0.3043 & -0.0897 \\
-        \texttt{W020} & ISO avg.       & -- & 418 & 26.400 & 0.3025 & -0.0888 \\
-        \texttt{W020} & Volk--Hora     & -- & 414 & 26.300 & 0.2678 & -0.0796 \\
-        \midrule
-        \texttt{W200} & Min--Stoughton & 15 & 554 & 42.476 & 0.3816 & 0.3179 \\
-        \texttt{W200} & ISO avg.       & -- & 549 & 42.351 & 0.3765 & 0.3155 \\
-        \texttt{W200} & Volk--Hora     & -- & 591 & 43.401 & 0.4124 & 0.3496 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Forming-limit comparison across thicknesses}
+\subsection{Baseline Full-Campaign Evaluation}
 \label{sec:ms_campaign}
 
-With the parameters fixed, the curvature criterion was applied to the full
-campaign and compared, for every thickness, against the ISO~12004-2 and
-Volk--Hora limits extracted from the same DIC samples.
-Figure~\ref{fig:flc_ms_comparison} overlays the three criteria in the
-forming-limit diagram for the four thicknesses, Table~\ref{tab:ms_campaign_summary}
-summarises the detection rate and mean major-strain agreement with ISO~12004-2
-per thickness, and the width-by-width mean and standard deviation over the two
-repetitions are tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
+As a baseline, the curvature criterion was applied to the full campaign with
+one fixed parameter set, $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$,
+$\mathrm{SAC}=\SI{5e-4}{\per\milli\meter}$, and $\alpha=0.1$. The result was
+compared, for every thickness, against the ISO~12004-2 and Volk--Hora limits
+extracted from the same DIC samples. Figure~\ref{fig:flc_ms_comparison}
+overlays the three criteria in the forming-limit diagram for the four
+thicknesses, Table~\ref{tab:ms_campaign_summary} summarises the detection rate
+and mean major-strain agreement with ISO~12004-2 per thickness, and the
+width-by-width mean and standard deviation over the two repetitions are
+tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
 
 \begin{figure}[H]
     \centering
@@ -420,10 +336,10 @@ repetitions are tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
     diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
     Min--Stoughton ($\diamond$) criteria for the four sheet thicknesses, with the
     \SI{100}{\milli\meter} punch. Each marker is the mean over the two
-    repetitions of a width, and the Min--Stoughton results use the standard set
-    $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$. The three criteria coincide for
-    the thin sheets, while the curvature points fall increasingly below the
-    reference curves as the thickness increases.}
+    repetitions of a width, and the Min--Stoughton results use the baseline set
+    listed in the text. The three criteria remain close for the thin sheets,
+    while the curvature points fall increasingly below the reference curves as
+    the thickness increases.}
     \label{fig:flc_ms_comparison}
 \end{figure}
 
@@ -433,9 +349,9 @@ repetitions are tabulated in full in Appendix~\ref{app:ms_campaign_tables}.
     \caption[Min--Stoughton campaign comparison summary]{Detection rate and
     mean major-strain agreement with ISO~12004-2 per thickness, over the 14
     rolling-direction samples of the repeat campaign with the
-    \SI{100}{\milli\meter} punch. The Min--Stoughton results use the standard
-    set $W_Y=\SI{15}{\milli\meter}$, $M=0.8$, $n=8$. Full per-width values for
-    all three criteria are given in Appendix~\ref{app:ms_campaign_tables}.}
+    \SI{100}{\milli\meter} punch. The Min--Stoughton results use the baseline
+    set listed in the text. Full per-width values for all three criteria are
+    given in Appendix~\ref{app:ms_campaign_tables}.}
     \label{tab:ms_campaign_summary}
     \begin{tabular}{c c c c}
         \toprule
@@ -464,20 +380,19 @@ degrades for the thicker sheets, rising to about \num{0.033} for class~C and
 \num{0.046} for class~D, and class~D shows a consistent negative bias, with the
 curvature major strain falling below both reference methods at nearly every
 width, for example $\varepsilon_1=\num{0.285}$ against the ISO~12004-2
-\num{0.358} at \texttt{W020}. This trend indicates that the parameters
-calibrated on the thin material do not transfer unchanged to thicker sheets,
-where the stronger through-thickness curvature alters the dimple signature so
-that the fixed SAC and threshold trigger the onset earlier. A
-thickness-dependent parameter choice is therefore required before the curvature
-method can be applied for production forming-limit extraction across the full
-thickness range.
+\num{0.358} at \texttt{W020}. This baseline result shows that a single fixed
+parameter set does not describe all thicknesses equally well. It motivates the
+full sweep below, where the matrix length, reference-frame choice, persistence
+length, curvature offset, and threshold are varied across the complete
+\num{56}-sample dataset.
 
 \subsection{Parameter Sweep Across Thicknesses}
 \label{sec:ms_sweep_thickness}
 
-To test whether the thicker-sheet underestimation can be removed by retuning
-rather than being intrinsic, a parameter sweep was run over all four thicknesses
-(\num{56} samples), covering $W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
+To test whether the baseline underestimation is parameter dependent rather
+than intrinsic to the curvature criterion, a parameter sweep was run over all
+four thicknesses (\num{56} samples), covering
+$W_Y\in\{15,20,25\}\,\si{\milli\meter}$,
 $M\in\{0.70,0.75,0.80\}$, $n\in\{6,8,10\}$,
 $\mathrm{SAC}\in\{\num{5e-4},\num{1e-3}\}\,\si{\per\milli\meter}$, and
 $\alpha\in\{0.10,0.20\}$, that is \num{108} parameter sets per sample. Each set
@@ -486,16 +401,17 @@ Euclidean distance in the forming-limit diagram,
 $d_{\mathrm{ISO}}=\big\langle\sqrt{(\Delta\varepsilon_1)^2+(\Delta\varepsilon_2)^2}\big\rangle$,
 of the curvature point to the ISO~12004-2 average over the detected widths, so
 that both the major and the minor limit strain enter the ranking.
-Table~\ref{tab:ms_sweep_thickness} compares the standard set with the best
+Table~\ref{tab:ms_sweep_thickness} compares the baseline set with the best
 agreeing set (minimum $d_{\mathrm{ISO}}$, detecting at least 13 of the 14
 samples) for each thickness. The complete sweep is tabulated in
-Appendix~\ref{app:ms_sweep}.
+Appendix~\ref{app:ms_sweep}, where the detection rate and major-strain
+component are listed for every parameter set.
 
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton parameter sweep across thicknesses]{Standard versus
-    best agreeing parameter set per thickness from the sweep. The standard
+    \caption[Min--Stoughton parameter sweep across thicknesses]{Baseline versus
+    best agreeing parameter set per thickness from the sweep. The baseline
     set is $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$, and the
     best agreeing set minimises $d_{\mathrm{ISO}}$ subject to detecting at least 13 of
     14 samples. Detection is the number of samples with a detected onset (of 14),
@@ -505,7 +421,7 @@ Appendix~\ref{app:ms_sweep}.
     \label{tab:ms_sweep_thickness}
     \begin{tabular}{c c c l c c}
         \toprule
-        & \multicolumn{2}{c}{Standard set} & \multicolumn{3}{c}{Best agreeing set (det.\ $\geq 13$)} \\
+        & \multicolumn{2}{c}{Baseline set} & \multicolumn{3}{c}{Best agreeing set (det.\ $\geq 13$)} \\
         \cmidrule(lr){2-3}\cmidrule(lr){4-6}
         Thickness & Det. & $d_{\mathrm{ISO}}$ & $(W_Y,M,n,\mathrm{SAC},\alpha)$ & Det. & $d_{\mathrm{ISO}}$ \\
         \midrule
@@ -522,7 +438,7 @@ the thinner sheets the fourteenth sample is the stubborn second repetition of
 the biaxial \texttt{W200} geometry, and the only sets that capture it place
 \texttt{W200} far from the reference: for class~B the best full-detection set
 reaches $d_{\mathrm{ISO}}=\num{0.036}$, with the \texttt{W200} point alone
-\num{0.081} in strain from the ISO~12004-2 average. For class~B the standard
+\num{0.081} in strain from the ISO~12004-2 average. For class~B the baseline
 set is already the best agreeing one, so tuning brings no gain. Class~C
 benefits most, its distance dropping from \num{0.037} to \num{0.019} once the
 threshold multiplier is raised to $\alpha=0.20$ with a longer matrix
@@ -540,14 +456,14 @@ production forming-limit extraction.
 
 Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
 when each thickness uses its best agreeing set from
-Table~\ref{tab:ms_sweep_thickness}, in place of the single standard set of
-Figure~\ref{fig:flc_ms_comparison}. The curvature curve now follows the
-ISO~12004-2 and Volk--Hora references closely across the whole diagram, including
-the biaxial \texttt{W200} point that the standard set placed far off; only the
-uniaxial branch of the thickest sheet~D retains a visible offset. These sets
-detect thirteen or fourteen of the fourteen samples, the single miss being the
-extreme biaxial repetition whose forced detection would pull the \texttt{W200}
-point away from the reference.
+Table~\ref{tab:ms_sweep_thickness}, in place of the single baseline set of
+Figure~\ref{fig:flc_ms_comparison}. The curvature curve moves closer to the
+ISO~12004-2 and Volk--Hora references across most of the diagram, including the
+biaxial \texttt{W200} point that the baseline set placed far off. The uniaxial
+branch of the thickest sheet~D still retains a visible offset. These sets detect
+thirteen or fourteen of the fourteen samples, the single miss being the extreme
+biaxial repetition whose forced detection would pull the \texttt{W200} point
+away from the reference.
 
 \begin{figure}[H]
     \centering
@@ -557,7 +473,7 @@ point away from the reference.
     Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
     using each thickness's best agreeing parameter set (detection $\geq 13/14$) from
     Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
-    single standard set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
+    single baseline set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
     mean over the two repetitions of a width.}
     \label{fig:flc_ms_comparison_best}
 \end{figure}
