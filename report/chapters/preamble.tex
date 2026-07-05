@@ -18,26 +18,26 @@ and transverse direction limits remain within repeat scatter, so no major
 anisotropy effect is identified. In the punch diameter study, the standard
 ISO~12004-2 fitting window can move complete FLCs out of the expected ordering
 for nonstandard punch geometries. This motivates replacing the fixed ISO
-window constant with the geometry dependent factor $D/10$, which recovers a
-more intuitive ordering across punch diameters. Possible punch radius effects
-should therefore be considered rather than treated as confirmed.
+window constant with the geometry-dependent factor $D/10$, which recovers a
+more intuitive ordering across punch diameters. Punch-size effects on the
+measured limits therefore remain possible rather than confirmed.
 
-The identification framework integrates a Min and Stoughton curvature
+The identification framework integrates a Min--Stoughton curvature
 criterion and applies it to the \num{56} DIC samples of the rolling direction,
 \SI{100}{\milli\meter} punch subset. With one baseline parameter set, it
 detects 12 to 14 of 14 samples per thickness, with mean
-$|\Delta\varepsilon_1|$ values to ISO~12004-2 of \num{0.014} to \num{0.046}
+$|\Delta\varepsilon_1|$ values relative to ISO~12004-2 of \num{0.014} to \num{0.046}
 and mean $|\Delta\varepsilon_2|$ values of \num{0.007} to \num{0.016}.
-A thickness dependent sweep indicates parameter sensitivity, with separate
+A thickness-dependent sweep indicates parameter sensitivity, with separate
 detection and ISO-match rankings reported through
 $|\Delta\varepsilon_1|$ and $|\Delta\varepsilon_2|$.
 
 The numerical part implements an automated \software{Abaqus/Explicit} workflow
-for Nakazima, Marciniak, and Punch in Punch simulations, including model
-generation, Euler submission, ODB post processing, and result synchronisation.
-For the \texttt{W100} reference case, the working setting is a mass scaling
-target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, which is retained as a
-working choice because it stays within the quasi-static energy check and
+for Nakazima, Marciniak, and Punch-in-Punch simulations, including model
+generation, Euler submission, ODB post-processing, and result synchronisation.
+For the \texttt{W100} reference case, the working setting is a mass-scaling
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$. It stays within the
+quasi-static energy check and
 reduces run time relative to the finer meshes. A friction check showed that
 only frictionless punch contact keeps the fracture
 dome-centred, which supports the frictionless baseline for the lubricated
@@ -98,6 +98,7 @@ ALLKE \> Kinetic energy history output in \software{Abaqus} \\[0.5ex]
 DIC \> Digital image correlation \\[0.5ex]
 EQPS \> Equivalent plastic strain \\[0.5ex]
 FEA \> Finite element analysis \\[0.5ex]
+FFLC \> Fracture forming limit curve \\[0.5ex]
 FLC \> Forming limit curve \\[0.5ex]
 FLD \> Forming limit diagram \\[0.5ex]
 GUI \> Graphical user interface \\[0.5ex]
@@ -123,10 +124,14 @@ VUMAT \> \software{Abaqus/Explicit} user material subroutine
  \hspace*{2.0cm} \= \hspace*{8cm} \= \kill
  $\varepsilon_1$ \> Major principal strain \> -- \\[0.5ex]
  $\varepsilon_2$ \> Minor principal strain \> -- \\[0.5ex]
+ $\varepsilon_3$ \> Thickness strain \> -- \\[0.5ex]
  $t$ \> Blank thickness \> \si{\milli\meter} \\[0.5ex]
+ $D$ \> Punch diameter \> \si{\milli\meter} \\[0.5ex]
  $R$ \> Punch radius \> \si{\milli\meter} \\[0.5ex]
- $\alpha$ \> Material orientation angle \> \si{\degree} \\[0.5ex]
- $\Delta t$ \> Stable time increment or mass-scaling target \> \si{\second}
+ $\theta$ \> Material orientation angle \> \si{\degree} \\[0.5ex]
+ $\alpha$ \> Threshold multiplier of the necking-onset criteria \> -- \\[0.5ex]
+ $f_\mathrm{MR}$ \> Mesh-refinement factor \> -- \\[0.5ex]
+ $\Delta t_\mathrm{MS}$ \> Mass-scaling target time increment \> \si{\second}
 \end{tabbing}
 
 \cleardoublepage

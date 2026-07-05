@@ -5,8 +5,8 @@
 
 The numerical framework is controlled from a master configuration file. It
 defines the test type, specimen dimensions, punch setup, mesh controls, material
-orientation, loading conditions, solver resources, Euler paths, and post
-processing settings. Campaign parameters can therefore be changed in one place,
+orientation, loading conditions, solver resources, Euler paths, and
+post-processing settings. Campaign parameters can therefore be changed in one place,
 while the model generation scripts remain fixed. A prototype graphical
 user interface built with \software{Streamlit} drives the same configuration
 and submission logic, as described in Appendix~\ref{app:interface}.
@@ -27,7 +27,7 @@ and~\ref{fig:model_gen_sequence}.
 The simulations are executed with \software{Abaqus/Explicit}~2023 on the ETH
 Euler cluster. The project files are copied to the cluster, the input file and
 the user material subroutine are submitted through \software{SLURM}, and the
-ODB post processing runs after the analysis has completed.
+ODB post-processing runs after the analysis has completed.
 
 Only the compact result files, figures, and movies are copied back to the
 project directory. The large ODB files remain in scratch storage, which is
@@ -41,7 +41,7 @@ of each simulation.
 Three test configurations are supported. The Nakazima model represents the
 standard hemispherical punch test and is used as the main reference
 configuration. The Marciniak model uses a flat punch and provides a second
-forming setup with a different strain path character. The Punch in Punch model
+forming setup with a different strain path character. The Punch-in-Punch model
 contains an outer and an inner punch and is used to study a two stage forming
 process.
 
@@ -70,8 +70,8 @@ contacts use a Coulomb coefficient of \num{0.35}, adopted from the previous
 numerical setup of Sen~\cite{Sen2025}, while the punch to blank coefficient is
 treated as a study parameter and examined in
 Section~\ref{sec:friction_sensitivity}. The same contact formulation is
-employed for the Nakazima and Marciniak configurations, while the Punch in
-Punch model activates the additional contact interactions associated with the
+employed for the Nakazima and Marciniak configurations, while the
+Punch-in-Punch model activates the additional contact interactions associated with the
 second punch.
 
 \subsection{Parameterised Mesh Generation}
@@ -79,7 +79,7 @@ second punch.
 
 The deformable sheet is discretised using linear hexahedral elements with
 reduced integration (C3D8R). A solid formulation is adopted because the
-constitutive model accounts for through thickness deformation, damage evolution,
+constitutive model accounts for through-thickness deformation, damage evolution,
 and element deletion.
 
 A central requirement of the framework is that the element size is controlled in
@@ -119,10 +119,10 @@ only changes how far the outer sections extend. Second, the central zone keeps a
 constant fine resolution, so the region where fracture initiates is always
 resolved consistently. Through the thickness, ten element layers are used for
 every blank, independent of the refinement factor. This count is an empirical
-choice that resolves the through thickness strain gradients of a developing
+choice that resolves the through-thickness strain gradients of a developing
 neck. It is kept fixed because additional layers would act as a further mesh
-refinement and would reduce the stable time increment, so the through
-thickness resolution would otherwise couple directly into the computational
+refinement and would reduce the stable time increment, so the
+through-thickness resolution would otherwise couple directly into the computational
 cost.
 
 \begin{table}[H]
@@ -146,7 +146,7 @@ seed spacing of every section, while the section boundaries remain unchanged.
 A factor of \num{2} therefore doubles the in plane seed spacing, which gives a
 fourfold larger in plane cell area and roughly fourfold fewer in plane cells,
 apart from small differences introduced by the partition geometry and the
-fixed through thickness layering. Values below \num{1} refine the mesh, while
+fixed through-thickness layering. Values below \num{1} refine the mesh, while
 values above \num{1} coarsen it.
 
 The target size of each section can also be chosen independently. This makes it
@@ -162,8 +162,8 @@ Appendix~\ref{app:numerical_implementation}.
 
 The sheet is described through a user material subroutine
 (VUMAT). Plasticity is modelled with a Hill'48 yield function
-and a non associated flow rule. The hardening law combines Swift and Voce
-terms, and fracture initiation follows the Hosford and Coulomb model. 
+and a non-associated flow rule. The hardening law combines Swift and Voce
+terms, and fracture initiation follows the Hosford--Coulomb model. 
 
 The 46 material constants were taken from an existing chair internal
 calibration of AA5182, a comparable \mbox{5xxx series} aluminium alloy, since
@@ -180,18 +180,18 @@ using the same numerical model without modifying the underlying implementation.
 
 Material degradation and fracture are represented through the internal damage
 variables of the VUMAT. The fracture indicator accumulates plastic strain
-weighted by the Hosford and Coulomb strain to fracture at the current stress
+weighted by the Hosford--Coulomb strain to fracture at the current stress
 state, and an element is deleted once the indicator reaches its critical
 value. Besides
 representing crack initiation, the resulting deletion pattern is used during
-post processing to identify the fracture location and distinguish valid dome
+post-processing to identify the fracture location and distinguish valid dome
 centred fractures from failures occurring outside the evaluation region.
 
-\subsection{Quasi Static Solution Strategy}
+\subsection{Quasi-Static Solution Strategy}
 
-Although the experimental forming tests are quasi static, the numerical
+Although the experimental forming tests are quasi-static, the numerical
 simulations are performed using \software{Abaqus/Explicit}. Maintaining a
-quasi static response therefore requires limiting the inertial effects
+quasi-static response therefore requires limiting the inertial effects
 introduced by the explicit solution procedure while keeping the computational
 cost within reasonable limits.
 
@@ -206,37 +206,37 @@ of \SI{30}{\milli\meter}, so the physical forming event lasts on the order of
 explicit analysis. The punch velocity is therefore fixed at
 \SI{5}{\milli\meter\per\second}, following the previous numerical setup of
 Sen~\cite{Sen2025} as a starting point rather than as a validation of
-quasi static behaviour, which shortens the simulated process to about
+quasi-static behaviour, which shortens the simulated process to about
 \SI{6}{\second}. Because the rate and temperature terms of the material model
 are inactive in the present calibration, the increased punch velocity affects
 the solution only through inertia. Fixing the velocity removes one degree of
 freedom, so the sensitivity study of Chapter~\ref{chap:results} varies only
 the mesh density and the mass scaling, and whether the resulting simulations
-are sufficiently quasi static is checked from the energy histories of each
+are sufficiently quasi-static is checked from the energy histories of each
 run.
 
-The punch motion follows a smooth step velocity profile, in which the velocity
+The punch motion follows a smooth-step velocity profile, in which the velocity
 rises gradually from zero to a peak at mid stroke and returns to zero, so that
 no velocity discontinuity occurs at first punch contact. All simulations
 reported in this work use this profile.
 
 Mass scaling artificially modifies the material density so that the stable
 time increment reaches a prescribed target $\Delta t_\mathrm{MS}$. The choice
-of this target is the subject of the mass scaling study in
+of this target is the subject of the mass-scaling study in
 Chapter~\ref{chap:results}.
 
 To verify the validity of each simulation, the kinetic and internal energy
-histories are extracted automatically during post processing. The ratio of
+histories are extracted automatically during post-processing. The ratio of
 kinetic to internal energy ($\mathrm{ALLKE}/\mathrm{ALLIE}$) is then evaluated
-to quantify the influence of inertia. Together with the mesh and mass scaling
+to quantify the influence of inertia. Together with the mesh and mass-scaling
 sensitivity studies presented in Chapter~\ref{chap:results}, this provides the
 basis for selecting numerical parameters that remain representative of the
-physical quasi static experiment.
+physical quasi-static experiment.
 
-\section{Automated Post Processing Outputs}
+\section{Automated Post-Processing Outputs}
 
 Following each simulation, the output database (ODB) is processed
-automatically through a common post processing pipeline. The extracted
+automatically through a common post-processing pipeline. The extracted
 quantities serve two complementary purposes. They validate the numerical
 simulation and generate the data required for forming limit identification.
 The complete set of generated files is catalogued in
@@ -247,7 +247,7 @@ the punch force displacement response, the kinetic and internal energy
 histories, and a series of diagnostic visualisations, including section and
 isometric view animations, representative mesh topology snapshots, and a static
 plot set for each run.
-These outputs allow the quasi static assumption, deformation evolution, and
+These outputs allow the quasi-static assumption, deformation evolution, and
 overall simulation behaviour to be verified without manual inspection of the
 ODB.
 The static plot set contains:
@@ -255,8 +255,8 @@ The static plot set contains:
   \item punch force displacement response
   \item kinetic and internal energy histories with the
   $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio
-  \item strain path in the $e_2$ versus $e_1$ plane
-  \item Volk Hora thinning rate signal with stable and unstable fits
+  \item strain path in the $\varepsilon_2$ versus $\varepsilon_1$ plane
+  \item Volk--Hora thinning-rate signal with stable and unstable fits
   \item selected necking zone and crack location on the specimen surface
   \item triaxiality history
 \end{itemize}
@@ -272,7 +272,7 @@ identify the fracture location. The extraction of a critical strain state from
 the evaluation region is implemented, but this step remains a development output
 and is not used as a reliable forming limit point in the present report.
 
-The post processing can also apply a logic similar to the Volk Hora criterion
+The post-processing can also apply a logic similar to the Volk--Hora criterion
 of Section~\ref{sec:vh_method} to the numerical strain histories. The deleted
 elements define the crack line, and the evaluation considers the top face
 elements within a band of \SI{3}{\milli\meter} around it, which mirrors the

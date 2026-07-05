@@ -41,7 +41,7 @@ characteristic regions can be distinguished:
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.75\linewidth]{img/FLD_example.png}
-    \caption[Example FLD from the present campaign]{Example forming limit diagram for an AA5754 sheet from the present experimental campaign, with the forming limit curve determined using the intersection-line method.}
+    \caption[Example FLD from the present campaign]{Example forming limit diagram for an AA5754 sheet from the present experimental campaign, with the forming limit curve determined using the intersection-line method of Section~\ref{sec:din_method}.}
     \label{fig:FLD_example}
 \end{figure}
 
@@ -112,18 +112,21 @@ where $\bar{\varepsilon}_1$ and $\bar{\varepsilon}_2$ are the average principal
 strains at the interior boundaries of both sides. The intersection-line spacing
 and the constant factor of $10$ in Eq.~\eqref{eq:din_window} are calibrated for
 the standard Nakazima geometry with a $\varnothing$\SI{100}{\milli\meter}
-hemispherical punch. An inverse parabola is fitted over each region, and the
-value of the fit evaluated at the crack position yields the major necking strain
-$\varepsilon_{1,\text{neck}}$. The minor necking strain is obtained from the
-thickness strain:
+hemispherical punch. An inverse parabola is fitted over each region to the
+major strain profile and to the thickness strain profile
+$\varepsilon_3 = -(\varepsilon_1 + \varepsilon_2)$, which follows from plastic
+incompressibility. The values of the two fits evaluated at the crack position
+yield the necking strains $\varepsilon_{1,\text{neck}}$ and
+$\varepsilon_{3,\text{neck}}$, and the minor necking strain follows from
+incompressibility:
 \begin{equation}
-    \varepsilon_3 = -(\varepsilon_1 + \varepsilon_2), \qquad
     \varepsilon_{2,\text{neck}} = -(\varepsilon_{3,\text{neck}} + \varepsilon_{1,\text{neck}}).
 \end{equation}
 
 The method is straightforward and widely used, but relies on a single time frame
 and is sensitive to the selected cross-section and the regularity of the strain
-field near the crack.
+field near the crack. Figure~\ref{fig:din_example} shows an example
+intersection-line evaluation from the present campaign.
 
 \begin{figure}[H]
     \centering
@@ -210,10 +213,10 @@ stable to the unstable regime and is used to identify the limit frame.
 \end{figure}
 \subsection{Merklein Method}
 
-The Merklein method~\cite{Merklein2010} tracks the mean major strain within a
-small circle around the facet of highest major strain in the necking zone,
-and detects necking from the point of maximum curvature (highest $R^2$ of a
-regression fit) in the time derivative of this strain rate. It is not part of
+The Merklein method~\cite{Merklein2010} tracks the mean major strain rate
+within a small evaluation area around the facet of highest major strain in the
+necking zone, and detects the onset of necking from the time derivative of
+this signal through a regression analysis. It is not part of
 the existing identification
 framework and is not applied in this work.
 

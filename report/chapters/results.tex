@@ -18,7 +18,7 @@ every sheet thickness (A--D), the standard Nakazima test was performed with
 specimens oriented in the rolling direction (RD, configuration
 \texttt{E0\_RM00\_000}) and in the transverse direction (TD, configuration
 \texttt{E0\_RM00\_090}). The suffix denotes the orientation
-angle $\alpha$ relative to RD, with \SI{0}{\degree} for RD and
+angle $\theta$ relative to RD, with \SI{0}{\degree} for RD and
 \SI{90}{\degree} for TD. The punch diameter, specimen widths, and test-bench
 settings were kept identical between the two orientations, so that
 differences in the resulting forming limits can be interpreted primarily as
@@ -26,7 +26,7 @@ orientation effects.
 
 For each orientation and thickness, two complete campaigns of seven specimen
 widths were performed, and the forming-limit points reported here are the mean
-over the two campaigns, which reduces the influence of test specific scatter.
+over the two campaigns, which reduces the influence of test-specific scatter.
 The limit points were determined from
 the DIC strain fields using the ISO~12004-2 intersection-line method
 described in Section~\ref{sec:din_method}. Figure~\ref{fig:rd_vs_td} overlays the resulting RD and TD forming
@@ -37,14 +37,14 @@ limit curves for the four thicknesses.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/RD_vs_TD_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Thickness A ($t = \SI{1.2}{\milli\meter}$).}
         \label{fig:rd_vs_td_a}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/RD_vs_TD_B.png}
-        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \caption{Thickness B ($t = \SI{1.5}{\milli\meter}$).}
         \label{fig:rd_vs_td_b}
     \end{subfigure}
 
@@ -53,14 +53,14 @@ limit curves for the four thicknesses.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/RD_vs_TD_C.png}
-        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \caption{Thickness C ($t = \SI{2.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_c}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/RD_vs_TD_D.png}
-        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \caption{Thickness D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_d}
     \end{subfigure}
     \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{RD and TD forming limit curves for the \SI{100}{\milli\meter} punch and sheet thicknesses A--D.}
@@ -102,11 +102,11 @@ between the RD and TD mean points for every width and thickness.
 \end{table}
 
 Across all four thicknesses, the RD and TD forming limit curves are nearly
-coincident, following the same trajectory from the uniaxial strain-state through the
-plane-strain minimum and into the biaxial strain-state. The differences in
+coincident, following the same trajectory from the uniaxial strain state through the
+plane-strain minimum and into the biaxial strain state. The differences in
 Table~\ref{tab:rd_td_summary} remain within $\pm0.019$ in $\varepsilon_1$ and
 $\pm0.017$ in $\varepsilon_2$. The largest differences
-occur at the equi-biaxial \texttt{W200} point of the thickest sheet~D, where the transverse case has only one usable repeat. Without a second repetition this point retains the full test dispersion that averaging removes everywhere else, so part of its larger difference is attributable to test to test variation rather than to orientation. 
+occur at the equi-biaxial \texttt{W200} point of the thickest sheet~D, where the transverse case has only one usable repeat. Without a second repetition this point retains the full test dispersion that averaging removes everywhere else, so part of its larger difference is attributable to test-to-test variation rather than to orientation. 
 
 These results indicate that, for the AA5754 sheet material and thickness range
 investigated here, in-plane material orientation produces no systematic shift in
@@ -126,7 +126,7 @@ to expose the coupling between punch geometry and sheet thickness. Physically,
 a smaller punch superimposes more bending on the membrane stretch, since
 wrapping a sheet of thickness $t$ around a punch of radius $R$ adds a bending
 strain of about $t/2R$ between the outer surface and the mid plane. This
-through thickness strain gradient, together with the contact pressure of the
+through-thickness strain gradient, together with the contact pressure of the
 punch, stabilises the deformation against localised necking and raises the
 limit strains measured on the outer
 surface~\cite{Charpentier1975, Min2016}. Both effects scale with the ratio
@@ -158,14 +158,14 @@ applied.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_wvar_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Thickness A ($t = \SI{1.2}{\milli\meter}$).}
         \label{fig:flc_norm_a}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_wvar_B.png}
-        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \caption{Thickness B ($t = \SI{1.5}{\milli\meter}$).}
         \label{fig:flc_norm_b}
     \end{subfigure}
 
@@ -174,33 +174,25 @@ applied.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_wvar_C.png}
-        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \caption{Thickness C ($t = \SI{2.0}{\milli\meter}$).}
         \label{fig:flc_norm_c}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_wvar_D.png}
-        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \caption{Thickness D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_norm_d}
     \end{subfigure}
     \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves from the standard ISO~12004-2 window for the four punch diameters and sheet thicknesses A--D.}
     \label{fig:flc_norm}
 \end{figure}
 
-The intersection-line method contains two length scales. The first is the
-spacing between neighbouring intersection lines, which remains fixed at
-\SI{2}{\milli\meter} throughout this study. The second is the neck-window width
-used for the ISO parabola fit, introduced through the constant $10$ in
-Eq.~\eqref{eq:din_window}. Only this second parameter is varied in the tuning
-below. The line spacing controls how densely the strain field is sampled near
-the crack path, whereas the fitting window controls how much of the neck
-profile is used to identify the limit strain. The fitting window is expected
-to depend on punch size because the strained dome and neck profile become
-narrower when the punch diameter $D$ decreases. A constant calibrated on the
-$\varnothing$\SI{100}{\milli\meter} ISO punch is therefore not necessarily
-transferable to the \SI{80}{\milli\meter}, \SI{60}{\milli\meter}, and
-\SI{40}{\milli\meter} punches.
+The intersection-line method contains two length scales, the spacing between
+neighbouring intersection lines and the neck-window width introduced through
+the constant $10$ in Eq.~\eqref{eq:din_window}. The line spacing remains fixed
+at \SI{2}{\milli\meter} throughout this study, so only the window constant is
+varied in the tuning below.
 
 As a diagnostic, the window sensitivity is first checked with deliberately
 smaller fixed constants. Figure~\ref{fig:flc_wvar} compares constants 10, 9, 8,
@@ -218,14 +210,14 @@ shows the corresponding re-evaluation.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_norm_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Thickness A ($t = \SI{1.2}{\milli\meter}$).}
         \label{fig:flc_wvar_a}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_norm_B.png}
-        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \caption{Thickness B ($t = \SI{1.5}{\milli\meter}$).}
         \label{fig:flc_wvar_b}
     \end{subfigure}
 
@@ -234,14 +226,14 @@ shows the corresponding re-evaluation.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_norm_C.png}
-        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \caption{Thickness C ($t = \SI{2.0}{\milli\meter}$).}
         \label{fig:flc_wvar_c}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_norm_D.png}
-        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \caption{Thickness D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_wvar_d}
     \end{subfigure}
     \caption[Forming limit curves re-evaluated with smaller fixed window constants]{Forming limit curves from smaller fixed ISO window constants for sheet thicknesses A--D.}
@@ -253,14 +245,14 @@ shows the corresponding re-evaluation.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_pscaled_A.png}
-        \caption{Material A ($t = \SI{1.2}{\milli\meter}$).}
+        \caption{Thickness A ($t = \SI{1.2}{\milli\meter}$).}
         \label{fig:flc_pscaled_a}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_pscaled_B.png}
-        \caption{Material B ($t = \SI{1.5}{\milli\meter}$).}
+        \caption{Thickness B ($t = \SI{1.5}{\milli\meter}$).}
         \label{fig:flc_pscaled_b}
     \end{subfigure}
 
@@ -269,14 +261,14 @@ shows the corresponding re-evaluation.
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_pscaled_C.png}
-        \caption{Material C ($t = \SI{2.0}{\milli\meter}$).}
+        \caption{Thickness C ($t = \SI{2.0}{\milli\meter}$).}
         \label{fig:flc_pscaled_c}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/FLC_pscaled_D.png}
-        \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
+        \caption{Thickness D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_pscaled_d}
     \end{subfigure}
     \caption[Forming limit curves re-evaluated with a punch-scaled window]{Forming limit curves from the punch-scaled ISO window for sheet thicknesses A--D.}
@@ -349,13 +341,13 @@ tabulated in Appendix~\ref{app:ms_campaign_tables}.
 \end{table}
 
 As Figure~\ref{fig:flc_ms_comparison} shows, the curvature criterion detects an
-onset in 13 of 14 samples for both class~A and class~B, 12 of 14 for class~C,
-and all 14 for class~D. For the thinner sheets, the curvature limit stays close
-to the established methods: class~B gives mean absolute differences of
+onset in 13 of 14 samples for both thickness~A and thickness~B, 12 of 14 for thickness~C,
+and all 14 for thickness~D. For the thinner sheets, the curvature limit stays close
+to the established methods: thickness~B gives mean absolute differences of
 \num{0.014} in $\varepsilon_1$ and \num{0.009} in $\varepsilon_2$, compared
-with \num{0.024} and \num{0.007} for class~A. The $\varepsilon_1$ component
-increases for the thicker sheets, reaching \num{0.033} for class~C and
-\num{0.046} for class~D. The $\varepsilon_2$ component remains smaller, with
+with \num{0.024} and \num{0.007} for thickness~A. The $\varepsilon_1$ component
+increases for the thicker sheets, reaching \num{0.033} for thickness~C and
+\num{0.046} for thickness~D. The $\varepsilon_2$ component remains smaller, with
 mean values of \num{0.013} and \num{0.016}. Class~D shows a negative bias, with
 the curvature point falling below both reference methods at most widths. For
 example, the \texttt{W020} point gives $\varepsilon_1=\num{0.285}$ against the
@@ -416,9 +408,9 @@ in Appendix~\ref{app:ms_sweep}.
 \end{table}
 
 Requiring detection of all fourteen samples is not always the same as matching
-the ISO curve most closely. For class~A, the best detection set detects all
+the ISO curve most closely. For thickness~A, the best detection set detects all
 samples, while the ISO-match rank reduces both strain errors at the cost of one
-missed sample. For class~C, both rankings select the same set. For class~D, the
+missed sample. For thickness~C, both rankings select the same set. For thickness~D, the
 two ranks differ only slightly in the reported errors. These results should
 still be read as parameter screening because the same samples are used for
 ranking and comparison.
@@ -430,9 +422,9 @@ Figure~\ref{fig:flc_ms_comparison}. With the ISO-match-rank sets, the
 curvature curve moves closer to the ISO~12004-2 and Volk--Hora references
 across most of the diagram, while the uniaxial branch of the thickest sheet~D
 still retains a visible offset. The detection-rank sets stay close to the
-ISO-match curves for classes A and D and coincide with them for class~C,
+ISO-match curves for thicknesses A and D and coincide with them for thickness~C,
 which shows that maximising the detection count costs little accuracy there.
-For class~B the detection-rank set deviates visibly on both branches, so the
+For thickness~B the detection-rank set deviates visibly on both branches, so the
 one additional detected sample is bought with a larger strain error. These
 sets detect thirteen or fourteen of the fourteen samples.
 
@@ -460,8 +452,7 @@ Appendix~\ref{app:configuration_parameters}.
 
 The sensitivity study uses the Nakazima \texttt{W100} specimen with the
 \SI{100}{\milli\meter} punch as one reference case. The first batch varies the
-mesh-refinement factor and the mass-scaling target separately. The order below
-follows the logic of the checks. The mesh sweep at
+mesh-refinement factor and the mass-scaling target separately. The mesh sweep at
 $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ is treated as an exploratory
 screening run, the mass-scaling sweep then fixes the conservative target, and a
 final mesh check repeats the refinement study at this target. Energy ratios are
@@ -649,14 +640,16 @@ validated convergence setting.
 
 The contact check varies only the punch--blank Coulomb coefficient
 $\mu_\mathrm{punch}$ from 0 to 0.25 for the \texttt{W120} specimen at
-$t=\SI{1.5}{\milli\meter}$ and $\alpha=\SI{0}{\degree}$. The \texttt{W120}
+$t=\SI{1.5}{\milli\meter}$ and $\theta=\SI{0}{\degree}$. The \texttt{W120}
 geometry is chosen because the experimental campaign shows a consistent jump
 in minor strain at this width, and the check assesses whether such a shift
 could originate from the friction definition. The runs use
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and $f_\mathrm{MR}=1.41$. This is a single-width sensitivity check,
 not a calibrated numerical FLC. The late energy check remains below
 \SI{5}{\percent} for every friction value, so the discussion focuses on
-the strain path, force response, and fracture location.
+the strain path, force response, and fracture location. The strain paths and
+punch force responses of the sweep are compared in
+Figure~\ref{fig:friction_sensitivity_results}.
 
 \begin{figure}[H]
     \centering
@@ -696,7 +689,7 @@ and moves the critical strain path toward plane strain.
     \centering
     \small
     \setlength{\tabcolsep}{5pt}
-    \begin{tabular}{c c c c c c c}
+    \begin{tabular}{c c c c c c}
         \toprule
         $\mu_\mathrm{punch}$ &
         Location &
@@ -729,7 +722,7 @@ setting $f_\mathrm{MR}=1.41$.
 Task III closes with a verified working configuration rather than a validated
 model. Table~\ref{tab:working_configuration} collects the adopted settings
 together with the evidence behind each choice. At this configuration the
-reference case is quasi static by the energy criterion and its fracture
+reference case is quasi-static by the energy criterion and its fracture
 strain lies within \SI{1.9}{\percent} of the finest tested mesh at
 \SI{63}{\percent} of its run time. The evaluation artifacts identified above
 are labelled by the post-processing outputs and kept out of any
@@ -739,13 +732,13 @@ element-status extraction returns fracture strains, so a first curve through
 these points is a fracture forming limit curve (FFLC) rather than a
 necking-based FLC. Figure~\ref{fig:fflc_example} shows such an exploratory
 FFLC from a width campaign at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ and
-$f_\mathrm{MR}=1.41$, together with the Volk Hora onset estimates of the same
+$f_\mathrm{MR}=1.41$, together with the Volk--Hora onset estimates of the same
 runs. The FFLC lies above the onset curve, as expected since fracture
 follows necking, and for the working configuration the gap is substantial,
 with the fracture point at $\varepsilon_1^\mathrm{f}=0.205$ against a Volk
 Hora onset near $\varepsilon_1=0.17$. The example also shows the current
 limits of the onset detection. The \texttt{W200} and \texttt{W120} strain
-paths cross on the biaxial side, and the Volk Hora fit fails for
+paths cross on the biaxial side, and the Volk--Hora fit fails for
 \texttt{W200}, which leaves the onset curve without its equi-biaxial point.
 A necking-based FLC comparable with the ISO evaluated experiments therefore
 requires the calibration, campaign, and onset-detection steps outlined in
@@ -774,7 +767,7 @@ Chapter~\ref{chap:future_work}.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.75\textwidth]{img/results/fflc_example_ms1e6_mr1.pdf}
-    \caption[Exploratory numerical FFLC and Volk Hora onset estimates]{Exploratory numerical FLD for the \SI{100}{\milli\meter} punch at
+    \caption[Exploratory numerical FFLC and Volk--Hora onset estimates]{Exploratory numerical FLD for the \SI{100}{\milli\meter} punch at
     $t=\SI{1.5}{\milli\meter}$, $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, and
     $f_\mathrm{MR}=1.41$.}
     \label{fig:fflc_example}

@@ -77,7 +77,11 @@ Eqs.~\eqref{eq:ms_reference_subtraction}--\eqref{eq:ms_delta}.
 
 The reference frame $M$ is handled as a time-based choice rather than a silent
 frame-count fraction, because the \software{VIC-3D} sequences used here have
-different frame rates before and near fracture. The selected reference frame ID
+different frame rates before and near fracture. In the parameter studies of
+Chapter~\ref{chap:results}, $M$ is therefore reported as the fraction of the
+total test time at which the reference frame is taken, so $M=0.8$ selects the
+frame recorded at \SI{80}{\percent} of the test duration. The selected
+reference frame ID
 and time are stored with the output so that the subtraction state is traceable.
 
 The implementation therefore relies on a small set of constants that originate

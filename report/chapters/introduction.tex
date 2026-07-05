@@ -26,8 +26,8 @@ The Nakazima test is an established method for the experimental
 determination of forming limits and remains widely used in research and
 industrial practice. Nevertheless, the accurate identification of the onset of
 localised necking remains an active topic of investigation. Examples include
-time dependent approaches such as the Volk Hora criterion~\cite{VolkHora2011}
-and spatio temporal curvature based approaches such as the Min and Stoughton
+time-dependent approaches such as the Volk--Hora criterion~\cite{VolkHora2011}
+and spatio-temporal curvature-based approaches such as the Min--Stoughton
 method~\cite{Min2017}.
 
 Once a calibrated material model is available, finite element simulations
@@ -58,25 +58,30 @@ The specific objectives are:
   \item Evaluate the resulting digital image correlation (DIC) strain data with the existing FLC
   identification workflow and assess the sensitivity of the ISO~12004-2
   evaluation to nonstandard punch diameters and fitting window choices.
-  \item Investigate the implementation of the Min and Stoughton curvature criterion
+  \item Investigate the implementation of the Min--Stoughton curvature criterion
   as an extension of the identification framework, including the geometric
   interpretation, required \software{VIC-3D} data fields, and remaining integration
   challenges.
   \item Develop a parameterised \software{Abaqus/Explicit} framework that can generate,
-  submit, and post process Nakazima, Marciniak, and Punch in Punch simulations
+  submit, and post-process Nakazima, Marciniak, and Punch-in-Punch simulations
   from a common configuration interface.
   \item Implement mesh size controls that preserve comparable element sizes
-  across specimen and punch configurations, and define the mesh refinement and
-  mass scaling studies required before quantitative production simulations are
+  across specimen and punch configurations, and define the mesh-refinement and
+  mass-scaling studies required before quantitative production simulations are
   evaluated.
 \end{enumerate}
+
+Following the project outline, these objectives are grouped into three tasks.
+Task~I covers the experimental campaign and its evaluation, Task~II the
+Min--Stoughton criterion study, and Task~III the automated numerical
+framework. Chapter~\ref{chap:results} is organised along these tasks.
 
 \section{Report Structure}
 
 Chapter~\ref{chap:theory} introduces the theoretical background needed for the
 experimental, identification, and numerical parts of the report. It summarises
 sheet metal formability, forming limit diagrams, the Nakazima, Marciniak, and
-Punch in Punch test concepts, and the forming limit identification methods
+Punch-in-Punch test concepts, and the forming limit identification methods
 considered in this work.
 
 Chapter~\ref{chap:experimental_campaign} describes the AA5754 experimental
@@ -85,25 +90,25 @@ sheet thicknesses, orientation cases, and DIC data acquisition. The reported
 experimental results focus on the Nakazima subset of the broader campaign.
 
 Chapter~\ref{chap:identification_framework} presents the existing FLC
-identification workflow and the investigated Min and Stoughton extension. The
+identification workflow and the investigated Min--Stoughton extension. The
 chapter clarifies which criteria were already available, what was studied for
 the curvature based method, and which integration issues remain open.
 
 Chapter~\ref{chap:numerical_model} describes the automated \software{Abaqus/Explicit}
 framework developed for the forming simulations. It covers the common
 configuration interface, model generation for the three forming setups, mesh
-size control, Euler cluster execution, quasi static solution strategy, and post
-processing outputs.
+size control, Euler cluster execution, quasi-static solution strategy, and
+post-processing outputs.
 
 Chapter~\ref{chap:results} reports the available results. The first part
 analyses the experimental influence of material orientation, punch diameter,
 sheet thickness, and ISO~12004-2 window choice. The second part reports the
-preliminary Min and Stoughton sensitivity study. The third part reports the
-mass scaling, mesh refinement, and friction sensitivity studies and fixes the
+preliminary Min--Stoughton sensitivity study. The third part reports the
+mass-scaling, mesh-refinement, and friction-sensitivity studies and fixes the
 working numerical configuration for the future production campaign.
 
 Chapter~\ref{chap:conclusion} summarises the main findings, and
 Chapter~\ref{chap:future_work} lists the work required to complete the
-experimental evaluation, Min and Stoughton integration, and numerical validation.
+experimental evaluation, Min--Stoughton integration, and numerical validation.
 Appendix~\ref{app:pipeline} documents the simulation pipeline, configurable
 parameters, output files, and cluster execution details.
