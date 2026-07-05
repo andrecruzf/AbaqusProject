@@ -2882,17 +2882,6 @@ def _element_xy_polygon_from_element(elem_obj, node_coords, normal_axis=2):
     return [(c[0], c[1], c[2]) for _, c in ordered]
 
 
-def _element_xy_polygon(inst, node_coords, elem_label, normal_axis=2):
-    elem_obj = None
-    for elem in inst.elements:
-        if elem.label == elem_label:
-            elem_obj = elem
-            break
-    if elem_obj is None:
-        return []
-    return _element_xy_polygon_from_element(elem_obj, node_coords, normal_axis=normal_axis)
-
-
 def _polygon_area_xy(poly, axes=(0, 1)):
     if len(poly) < 3:
         return 0.0
