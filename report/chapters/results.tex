@@ -445,6 +445,7 @@ completed numerical FLC campaign. Since the material constants are the AA5182
 surrogate of Chapter~\ref{chap:numerical_model}, the runs are used to check the
 workflow and numerical settings rather than to make quantitative predictions
 for the AA5754 experiments. The configuration parameters are listed in
+Table~\ref{tab:framework_parameters} of
 Appendix~\ref{app:configuration_parameters}.
 
 \subsection{Sensitivity Study}
@@ -465,7 +466,7 @@ forming-window behaviour.
 
 The screening sweep keeps $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ fixed and
 varies the refinement factor of Section~\ref{sec:mesh_generation} over
-$f_\mathrm{MR}=1$, $2$, and $3$. The strain paths in
+$f_\mathrm{MR}=1$, $2$, and $3$ (Table~\ref{tab:mesh_refinement_sweep}). The strain paths in
 Figure~\ref{fig:mr_sweep_results} remain close for most of the process. The
 extracted fracture strains in Table~\ref{tab:mesh_refinement_walltime} do not,
 since $\varepsilon_1^\mathrm{f}$ varies non-monotonically between \num{0.210}
@@ -523,7 +524,7 @@ after the mass-scaling target is fixed.
 The mass-scaling sweep varies the target time increment while keeping the mesh
 refinement factor fixed at $f_\mathrm{MR}=2$. The evaluated target increments are
 $1\times10^{-6}$, $5\times10^{-6}$, $1\times10^{-5}$, $5\times10^{-5}$, and
-$1\times10^{-4}$\,\si{\second}.
+$1\times10^{-4}$\,\si{\second} (Table~\ref{tab:mass_scaling_sweep}).
 
 Figure~\ref{fig:ms_sweep_results} shows that the strain paths are similar for
 the smaller target increments but separate for the aggressive mass-scaling
@@ -566,7 +567,8 @@ dynamic or drop below the criterion too late.
 
 After the mass-scaling sweep, the mesh check is repeated at
 $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
-$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$, and the working configuration
+$f_\mathrm{MR}=1$, $1.25$, $1.41$, $2$, and $3$
+(Table~\ref{tab:mesh_refinement_confirm_sweep}), and the working configuration
 is selected from this sweep. At this target the energy criterion no longer
 discriminates between the meshes. Every run stays below the
 \SI{5}{\percent} guideline over the forming window in
