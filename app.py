@@ -4892,64 +4892,43 @@ def _page_results():
                 threshold_face_count = int(faces[
                     role_text == "threshold_zone"
                 ]["element_label"].nunique())
-                faces["role_priority"] = role_text.map({
-                    "band": 0,
-                    "threshold_zone": 1,
-                    "cluster": 2,
-                    "fracture_deleted": 3,
-                    "crack_deleted": 3,
-                }).fillna(2)
-                faces = faces.sort_values([
-                    "role_priority", "selection_rank", "element_label", "point_order"
-                ])
+                # Draw one centroid dot per element, one trace per role, from
+                # the band (bottom) to the fracture line (top).
+                cent = (
+                    faces[~role_text.isin(["first_deleted"])]
+                    .groupby(["role", "element_label"], sort=False)[["x", "y"]]
+                    .mean()
+                    .reset_index()
+                )
+                cent["role"] = cent["role"].astype(str)
+                role_styles = [
+                    ("band", "3 mm analysis band", "#94a3b8", 5),
+                    ("threshold_zone", "threshold zone", "#facc15", 6),
+                    ("cluster", "selected cells", "#f97316", 7),
+                    ("fracture_deleted", "fracture line", "#dc2626", 7),
+                    ("crack_deleted", "fracture line", "#dc2626", 7),
+                ]
                 shown = set()
-                for (role, label), grp in faces.groupby(["role", "element_label"], sort=False):
-                    grp = grp.sort_values("point_order")
-                    xs = grp["x"].tolist()
-                    ys = grp["y"].tolist()
-                    if len(xs) < 3:
+                for role_s, name, color, size in role_styles:
+                    sub = cent[cent["role"] == role_s]
+                    if sub.empty:
                         continue
-                    xs.append(xs[0])
-                    ys.append(ys[0])
-                    role_s = str(role)
-                    if role_s == "first_deleted":
-                        continue
-                    if role_s in {"fracture_deleted", "crack_deleted"}:
-                        name = "fracture line"
-                        color = "rgba(220, 38, 38, 0.68)"
-                        line_color = "#ffffff"
-                        line_width = 2.3
-                    elif role_s == "threshold_zone":
-                        name = "threshold zone"
-                        color = "rgba(250, 204, 21, 0.45)"
-                        line_color = "#fde68a"
-                        line_width = 1.0
-                    elif role_s == "band":
-                        name = "3 mm analysis band"
-                        color = "rgba(148, 163, 184, 0.30)"
-                        line_color = "#cbd5e1"
-                        line_width = 0.8
-                    else:
-                        name = "selected cells"
-                        color = "rgba(249, 115, 22, 0.42)"
-                        line_color = "#fed7aa"
-                        line_width = 1.0
                     _add_trace_both(go.Scatter(
-                        x=xs,
-                        y=ys,
-                        mode="lines",
-                        fill="toself",
+                        x=sub["x"],
+                        y=sub["y"],
+                        mode="markers",
                         name=name,
                         legendgroup=name,
                         showlegend=name not in shown,
-                        line=dict(
-                            color=line_color,
-                            width=line_width,
+                        marker=dict(
+                            size=size,
+                            color=color,
+                            line=dict(width=0.5, color="white"),
                         ),
-                        fillcolor=color,
+                        customdata=sub[["element_label"]],
                         hovertemplate=(
-                            "element=%s<br>x=%%{x:.3f} mm<br>y=%%{y:.3f} mm<extra>%s</extra>"
-                            % (str(label), name)
+                            "element=%{customdata[0]}<br>x=%{x:.3f} mm"
+                            "<br>y=%{y:.3f} mm<extra>" + name + "</extra>"
                         ),
                     ))
                     shown.add(name)
