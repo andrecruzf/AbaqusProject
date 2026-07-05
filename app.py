@@ -4847,10 +4847,16 @@ def _page_results():
                             if not found:
                                 break
                         chains.append(chain)
-                    xs, ys = [], []
-                    for chain in chains:
-                        xs.extend([p[0] for p in chain] + [None])
-                        ys.extend([p[1] for p in chain] + [None])
+                    # Keep only the outer specimen contour: interior partition
+                    # or symmetry edges form shorter chains with smaller extent.
+                    def _chain_extent(chain):
+                        cxs = [p[0] for p in chain]
+                        cys = [p[1] for p in chain]
+                        return (max(cxs) - min(cxs)) * (max(cys) - min(cys))
+
+                    outer = max(chains, key=_chain_extent) if chains else []
+                    xs = [p[0] for p in outer]
+                    ys = [p[1] for p in outer]
                     _add_trace_both(go.Scatter(
                         x=xs,
                         y=ys,
@@ -4987,7 +4993,7 @@ def _page_results():
             fig.update_yaxes(range=[y0 - zoom_radius, y0 + zoom_radius], row=1, col=2)
 
         fig.update_layout(
-            title=VH_SEED_LABEL + " Cluster Location",
+            title=VH_SEED_LABEL + " Zone Location",
             xaxis_title="X [mm]",
             yaxis_title="Y [mm]",
             template=theme["template"],
@@ -6689,7 +6695,7 @@ def _page_results():
     def _render_job_tabs(job_dir, key_prefix, panel_state_key="results_panel"):
         sections = [
             "Force-Disp.", "Energy", "Strain Path", "V&H",
-            "Forming Limits", "Cluster Location", "Diagnostics",
+            "Forming Limits", "Diagnostics",
         ]
         # One shared panel key per view: the selected panel stays put when the
         # user switches jobs, and switching panels reruns only this fragment.
@@ -6844,32 +6850,18 @@ def _page_results():
                         override_stable_range=_stable_range,
                         override_unstable_range=_unstable_range,
                     )
-                if fig is not None:
-                    _plotly_chart(fig, width="stretch", key=f"{_kp}_vh_rate")
-                else:
-                    st.info(reason or "V&H dome rate unavailable")
-
-                if st.checkbox(
-                    "Load V&H zone map (large diagnostics CSV)",
-                    value=False,
-                    key=f"{_kp}_vh_zone_load",
-                    help="Reads strain_cluster.csv. Leave this off for responsive browsing.",
-                ):
-                    anchor_points, _ = _fracture_cluster_anchor(_job_dir)
-                    if anchor_points:
-                        zone_fig, zone_reason = _volk_hora_zone_location_fig(
-                            os.path.join(_job_dir, "strain_cluster.csv"),
-                            "V&H Zone Location",
-                            prefer_fracture_center=True,
-                            anchor_points=anchor_points,
-                            anchor_name="fracture cluster",
-                        )
+                _vh_col, _zone_col = st.columns(2)
+                with _vh_col:
+                    if fig is not None:
+                        _plotly_chart(fig, width="stretch", key=f"{_kp}_vh_rate")
                     else:
-                        zone_fig, zone_reason = None, "Fracture cluster not found — rerun postprocessing"
+                        st.info(reason or "V&H dome rate unavailable")
+                with _zone_col:
+                    zone_fig, zone_reason = _cluster_location_fig(_job_dir)
                     if zone_fig is not None:
                         _plotly_chart(zone_fig, width="stretch", key=f"{_kp}_vh_zone")
                     else:
-                        st.info(zone_reason)
+                        st.info(zone_reason or "V&H zone location unavailable")
 
                 with st.expander("Overwrite VH forming limit"):
                     fl_path = os.path.join(_job_dir, "forming_limits.csv")
@@ -7016,14 +7008,6 @@ def _page_results():
                     width="stretch",
                     hide_index=True,
                 )
-
-        elif panel == "Cluster Location":
-            st.caption("This diagnostic reads strain_cluster.csv and can be slow for large jobs.")
-            fig, reason = _cluster_location_fig(job_dir)
-            if fig is not None:
-                _plotly_chart(fig, width="stretch", key=f"{key_prefix}_loc")
-            else:
-                st.info(reason or "Cluster location unavailable")
 
         elif panel == "Diagnostics":
             _diagnostics_render(job_dir, key_prefix=f"{key_prefix}_diag")

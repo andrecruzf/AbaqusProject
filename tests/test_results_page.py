@@ -60,7 +60,7 @@ def test_single_job_view_loads():
     scopes = [s for s in at.selectbox if s.key == "results_sync_scope"][0]
     assert scopes.options == [
         "Latest jobs only", "Selected jobs only",
-        "Current FLC/source only", "Full results directory",
+        "Current FLD/source only", "Full results directory",
     ]
     # delete-stale must be hidden outside Full scope
     assert not any(c.key == "results_sync_delete_stale" for c in at.checkbox)
