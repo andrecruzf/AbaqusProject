@@ -6695,7 +6695,7 @@ def _page_results():
     def _render_job_tabs(job_dir, key_prefix, panel_state_key="results_panel"):
         sections = [
             "Force-Disp.", "Energy", "Strain Path", "V&H",
-            "Forming Limits", "Diagnostics",
+            "Cluster Loc.", "Forming Limits", "Diagnostics",
         ]
         # One shared panel key per view: the selected panel stays put when the
         # user switches jobs, and switching panels reruns only this fragment.
@@ -6850,18 +6850,10 @@ def _page_results():
                         override_stable_range=_stable_range,
                         override_unstable_range=_unstable_range,
                     )
-                _vh_col, _zone_col = st.columns(2)
-                with _vh_col:
-                    if fig is not None:
-                        _plotly_chart(fig, width="stretch", key=f"{_kp}_vh_rate")
-                    else:
-                        st.info(reason or "V&H dome rate unavailable")
-                with _zone_col:
-                    zone_fig, zone_reason = _cluster_location_fig(_job_dir)
-                    if zone_fig is not None:
-                        _plotly_chart(zone_fig, width="stretch", key=f"{_kp}_vh_zone")
-                    else:
-                        st.info(zone_reason or "V&H zone location unavailable")
+                if fig is not None:
+                    _plotly_chart(fig, width="stretch", key=f"{_kp}_vh_rate")
+                else:
+                    st.info(reason or "V&H dome rate unavailable")
 
                 with st.expander("Overwrite VH forming limit"):
                     fl_path = os.path.join(_job_dir, "forming_limits.csv")
@@ -7008,6 +7000,14 @@ def _page_results():
                     width="stretch",
                     hide_index=True,
                 )
+
+        elif panel == "Cluster Loc.":
+            st.caption("This diagnostic reads strain_cluster.csv and can be slow for large jobs.")
+            fig, reason = _cluster_location_fig(job_dir)
+            if fig is not None:
+                _plotly_chart(fig, width="stretch", key=f"{key_prefix}_loc")
+            else:
+                st.info(reason or "Cluster location unavailable")
 
         elif panel == "Diagnostics":
             _diagnostics_render(job_dir, key_prefix=f"{key_prefix}_diag")
