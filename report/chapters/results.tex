@@ -63,7 +63,7 @@ limit curves for the four thicknesses.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:rd_vs_td_d}
     \end{subfigure}
-    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{Comparison of forming limit curves measured in the rolling direction (\texttt{E0\_RM00\_000}, RD) and the transverse direction (\texttt{E0\_RM00\_090}, TD) for the \SI{100}{\milli\meter} punch, shown for the four sheet thicknesses A--D. Each curve is the mean of two complete campaigns, with limit points evaluated using the ISO~12004-2 intersection-line method.}
+    \caption[RD and TD forming limit curves for the \SI{100}{\milli\meter} punch]{RD and TD forming limit curves for the \SI{100}{\milli\meter} punch and sheet thicknesses A--D.}
     \label{fig:rd_vs_td}
 \end{figure}
 
@@ -184,7 +184,7 @@ applied.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_norm_d}
     \end{subfigure}
-    \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves for the four punch diameters obtained with the standard ISO~12004-2 window (Eq.~\eqref{eq:din_window}, constant $=10$), for the four sheet thicknesses A--D. The laboratory legend is retained, with the punch-diameter suffixes \texttt{014}/\SI{40}{\milli\meter}, \texttt{016}/\SI{60}{\milli\meter}, \texttt{018}/\SI{80}{\milli\meter}, and \texttt{000}/\SI{100}{\milli\meter}.}
+    \caption[Forming limit curves obtained with the standard ISO~12004-2 window]{Forming limit curves from the standard ISO~12004-2 window for the four punch diameters and sheet thicknesses A--D.}
     \label{fig:flc_norm}
 \end{figure}
 
@@ -244,7 +244,7 @@ shows the corresponding re-evaluation.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_wvar_d}
     \end{subfigure}
-    \caption[Forming limit curves re-evaluated with smaller fixed window constants]{Forming limit curves re-evaluated with the smaller fixed window constants 10, 9, 8, and 7 from the preliminary window study, for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}.}
+    \caption[Forming limit curves re-evaluated with smaller fixed window constants]{Forming limit curves from smaller fixed ISO window constants for sheet thicknesses A--D.}
     \label{fig:flc_wvar}
 \end{figure}
 
@@ -279,7 +279,7 @@ shows the corresponding re-evaluation.
         \caption{Material D ($t = \SI{3.0}{\milli\meter}$).}
         \label{fig:flc_pscaled_d}
     \end{subfigure}
-    \caption[Forming limit curves re-evaluated with a punch-scaled window]{Forming limit curves re-evaluated with a punch-scaled window ($\omega = (D/10)\,[1 + \bar{\varepsilon}_2/\bar{\varepsilon}_1]$), for the four sheet thicknesses A--D. The laboratory legend follows the same punch-diameter coding as Figure~\ref{fig:flc_norm}.}
+    \caption[Forming limit curves re-evaluated with a punch-scaled window]{Forming limit curves from the punch-scaled ISO window for sheet thicknesses A--D.}
     \label{fig:flc_pscaled}
 \end{figure}
 
@@ -325,13 +325,8 @@ tabulated in Appendix~\ref{app:ms_campaign_tables}.
     \centering
     \includegraphics[width=\linewidth]{img/flc_ms_comparison.png}
     \caption[Forming-limit comparison of the three criteria across thicknesses]{Forming-limit
-    diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
-    Min--Stoughton ($\diamond$) criteria for the four sheet thicknesses, with the
-    \SI{100}{\milli\meter} punch. Each marker is the mean over the two
-    repetitions of a width, and the Min--Stoughton results use the baseline set
-    from the first calibration sweep. The three criteria remain close for the
-    thin sheets, while the curvature points fall increasingly below the
-    reference curves as the thickness increases.}
+    diagram with ISO~12004-2, Volk--Hora, and baseline Min--Stoughton points
+    for the \SI{100}{\milli\meter} punch and sheet thicknesses A--D.}
     \label{fig:flc_ms_comparison}
 \end{figure}
 
@@ -445,12 +440,8 @@ sets detect thirteen or fourteen of the fourteen samples.
     \centering
     \includegraphics[width=\linewidth]{img/flc_ms_comparison_ranked.png}
     \caption[Forming-limit comparison with the ranked parameter sets per thickness]{Forming-limit
-    diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
-    Min--Stoughton criteria, with the Min--Stoughton curve evaluated using each
-    thickness's ISO-match-rank ($\diamond$) and detection-rank
-    ($\triangle$) parameter sets from Table~\ref{tab:ms_sweep_thickness}
-    (annotated in each panel). For class~C both rankings select the same set.
-    Each marker is the mean over the detected repetitions of a width.}
+    diagram with ISO~12004-2, Volk--Hora, and the ranked Min--Stoughton
+    parameter sets from Table~\ref{tab:ms_sweep_thickness}.}
     \label{fig:flc_ms_comparison_best}
 \end{figure}
 
@@ -530,11 +521,8 @@ after the mass-scaling target is fixed.
         \includegraphics[width=\textwidth]{img/results/ms_mr_mesh_refinement_energy_zoom.png}
         \caption{Energy-ratio zoom near the \SI{5}{\percent} criterion.}
     \end{subfigure}
-    \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case at
-    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$. The strain-path markers indicate
-    the element-status fracture points. The energy-ratio panel shows the full
-    finite histories without fracture-time truncation, and the zoomed panel
-    resolves the \SI{5}{\percent} guideline.}
+    \caption[Mesh-refinement sensitivity on the Nakazima \texttt{W100} reference case]{Strain paths and energy-ratio histories for the mesh-refinement sweep at
+    $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$.}
     \label{fig:mr_sweep_results}
 \end{figure}
 
@@ -577,11 +565,8 @@ dynamic or drop below the criterion too late.
         \includegraphics[width=\textwidth]{img/results/ms_mr_mass_scaling_energy_zoom.png}
         \caption{Energy-ratio zoom near the \SI{5}{\percent} criterion.}
     \end{subfigure}
-    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case at
-    $f_\mathrm{MR}=2$. The strain-path markers indicate the element-status
-    fracture points. The $\mathrm{ALLKE}/\mathrm{ALLIE}$ curves show the full
-    finite energy-ratio histories without fracture-time truncation, and the
-    zoomed panel resolves the \SI{5}{\percent} guideline.}
+    \caption[Mass-scaling sensitivity on the Nakazima \texttt{W100} reference case]{Strain paths and energy-ratio histories for the mass-scaling sweep at
+    $f_\mathrm{MR}=2$.}
     \label{fig:ms_sweep_results}
 \end{figure}
 
@@ -610,10 +595,11 @@ coarser runs were also allocated fewer cores, so the time differences
 understate the true cost differences.
 
 The setting $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$ with
-$f_\mathrm{MR}=1.41$ is therefore adopted as the working configuration. It
-offers the best compromise between accuracy and computational resources,
-since it stays on the fine-side plateau at the shortest run time, while also
-conforming to the quasi-static requirement of the energy criterion.
+$f_\mathrm{MR}=1.41$ is therefore adopted as the working configuration for the
+subsequent checks. It stays on the fine-side plateau at a shorter run time and
+also conforms to the quasi-static requirement of the energy criterion. A
+broader mesh study is still required before this choice can be treated as a
+validated convergence setting.
 
 \begin{figure}[H]
     \centering
@@ -635,12 +621,8 @@ conforming to the quasi-static requirement of the energy criterion.
         \includegraphics[width=\textwidth]{img/results/ms_mr_confirm_energy_zoom.png}
         \caption{Energy-ratio zoom near the \SI{5}{\percent} criterion.}
     \end{subfigure}
-    \caption[Mesh-refinement confirmation sweep at the accepted mass-scaling target]{Mesh-refinement sweep repeated at the accepted mass-scaling target
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, including the completed
-    intermediate checks $f_\mathrm{MR}=1.25$ and $1.41$. The strain-path
-    markers indicate the element-status fracture points, and the energy-ratio
-    panels show the full finite histories without fracture-time truncation and
-    the zoom near the \SI{5}{\percent} guideline.}
+    \caption[Mesh-refinement confirmation sweep at the accepted mass-scaling target]{Strain paths and energy-ratio histories for the mesh-refinement sweep at
+    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.}
     \label{fig:confirm_sweep_results}
 \end{figure}
 
@@ -689,7 +671,7 @@ the strain path, force response, and fracture location.
         \includegraphics[width=\textwidth]{img/results/friction_sensitivity_force_displacement.png}
         \caption{Punch force response.}
     \end{subfigure}
-    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case. The full strain and force histories are shown, and the symbols mark the extracted fracture points.}
+    \caption[Punch--blank friction sensitivity on the Nakazima \texttt{W120} reference case]{Strain paths and punch force responses for the punch--blank friction sweep on \texttt{W120}.}
     \label{fig:friction_sensitivity_results}
 \end{figure}
 
@@ -792,11 +774,8 @@ Chapter~\ref{chap:future_work}.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.75\textwidth]{img/results/fflc_example_ms1e6_mr1.pdf}
-    \caption[Exploratory numerical FFLC and Volk Hora onset estimates]{Exploratory numerical forming limit diagram for the
-    \SI{100}{\milli\meter} punch at $t=\SI{1.5}{\milli\meter}$,
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, and $f_\mathrm{MR}=1.41$, with
-    the AA5182 surrogate constants. The solid curve connects the
-    element-status fracture points (FFLC) and the dashed curve the Volk Hora
-    onset estimates.}
+    \caption[Exploratory numerical FFLC and Volk Hora onset estimates]{Exploratory numerical FLD for the \SI{100}{\milli\meter} punch at
+    $t=\SI{1.5}{\milli\meter}$, $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$, and
+    $f_\mathrm{MR}=1.41$.}
     \label{fig:fflc_example}
 \end{figure}

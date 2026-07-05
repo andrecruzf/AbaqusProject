@@ -127,10 +127,7 @@ steps and differ only in how the background curvature is removed.
         \draw[arr] (onset) -- (limit);
     \end{tikzpicture}%
     }
-    \caption[Standalone Min--Stoughton workflow logic]{Processing logic of the
-    standalone Min--Stoughton workflow. Both branches were implemented, but
-    only the Nakazima branch was assessed against experimental data
-    (Section~\ref{sec:minstoughton_draft}).}
+    \caption[Standalone Min--Stoughton workflow logic]{Standalone Min--Stoughton workflow logic with Marciniak and Nakazima branches.}
     \label{fig:ms_workflow_logic}
 \end{figure}
 
@@ -292,7 +289,7 @@ configuration to HPC output.
         \draw[darr] (solver.east) -- (plots.west) node[midway, above, font=\scriptsize] {afterok};
 
         \node[box, below=23mm of movie] (results) {job result folder (test type, punch, thickness, orientation, and active option suffixes)\\results, \mbox{mesh render}, EQPS movie, and per-specimen plots (\texttt{plot\_results.py})};
-        \node[box, right=18mm of results] (flc) {\texttt{FLC\_*} folder\\aggregated FLC plot (\mbox{Nakazima/Marciniak} only)};
+        \node[box, right=18mm of results] (flc) {\texttt{FLC\_*} folder\\aggregated FLD plot (\mbox{Nakazima/Marciniak} only)};
         \node[rowlbl, above left=2mm and 0mm of results.north west, anchor=south west] {Euler home (copied from scratch by \texttt{run\_cluster.sh})};
 
         \draw[arr] (movie.south) -- (results.north) node[pos=0.25, right, font=\scriptsize] {copy back};
@@ -301,7 +298,7 @@ configuration to HPC output.
         \node[rowlbl, font=\scriptsize\itshape, below=3mm of $(results.south)!0.5!(flc.south)$] {Synced to the local machine on demand via \texttt{app.py} (\texttt{rsync})};
     \end{tikzpicture}%
     }
-  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline architecture. The local machine pushes the current configuration to the ETH Euler HPC cluster and submits one selected simulation case. The login node builds the finite element model, while the compute node runs the \software{Abaqus/Explicit} solver and post-processing under \software{SLURM}.}
+  \caption[Automated simulation pipeline architecture]{Automated simulation pipeline from local configuration to Euler execution, post processing, and result synchronisation.}
   \label{fig:architecture}
 \end{figure}
 
@@ -368,12 +365,7 @@ steps branch internally on test type, as noted below. A separate
         \draw[arr] (boundary) -- (job);
     \end{tikzpicture}%
     }
-    \caption[Model-generation module sequence]{Processing logic of
-    \texttt{build\_model.py}. The same seven-step sequence runs for every
-    test type and geometry, with test-type-specific branches inside the
-    step, contact, and boundary-condition modules for Punch-in-Punch; the
-    resulting \texttt{.inp} file is submitted to the \software{Abaqus/Explicit}
-    solver as shown in Figure~\ref{fig:architecture}.}
+    \caption[Model-generation module sequence]{Seven-step model-generation sequence called by \texttt{build\_model.py}.}
     \label{fig:model_gen_sequence}
 \end{figure}
 
@@ -404,7 +396,7 @@ AbaqusProject/
 |-- postproc.py                  ODB extraction into the result folder above
 |-- postproc_movie.py            EQPS animation renderer
 |-- static_postproc_plots.py     static diagnostic plot set
-|-- plot_results.py, plot_flc.py per-run plots and FLC aggregation
+|-- plot_results.py, plot_flc.py per-run plots and FLD aggregation
 |-- screenshot_mesh.py           mesh verification renders
 |-- app.py                       Streamlit interface (this appendix)
 |-- Naka_Marciniak_Geometries/,
@@ -548,10 +540,7 @@ that the coarsening rate from the pole towards the flange can be tuned.
         \caption{Coarsened (factor 4).}
         \label{fig:mesh_mr4}
     \end{subfigure}
-    \caption[Global mesh refinement on the \texttt{W100} Nakazima specimen]{Global mesh refinement on the \texttt{W100} Nakazima specimen (quarter
-model, face-on view). A single factor scales all section sizes together,
-coarsening the mesh uniformly from left to right while preserving the
-sectioning. The meshes are generated automatically without running the solver.}
+    \caption[Global mesh refinement on the \texttt{W100} Nakazima specimen]{Global mesh-refinement examples for the \texttt{W100} Nakazima specimen.}
     \label{fig:mesh_mr_sweep}
 \end{figure}
 
@@ -577,10 +566,7 @@ sectioning. The meshes are generated automatically without running the solver.}
         \caption{Steep grading.}
         \label{fig:mesh_growth_30}
     \end{subfigure}
-    \caption[Independent section sizing on the \texttt{W100} Nakazima specimen]{Example of independent section sizing on the \texttt{W100} Nakazima specimen
-(quarter model, face-on view). All three meshes share the same fine central
-element size; only the rate at which the elements coarsen towards the flange
-differs, from gentle (left) to steep (right).}
+    \caption[Independent section sizing on the \texttt{W100} Nakazima specimen]{Independent section-sizing examples for the \texttt{W100} Nakazima specimen.}
     \label{fig:mesh_growth}
 \end{figure}
 
@@ -623,7 +609,7 @@ plot set are present when the corresponding optional steps are enabled.
 
 \lstset{language={},numbers=none}
 \begin{lstlisting}[frame=lines,basicstyle=\ttfamily\footnotesize]
-FLC_<case>/                      case folder with the aggregated FLC plot
+FLC_<case>/                      case folder with the aggregated FLD plot
 `-- <job>/                       result folder of one solver run
     |-- punch_fd.csv             punch force-displacement history
     |-- energy_data.csv          whole-model energies and ALLKE/ALLIE ratio
@@ -733,10 +719,7 @@ Table~\ref{tab:aa5182_parameters} lists the parameter set.
         \includegraphics[width=\textwidth]{img/aa5182_HC_locus.png}
         \caption{Hosford and Coulomb fracture locus.}
     \end{subfigure}
-    \caption[AA5182 surrogate calibration overview]{Calibration overview of
-    the AA5182 surrogate material. (a) Uniaxial tension model fit, (b)
-    directional yield stress and $r$ value ratios, and (c) strain to fracture
-    versus stress triaxiality of the Hosford and Coulomb model.}
+    \caption[AA5182 surrogate calibration overview]{AA5182 surrogate calibration overview.}
     \label{fig:aa5182_calibration}
 \end{figure}
 

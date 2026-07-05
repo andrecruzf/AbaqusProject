@@ -36,10 +36,10 @@ The numerical part implements an automated \software{Abaqus/Explicit} workflow
 for Nakazima, Marciniak, and Punch in Punch simulations, including model
 generation, Euler submission, ODB post processing, and result synchronisation.
 For the \texttt{W100} reference case, the working setting is a mass scaling
-target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, which offers the best
-compromise between computation time and accuracy while remaining quasi
-static by the energy criterion. A friction
-check showed that only frictionless punch contact keeps the fracture
+target of \SI{1e-6}{\second} with $f_\mathrm{MR}=1.41$, which is retained as a
+working choice because it stays within the quasi-static energy check and
+reduces run time relative to the finer meshes. A friction check showed that
+only frictionless punch contact keeps the fracture
 dome-centred, which supports the frictionless baseline for the lubricated
 experiments. The fracture-based extraction already yields an exploratory
 fracture forming limit curve, and a necking-based FLC awaits a robust onset

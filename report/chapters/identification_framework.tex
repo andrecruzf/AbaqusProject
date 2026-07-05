@@ -7,8 +7,9 @@ The existing framework contains two forming-limit identification methods. The
 ISO~12004-2 method evaluates the strain distribution along a section crossing
 the localisation or crack region and determines the limit strain from a spatial
 fit. The Volk--Hora method uses the temporal evolution of the strain field to
-detect the onset of instability. Both methods are available within the same GUI
-environment, which allows them to be applied to the same DIC dataset.
+detect the onset of instability. Both methods are available within the same DIC
+post-processing environment, which allows them to be applied to the same
+dataset.
 
 \section{Draft of the Min--Stoughton Criterion}
 \label{sec:minstoughton_draft}
@@ -27,7 +28,8 @@ applied to Nakazima tests after the geometric transformation described in
 Section~\ref{sec:minstoughton_method}.
 
 Within this project the Min--Stoughton method was therefore treated as a
-methodology and data-integration task rather than as a finalised GUI feature.
+methodology and data-integration task rather than as a finalised integrated
+feature.
 The required \software{VIC-3D} quantities are the measured surface positions and
 displacements $(X,Y,Z,U,V,W)$, the strain fields $(\varepsilon_1,
 \varepsilon_2)$, the crack or localisation location used to place the point
@@ -48,7 +50,7 @@ frame sequences.
 This section describes the Nakazima branch of the standalone workflow, used
 as an assessment workflow for the present report since only Nakazima
 experimental data were available. It does not replace the existing
-ISO~12004-2 and Volk--Hora GUI tools, but it connects the mathematical method
+ISO~12004-2 and Volk--Hora evaluation tools, but it connects the mathematical method
 of Section~\ref{sec:minstoughton_method} to the available laboratory DIC
 exports. The workflow imports the \software{VIC-3D} reference coordinates, displacement
 fields, and principal strains, reconstructs the deformed surface coordinates,
