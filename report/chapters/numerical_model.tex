@@ -245,12 +245,23 @@ Appendix~\ref{app:postproc_catalogue}.
 To assess the quality and consistency of the simulation, the pipeline extracts
 the punch force displacement response, the kinetic and internal energy
 histories, and a series of diagnostic visualisations, including section and
-isometric view animations, representative mesh topology snapshots, and a
-static plot set covering the force response, energy ratio, strain path,
-Volk Hora evaluation, and necking zone location of each run.
+isometric view animations, representative mesh topology snapshots, and a static
+plot set for each run.
 These outputs allow the quasi static assumption, deformation evolution, and
 overall simulation behaviour to be verified without manual inspection of the
 ODB.
+The static plot set contains:
+\begin{itemize}
+  \item punch force displacement response,
+  \item kinetic and internal energy histories with the
+  $\mathrm{ALLKE}/\mathrm{ALLIE}$ ratio,
+  \item strain path in the $e_2$ versus $e_1$ plane,
+  \item Volk Hora thinning rate signal with stable and unstable fits,
+  \item selected necking zone and crack location on the specimen surface,
+  \item triaxiality history.
+\end{itemize}
+For compatible job groups, the plotting step also writes an aggregated forming
+limit diagram.
 
 For forming limit identification, element based quantities are extracted
 throughout the simulation, including strain histories, damage variables, and
