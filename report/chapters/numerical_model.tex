@@ -127,9 +127,6 @@ cost.
 
 \begin{table}[H]
 \centering
-\caption{Default target element sizes of the concentric sections, from the pole
-outward, for the standard specimen family.}
-\label{tab:mesh_zones}
 \begin{tabular}{@{}llc@{}}\toprule
 Section & Region & Target element size (\si{\milli\meter}) \\ \midrule
 Central & Pole/punch apex   & 0.2 \\
@@ -137,6 +134,8 @@ Transition & Below the dome    & 0.4 \\
 Dome & Main stretched region   & 0.8 \\
 Flange & Clamped outer zone    & 1.2 \\ \bottomrule
 \end{tabular}
+\caption{Default target element sizes of the concentric mesh sections.}
+\label{tab:mesh_zones}
 \end{table}
 
 \subsubsection{Global Refinement and Independent Section Sizing}
@@ -246,7 +245,9 @@ Appendix~\ref{app:postproc_catalogue}.
 To assess the quality and consistency of the simulation, the pipeline extracts
 the punch force displacement response, the kinetic and internal energy
 histories, and a series of diagnostic visualisations, including section and
-isometric view animations together with representative mesh topology snapshots.
+isometric view animations, representative mesh topology snapshots, and a
+static plot set covering the force response, energy ratio, strain path,
+Volk Hora evaluation, and necking zone location of each run.
 These outputs allow the quasi static assumption, deformation evolution, and
 overall simulation behaviour to be verified without manual inspection of the
 ODB.
