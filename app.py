@@ -6659,7 +6659,7 @@ def _page_results():
     def _render_job_tabs(job_dir, key_prefix, panel_state_key="results_panel"):
         sections = [
             "Force-Disp.", "Energy", "Strain Path", "V&H",
-            "Cluster Loc.", "Forming Limits", "Diagnostics",
+            "Cluster Loc.", "Forming Limits",
         ]
         # One shared panel key per view: the selected panel stays put when the
         # user switches jobs, and switching panels reruns only this fragment.
@@ -6973,8 +6973,6 @@ def _page_results():
             else:
                 st.info(reason or "Cluster location unavailable")
 
-        elif panel == "Diagnostics":
-            _diagnostics_render(job_dir, key_prefix=f"{key_prefix}_diag")
 
     # ══════════════════════════════════════════════════════════════════════════
     # Single Job view
