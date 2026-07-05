@@ -428,24 +428,29 @@ two ranks differ only slightly in the reported errors. These results should
 still be read as parameter screening because the same samples are used for
 ranking and comparison.
 
-Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams obtained
-when each thickness uses the ISO-match-rank set from
+Figure~\ref{fig:flc_ms_comparison_best} shows the forming-limit diagrams
+obtained when each thickness uses its two ranked sets from
 Table~\ref{tab:ms_sweep_thickness}, in place of the single baseline set of
-Figure~\ref{fig:flc_ms_comparison}. Visually, the curvature curve moves closer
-to the ISO~12004-2 and Volk--Hora references across most of the diagram. The
-uniaxial branch of the thickest sheet~D still retains a visible offset. These
+Figure~\ref{fig:flc_ms_comparison}. With the ISO-match-rank sets, the
+curvature curve moves closer to the ISO~12004-2 and Volk--Hora references
+across most of the diagram, while the uniaxial branch of the thickest sheet~D
+still retains a visible offset. The detection-rank sets stay close to the
+ISO-match curves for classes A and D and coincide with them for class~C,
+which shows that maximising the detection count costs little accuracy there.
+For class~B the detection-rank set deviates visibly on both branches, so the
+one additional detected sample is bought with a larger strain error. These
 sets detect thirteen or fourteen of the fourteen samples.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{img/flc_ms_comparison_best.png}
-    \caption[Forming-limit comparison with the ISO-match parameter set per thickness]{Forming-limit
+    \includegraphics[width=\linewidth]{img/flc_ms_comparison_ranked.png}
+    \caption[Forming-limit comparison with the ranked parameter sets per thickness]{Forming-limit
     diagram comparison of the ISO~12004-2 ($\times$), Volk--Hora ($\circ$), and
-    Min--Stoughton ($\diamond$) criteria, with the Min--Stoughton curve evaluated
-    using each thickness's ISO-match-rank parameter set from
-    Table~\ref{tab:ms_sweep_thickness} (annotated in each panel) rather than the
-    single baseline set of Figure~\ref{fig:flc_ms_comparison}. Each marker is the
-    mean over the two repetitions of a width.}
+    Min--Stoughton criteria, with the Min--Stoughton curve evaluated using each
+    thickness's ISO-match-rank ($\diamond$) and detection-rank
+    ($\triangle$) parameter sets from Table~\ref{tab:ms_sweep_thickness}
+    (annotated in each panel). For class~C both rankings select the same set.
+    Each marker is the mean over the detected repetitions of a width.}
     \label{fig:flc_ms_comparison_best}
 \end{figure}
 
