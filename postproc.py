@@ -1327,14 +1327,23 @@ def _write_strain_cluster_csv(odb, frames, failure_frame_idx, dome_labels, out_d
     print('  Neighborhood  : %d rows for %d candidate elements (%d selected) -> %s'
           % (len(neighborhood_rows), len(candidate_keys), n_keep, neigh_csv))
     _write_strain_cluster_faces_csv(odb, out_dir, selected, center_label,
-                                    fracture_cluster_labels=fracture_cluster_labels)
+                                    fracture_cluster_labels=fracture_cluster_labels,
+                                    candidates=candidates)
     return out_csv
 
 
 def _write_strain_cluster_faces_csv(odb, out_dir, selected, center_label,
-                                    fracture_cluster_labels=None):
+                                    fracture_cluster_labels=None,
+                                    candidates=None):
     """
-    Write selected cluster and first-deleted element XY cell polygons.
+    Write element XY cell polygons for the cluster-location diagnostics.
+
+    Roles written per polygon:
+      fracture_deleted : crack-line elements (deleted at fracture)
+      band             : 3 mm analysis-band candidates below the V&H threshold
+      threshold_zone   : candidates at/above the V&H rate threshold that were
+                         not kept in the final selection (e.g. damage-filtered)
+      cluster          : final selected necking-zone cells
     """
     inst_name, centroids, top_labels, meta = _element_centroid_maps(odb)
     if not inst_name:
@@ -1362,11 +1371,29 @@ def _write_strain_cluster_faces_csv(odb, out_dir, selected, center_label,
     if center_label is not None:
         add_polygon(center_label, 'first_deleted', 0)
 
+    selected_labels = set()
     for idx, item in enumerate(selected, 1):
         lbl, rec = item
+        selected_labels.add(lbl)
         if lbl == center_label:
             continue
         add_polygon(lbl, 'cluster', idx)
+
+    # Remaining analysis-band candidates, split at the V&H rate threshold so
+    # the cluster-location plot can draw the band and the thresholded zone.
+    seen_band = set()
+    for idx, item in enumerate(candidates or [], 1):
+        lbl, rec = item
+        if (lbl in selected_labels or lbl in fracture_set
+                or lbl == center_label or lbl in seen_band):
+            continue
+        seen_band.add(lbl)
+        rate = rec.get('rate')
+        thr = rec.get('selection_threshold_rate')
+        if rate is not None and thr is not None and rate >= thr:
+            add_polygon(lbl, 'threshold_zone', idx)
+        else:
+            add_polygon(lbl, 'band', idx)
 
     if not rows:
         print('  Cluster faces : skipped (no polygons found)')

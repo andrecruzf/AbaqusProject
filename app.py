@@ -4864,6 +4864,8 @@ def _page_results():
         drew_faces = False
         fracture_face_count = 0
         strain_face_count = 0
+        band_face_count = 0
+        threshold_face_count = 0
         if os.path.exists(face_fp):
             faces = _load_csv(face_fp)
             needed = {"element_label", "role", "selection_rank", "point_order", "x", "y"}
@@ -4878,11 +4880,19 @@ def _page_results():
                 strain_face_count = int(faces[
                     role_text == "cluster"
                 ]["element_label"].nunique())
+                band_face_count = int(faces[
+                    role_text == "band"
+                ]["element_label"].nunique())
+                threshold_face_count = int(faces[
+                    role_text == "threshold_zone"
+                ]["element_label"].nunique())
                 faces["role_priority"] = role_text.map({
-                    "cluster": 1,
-                    "fracture_deleted": 2,
-                    "crack_deleted": 2,
-                }).fillna(1)
+                    "band": 0,
+                    "threshold_zone": 1,
+                    "cluster": 2,
+                    "fracture_deleted": 3,
+                    "crack_deleted": 3,
+                }).fillna(2)
                 faces = faces.sort_values([
                     "role_priority", "selection_rank", "element_label", "point_order"
                 ])
@@ -4898,15 +4908,26 @@ def _page_results():
                     role_s = str(role)
                     if role_s == "first_deleted":
                         continue
-                    is_fracture_cluster = role_s in {"fracture_deleted", "crack_deleted"}
-                    if is_fracture_cluster:
-                        name = "fracture element cluster"
+                    if role_s in {"fracture_deleted", "crack_deleted"}:
+                        name = "fracture line"
                         color = "rgba(220, 38, 38, 0.68)"
                         line_color = "#ffffff"
+                        line_width = 2.3
+                    elif role_s == "threshold_zone":
+                        name = "threshold zone"
+                        color = "rgba(250, 204, 21, 0.45)"
+                        line_color = "#fde68a"
+                        line_width = 1.0
+                    elif role_s == "band":
+                        name = "3 mm analysis band"
+                        color = "rgba(148, 163, 184, 0.30)"
+                        line_color = "#cbd5e1"
+                        line_width = 0.8
                     else:
-                        name = "strain-path cells"
+                        name = "selected cells"
                         color = "rgba(249, 115, 22, 0.42)"
                         line_color = "#fed7aa"
+                        line_width = 1.0
                     _add_trace_both(go.Scatter(
                         x=xs,
                         y=ys,
@@ -4917,7 +4938,7 @@ def _page_results():
                         showlegend=name not in shown,
                         line=dict(
                             color=line_color,
-                            width=2.3 if is_fracture_cluster else 1.0,
+                            width=line_width,
                         ),
                         fillcolor=color,
                         hovertemplate=(
@@ -5005,10 +5026,11 @@ def _page_results():
             x=0.01,
             y=0.99,
             text=(
-                "fracture elements=%d, strain-path cells=%d"
-                % (fracture_face_count, strain_face_count)
+                "fracture=%d, band=%d, threshold=%d, selected=%d"
+                % (fracture_face_count, band_face_count,
+                   threshold_face_count, strain_face_count)
                 if fracture_face_count else
-                "strain-path cells=%d" % data_last["element_label"].nunique()
+                "selected cells=%d" % data_last["element_label"].nunique()
             ),
             showarrow=False,
         )
