@@ -5152,18 +5152,13 @@ def _page_results():
         df = df.sort_values("time_s")
         g = df.groupby("time_s", as_index=False)[list(df.columns)].mean()
         g["beta"] = g["eps2_minor"] / g["eps1_major"].replace(0, float("nan"))
-        g["thinning"] = g["eps1_major"] + g["eps2_minor"]   # = -ε₃ > 0
 
-        has_d     = "d_dome_max" in g.columns
         has_triax = "TRIAX" in g.columns
         panels = [
             ("Strain ratio  β = ε₂/ε₁",      "β  [–]",         "beta",     "#ff7f0e", "β = ε₂/ε₁  (strain ratio)"),
-            ("Thinning  ε₁+ε₂  =  −ε₃",       "ε₁+ε₂  [–]",    "thinning", "#2ca02c", "ε₁+ε₂ = −ε₃  (thinning magnitude)"),
         ]
         if has_triax:
             panels.append(("Stress triaxiality  η", "η  [–]", "TRIAX", "#e377c2", "η = σ_m / σ_eq  (triaxiality)"))
-        if has_d:
-            panels.append(("Damage variable  D", "D  [–]", "d_dome_max", "#9467bd", "D_max  (max dome damage)"))
 
         n_rows = len(panels)
         theme = _plot_theme()
