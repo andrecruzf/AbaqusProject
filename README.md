@@ -421,8 +421,9 @@ AbaqusProject/
 ├── screenshot_mesh.py         ← Abaqus Python: renders mesh PNGs after build
 ├── plot_results.py            ← Python+matplotlib: per-specimen PDF
 ├── plot_flc.py                ← Python+matplotlib: FLC aggregation PDF
+├── static_postproc_plots.py   ← Python+matplotlib: static plot set (postproc_plots.pdf)
 │
-├── app.py                     ← Streamlit pipeline manager (submit / monitor / results / AI)
+├── app.py                     ← Streamlit pipeline manager (submit / monitor / results)
 │
 ├── deploy.sh                  ← single-specimen deploy (push + build + submit)
 ├── deploy_movie.sh            ← EQPS animation render deploy
@@ -432,6 +433,7 @@ AbaqusProject/
 ├── run_cluster.sh             ← SLURM: solver + postproc + movie
 ├── run_plots.sh               ← SLURM: plotting — flc | results
 ├── run_postproc.sh            ← SLURM: postproc-only re-run
+├── run_postproc_odb.sh        ← SLURM: postproc for one explicit ODB path
 ├── run_movie.sh               ← SLURM: movie render job
 │
 ├── collect_results.sh         ← local: rsync CSVs + movies from Euler
@@ -439,12 +441,10 @@ AbaqusProject/
 │
 ├── Naka_Marciniak_Geometries/ ← specimen .cae files for Nakazima/Marciniak
 ├── PiP_Geometries/            ← specimen .cae files for PiP
-├── PiP_Punches/               ← inner punch .cae files (PUNCH_XX.cae)
+├── PiP_Punches/               ← inner punch geometry (.cae/.step/.stl)
 │
-└── Unused/                    ← archived scripts no longer in the active pipeline
-    ├── deploy_mass_scaling.sh ← mass-scaling sensitivity sweep (superseded)
-    ├── plot_mass_scaling.py   ← mass-scaling comparison PDF (superseded)
-    └── run_cluster_mpi.sh     ← MPI solver variant (replaced by threads)
+└── Post_processing_Nakazima_tests/
+    └── Min-Stroughton_post_pro/ ← standalone Min-Stoughton DIC workflow (own README)
 ```
 
 ---
@@ -454,10 +454,15 @@ AbaqusProject/
 | File | Description |
 |------|-------------|
 | `strain_path.csv` | Time history at critical dome element: `time_s`, `eps1_major`, `eps2_minor`, `EQPS`, `D`, `fracture_type`, `d_dome_max` |
-| `forming_limits.csv` | Limit strains per method: `method` (`fracture`/`volk_hora`/`sdv6`/`min_stoughton`/`pham_sigvant`/`din_iso`), `eps1_major`, `eps2_minor`, `EQPS`, `D`, `time_s` |
+| `forming_limits.csv` | Limit strains per method: `method` (`fracture`/`volk_hora`/`sdv6`), `eps1_major`, `eps2_minor`, `EQPS`, `D`, `time_s`, fracture type/location, and selection metadata |
 | `energy_data.csv` | Energy balance per frame: `step_name`, `total_time_s`, `ALLKE`, `ALLIE`, `is_step_boundary` |
 | `punch_fd.csv` | Punch force–displacement history: `total_time_s`, `U3_mm`, `RF3_N` |
-| `cov_data.csv` | Pham-Sigvant CoV time history: `time_s`, `cov`, `eps1_dot_mean` |
+| `global.csv` | Per-frame summary: `time_s`, `U3_mm`, `RF3_N`, `ALLKE`, `ALLIE`, `d_dome_max`, `fracture_type` |
+| `elout.csv` | Apex element history: strains, stresses, and all SDVs |
+| `strain_cluster.csv` | Per-frame histories of the selected evaluation-zone elements |
+| `strain_cluster_faces.csv` | Top-face polygons of the cluster elements (for plotting) |
+| `strain_neighborhood.csv` | Histories of the elements around the fracture centre |
+| `specimen_outline.csv` | Undeformed specimen outline edges for plot overlays |
 | `postproc_plots.pdf` | Per-specimen diagnostic plots (8 pages) |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths |
 | `<job>_mesh.png` | ISO view of the specimen mesh — generated at build time |
