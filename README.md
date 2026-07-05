@@ -463,7 +463,7 @@ AbaqusProject/
 | `strain_cluster_faces.csv` | Top-face polygons of the cluster elements (for plotting) |
 | `strain_neighborhood.csv` | Histories of the elements around the fracture centre |
 | `specimen_outline.csv` | Undeformed specimen outline edges for plot overlays |
-| `postproc_plots.pdf` | Per-specimen diagnostic plots (8 pages) |
+| `postproc_plots.pdf` | Per-specimen diagnostic plots (up to 6 pages) |
 | `FLC_<type>.pdf` | Aggregated FLC across all widths |
 | `<job>_mesh.png` | ISO view of the specimen mesh — generated at build time |
 | `<job>_mesh_top.png` | Face-on (+Z) view of the specimen mesh |
@@ -472,16 +472,16 @@ AbaqusProject/
 
 ### Diagnostic plot pages (`postproc_plots.pdf`)
 
+Pages are emitted only when their source CSV is present.
+
 | Page | Content |
 |------|---------|
-| 1 | Strain path in FLD space (ε₁ vs ε₂) with fracture/necking limit markers |
-| 2 | Volk-Hora: thinning rate ε̇_thin + stable/unstable linear fits (extended to intersection) |
-| 3 | Merklein: smoothed ε̈₁ with maximum = necking onset |
-| 4 | Strain ratio β = ε₂/ε₁ — instantaneous (red dashed) and cumulative (blue) |
-| 5 | Punch force–displacement with necking/fracture markers *(if punch_fd.csv present)* |
-| 6 | EQPS history with vertical lines at necking/fracture |
-| 7 | Dome-zone max damage vs time *(only if SDV6 data present)* |
-| 8 | ALLKE/ALLIE energy ratio — quasi-static validity check *(if energy_data.csv present)* |
+| 1 | Punch force–displacement with necking/fracture markers |
+| 2 | ALLKE/ALLIE energy ratio — quasi-static validity check |
+| 3 | Strain path in FLD space (ε₁ vs ε₂) with fracture/necking limit markers |
+| 4 | Volk-Hora: thinning rate + stable/unstable linear fits, with last-2-seconds zoom |
+| 5 | V&H zone location: crack line, 3 mm analysis band, threshold zone, selected cells |
+| 6 | Stress triaxiality η along the loading path |
 
 ### FLC PDF pages
 

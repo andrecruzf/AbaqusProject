@@ -806,6 +806,163 @@ def build_triaxiality_figure(job_dir: str, job_name: str | None = None):
     return fig
 
 
+ZONE_ROLE_STYLE = (
+    ("band", "3 mm analysis band", "#94a3b8", 8),
+    ("threshold_zone", "threshold zone", "#facc15", 12),
+    ("cluster", "V&H zone cells", "#2563eb", 14),
+    ("fracture_deleted", "crack line", "#dc2626", 14),
+    ("crack_deleted", "crack line", "#dc2626", 14),
+)
+
+
+def _outline_outer_chain(job_dir: str) -> list:
+    """Outer specimen contour from specimen_outline.csv (largest chained loop)."""
+    fp = os.path.join(job_dir, "specimen_outline.csv")
+    if not os.path.exists(fp):
+        return []
+    edges = []
+    with open(fp) as f:
+        for row in csv.DictReader(f):
+            try:
+                a = (float(row["x1"]), float(row["y1"]))
+                b = (float(row["x2"]), float(row["y2"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            edges.append((a, b))
+    if len(edges) < 8:
+        return []
+
+    def _key(p, tol=1e-4):
+        return (round(p[0] / tol), round(p[1] / tol))
+
+    adj: dict = {}
+    for ei, (a, b) in enumerate(edges):
+        adj.setdefault(_key(a), []).append(ei)
+        adj.setdefault(_key(b), []).append(ei)
+    used = [False] * len(edges)
+    chains = []
+    for start in range(len(edges)):
+        if used[start]:
+            continue
+        chain = [edges[start][0], edges[start][1]]
+        used[start] = True
+        while True:
+            tip_key = _key(chain[-1])
+            found = False
+            for ei in adj.get(tip_key, []):
+                if used[ei]:
+                    continue
+                a, b = edges[ei]
+                chain.append(b if _key(a) == tip_key else a)
+                used[ei] = True
+                found = True
+                break
+            if not found:
+                break
+        chains.append(chain)
+
+    def _extent(chain):
+        xs = [p[0] for p in chain]
+        ys = [p[1] for p in chain]
+        return (max(xs) - min(xs)) * (max(ys) - min(ys))
+
+    return max(chains, key=_extent) if chains else []
+
+
+def build_zone_location_figure(job_dir: str, job_name: str | None = None):
+    """Centroid map of the V&H selection: crack line, 3 mm band, threshold
+    zone, and selected cells, from strain_cluster_faces.csv."""
+    fp = os.path.join(job_dir, "strain_cluster_faces.csv")
+    if not os.path.exists(fp):
+        return None
+    sums: dict = {}
+    with open(fp) as f:
+        for row in csv.DictReader(f):
+            role = str(row.get("role") or "")
+            if role == "first_deleted":
+                continue
+            try:
+                x = float(row["x"])
+                y = float(row["y"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            key = (role, row.get("element_label"))
+            sx, sy, n = sums.get(key, (0.0, 0.0, 0))
+            sums[key] = (sx + x, sy + y, n + 1)
+    if not sums:
+        return None
+    by_role: dict = {}
+    for (role, _lbl), (sx, sy, n) in sums.items():
+        xs, ys = by_role.setdefault(role, ([], []))
+        xs.append(sx / n)
+        ys.append(sy / n)
+
+    _style_rc()
+    fig, (ax, ax_zoom) = plt.subplots(nrows=1, ncols=2, figsize=(9.8, 4.6))
+    fig.patch.set_facecolor("white")
+
+    outline = _outline_outer_chain(job_dir)
+    seen_labels: set = set()
+    for axis in (ax, ax_zoom):
+        if outline:
+            axis.plot(
+                [p[0] for p in outline], [p[1] for p in outline],
+                color="#9ca3af", linewidth=1.0, zorder=1,
+                label="outline" if axis is ax else "_outline",
+            )
+        for role, label, color, size in ZONE_ROLE_STYLE:
+            pts = by_role.get(role)
+            if not pts:
+                continue
+            show = axis is ax and label not in seen_labels
+            axis.scatter(
+                pts[0], pts[1], s=size, c=color,
+                edgecolors="white", linewidths=0.3, zorder=3,
+                label=label if show else "_" + label,
+            )
+            if show:
+                seen_labels.add(label)
+        axis.set_aspect("equal", adjustable="box")
+
+    crack_pts = by_role.get("fracture_deleted") or by_role.get("crack_deleted")
+    center_pts = crack_pts or by_role.get("cluster")
+    if center_pts and center_pts[0]:
+        cx = sum(center_pts[0]) / len(center_pts[0])
+        cy = sum(center_pts[1]) / len(center_pts[1])
+        zoom_radius = 7.0
+        ax_zoom.set_xlim(cx - zoom_radius, cx + zoom_radius)
+        ax_zoom.set_ylim(cy - zoom_radius, cy + zoom_radius)
+
+    def _role_count(*roles):
+        return sum(len(by_role.get(r, ([], []))[0]) for r in roles)
+
+    ax_zoom.text(
+        0.03, 0.97,
+        "crack=%d  band=%d  threshold=%d  selected=%d" % (
+            _role_count("fracture_deleted", "crack_deleted"),
+            _role_count("band"),
+            _role_count("threshold_zone"),
+            _role_count("cluster"),
+        ),
+        transform=ax_zoom.transAxes,
+        ha="left",
+        va="top",
+        fontsize=8,
+        bbox=dict(facecolor="white", edgecolor="black", linewidth=0.6, alpha=0.9),
+    )
+
+    _style_axis(ax, xlabel="X [mm]", ylabel="Y [mm]", title="Specimen")
+    _style_axis(ax_zoom, xlabel="X [mm]", ylabel="Y [mm]",
+                title="Fracture neighborhood")
+    _style_legend(ax, loc="upper right")
+    fig.suptitle(
+        "V&H zone location - %s" % _safe_label(job_name or os.path.basename(job_dir)),
+        y=1.02,
+    )
+    fig.tight_layout()
+    return fig
+
+
 def build_job_figures(job_dir: str) -> list:
     job_name = os.path.basename(os.path.normpath(job_dir))
     builders = (
@@ -813,6 +970,7 @@ def build_job_figures(job_dir: str) -> list:
         build_energy_history_figure,
         build_strain_path_figure,
         build_vh_figure,
+        build_zone_location_figure,
         build_triaxiality_figure,
     )
     figs = []
