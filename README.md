@@ -292,8 +292,7 @@ streamlit run app.py
 |-----|----------|
 | **Submit Job** | Build and submit single or full-width jobs from a GUI form; 3-D punch preview for PiP runs |
 | **Job Status** | Live SLURM queue table with colour-coded states; progress bars (% complete + ETA) for all running Abaqus solver jobs, read from the `.sta` file in scratch |
-| **Results** | Browse synced results: **Single Job** (synced full/cut video pair + 4 interactive Plotly tabs); **Full FLC** (interactive FLC chart + per-width job inspector); **Compare FLC** (multi-set overlay with export) |
-| **AI Assistant** | Claude-powered assistant for model and results questions |
+| **Results** | Browse synced results: **Single Job** (synced full/cut video pair + interactive Plotly panels for force--displacement, energy, strain path, Volk--Hora, cluster location, and forming limits); **FLD** (interactive FLD chart + per-width job inspector) |
 
 All charts in the Results tab are rendered as interactive Plotly figures. Progress is
 fetched silently every 60 s; click **🔄** to force-refresh immediately.
