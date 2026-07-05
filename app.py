@@ -4956,15 +4956,6 @@ def _page_results():
         if center_xy is not None:
                 pass
 
-        _add_trace_both(go.Scatter(
-            x=[0.0],
-            y=[0.0],
-            mode="markers",
-            name="apex",
-            marker=dict(size=10, symbol="cross", color="#059669"),
-            hovertemplate="x=0<br>y=0<extra>apex</extra>",
-        ))
-
         if center_xy is not None:
             x0, y0 = center_xy
             zoom_radius = 7.0
