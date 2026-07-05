@@ -4904,9 +4904,9 @@ def _page_results():
                 role_styles = [
                     ("band", "3 mm analysis band", "#94a3b8", 5),
                     ("threshold_zone", "threshold zone", "#facc15", 6),
-                    ("cluster", "selected cells", "#f97316", 7),
-                    ("fracture_deleted", "fracture line", "#dc2626", 7),
-                    ("crack_deleted", "fracture line", "#dc2626", 7),
+                    ("cluster", "V&H zone cells", "#2563eb", 7),
+                    ("fracture_deleted", "crack line", "#dc2626", 7),
+                    ("crack_deleted", "crack line", "#dc2626", 7),
                 ]
                 shown = set()
                 for role_s, name, color, size in role_styles:
@@ -4961,7 +4961,7 @@ def _page_results():
             y=[0.0],
             mode="markers",
             name="apex",
-            marker=dict(size=10, symbol="cross", color="#2563eb"),
+            marker=dict(size=10, symbol="cross", color="#059669"),
             hovertemplate="x=0<br>y=0<extra>apex</extra>",
         ))
 
