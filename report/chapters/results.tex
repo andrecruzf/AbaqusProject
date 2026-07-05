@@ -76,10 +76,6 @@ between the RD and TD mean points for every width and thickness.
     \centering
     \small
     \setlength{\tabcolsep}{4pt}
-    \caption{Signed differences between the RD and TD mean forming-limit
-    points (RD minus TD) for each specimen geometry and sheet thickness, for
-    the standard Nakazima test, rounded to three decimals.}
-    \label{tab:rd_td_summary}
     \begin{tabular}{l rr rr rr rr}
         \toprule
         & \multicolumn{2}{c}{A (\SI{1.2}{\milli\meter})}
@@ -101,6 +97,8 @@ between the RD and TD mean points for every width and thickness.
         \texttt{W200} & $+0.014$ & $-0.007$ & $+0.008$ & $+0.003$ & $-0.009$ & $-0.012$ & $+0.019$ & $+0.017$ \\
         \bottomrule
     \end{tabular}
+    \caption{Signed RD--TD forming-limit differences.}
+    \label{tab:rd_td_summary}
 \end{table}
 
 Across all four thicknesses, the RD and TD forming limit curves are nearly
@@ -340,14 +338,6 @@ tabulated in Appendix~\ref{app:ms_campaign_tables}.
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton campaign comparison summary]{Detection rate and
-    mean absolute $\varepsilon_1$ and $\varepsilon_2$ differences to
-    ISO~12004-2 per thickness, over the 14 rolling-direction samples of the
-    repeat campaign with the \SI{100}{\milli\meter} punch. The
-    Min--Stoughton results use the baseline set from the first calibration
-    sweep. Full per-width values for all three criteria are given in
-    Appendix~\ref{app:ms_campaign_tables}.}
-    \label{tab:ms_campaign_summary}
     \begin{tabular}{c c c c c}
         \toprule
         Thickness & $t$ (\si{\milli\meter}) & Detection (of 14) &
@@ -359,6 +349,8 @@ tabulated in Appendix~\ref{app:ms_campaign_tables}.
         D & 3.0 & 14 & 0.046 & 0.016 \\
         \bottomrule
     \end{tabular}
+    \caption[Min--Stoughton campaign comparison summary]{Min--Stoughton baseline comparison to ISO~12004-2.}
+    \label{tab:ms_campaign_summary}
 \end{table}
 
 As Figure~\ref{fig:flc_ms_comparison} shows, the curvature criterion detects an
@@ -398,14 +390,6 @@ in Appendix~\ref{app:ms_sweep}.
 \begin{table}[H]
     \centering
     \scriptsize
-    \caption[Min--Stoughton parameter rankings across thicknesses]{Baseline
-    detection, detection-rank, and ISO-match-rank parameter sets from the Euler sweep. The
-    baseline set is
-    $(W_Y,M,n,\mathrm{SAC},\alpha)=(15,0.80,8,\num{5e-4},0.10)$. Detection is
-    the number of samples with a detected onset out of 14. Errors are mean
-    absolute differences to ISO~12004-2, reported separately for
-    $\varepsilon_1$ and $\varepsilon_2$.}
-    \label{tab:ms_sweep_thickness}
     \resizebox{\linewidth}{!}{%
     \begin{tabular}{c c l c c c l c c c}
         \toprule
@@ -432,6 +416,8 @@ in Appendix~\ref{app:ms_sweep}.
         \bottomrule
     \end{tabular}
     }
+    \caption[Min--Stoughton parameter rankings across thicknesses]{Min--Stoughton parameter rankings from the Euler sweep.}
+    \label{tab:ms_sweep_thickness}
 \end{table}
 
 Requiring detection of all fourteen samples is not always the same as matching
@@ -506,9 +492,6 @@ after the mass-scaling target is fixed.
 \begin{table}[H]
     \centering
     \small
-    \caption{Extracted fracture strains of the first mesh-refinement
-    screening batch at $\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$.}
-    \label{tab:mesh_refinement_walltime}
     \begin{tabular}{c c c}
         \toprule
         $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\varepsilon_2^\mathrm{f}$ \\
@@ -518,6 +501,8 @@ after the mass-scaling target is fixed.
         3 & 0.254 & 0.098 \\
         \bottomrule
     \end{tabular}
+    \caption{First mesh-refinement screening batch.}
+    \label{tab:mesh_refinement_walltime}
 \end{table}
 
 \begin{figure}[H]
@@ -657,12 +642,6 @@ conforming to the quasi-static requirement of the energy criterion.
 \begin{table}[H]
     \centering
     \small
-    \caption{Mesh-refinement confirmation sweep at
-    $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$. The relative changes
-    $\Delta\varepsilon_1^\mathrm{f}$ and $\Delta\varepsilon_2^\mathrm{f}$
-    give the change of each row relative to the next finer mesh in the sweep.
-    The wall-clock time of each run is taken from the cluster accounting.}
-    \label{tab:confirm_sweep_summary}
     \begin{tabular}{c c c c c c}
         \toprule
         $f_\mathrm{MR}$ & $\varepsilon_1^\mathrm{f}$ & $\Delta\varepsilon_1^\mathrm{f}$ [\si{\percent}] & $\varepsilon_2^\mathrm{f}$ & $\Delta\varepsilon_2^\mathrm{f}$ [\si{\percent}] & Time [\si{\hour}] \\
@@ -674,6 +653,8 @@ conforming to the quasi-static requirement of the energy criterion.
         3    & 0.219 & $-10.2$ & 0.097 & $+1.0$ & 13.0 \\
         \bottomrule
     \end{tabular}
+    \caption{Mesh-refinement confirmation sweep at $\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$.}
+    \label{tab:confirm_sweep_summary}
 \end{table}
 
 \subsection{Friction-Factor Sensitivity Check}
@@ -728,11 +709,6 @@ and moves the critical strain path toward plane strain.
     \centering
     \small
     \setlength{\tabcolsep}{5pt}
-    \caption{Summary of the \texttt{W120} punch--blank friction sensitivity check. The
-    force maximum is evaluated before the extracted fracture point. The late
-    energy ratio is the maximum $\mathrm{ALLKE}/\mathrm{ALLIE}$ over the final
-    \SI{0.5}{\second} before the extracted fracture point.}
-    \label{tab:friction_sensitivity_summary}
     \begin{tabular}{c c c c c c c}
         \toprule
         $\mu_\mathrm{punch}$ &
@@ -751,6 +727,8 @@ and moves the critical strain path toward plane strain.
         0.25 & outside dome & 0.171 & 0.047 & 28.28 & 15.21  \\
         \bottomrule
     \end{tabular}
+    \caption{Punch--blank friction sensitivity check for \texttt{W120}.}
+    \label{tab:friction_sensitivity_summary}
 \end{table}
 
 The frictionless baseline matches the PTFE and lanolin lubrication of the
@@ -789,8 +767,6 @@ Chapter~\ref{chap:future_work}.
 \begin{table}[H]
     \centering
     \small
-    \caption{Working numerical configuration fixed by Task III.}
-    \label{tab:working_configuration}
     \begin{tabular}{l l l}
         \toprule
         Setting & Value & Basis \\
@@ -804,6 +780,8 @@ Chapter~\ref{chap:future_work}.
         Element type & C3D8R & Solid formulation (Sec.~\ref{sec:mesh_generation}) \\
         \bottomrule
     \end{tabular}
+    \caption{Working numerical configuration fixed by Task III.}
+    \label{tab:working_configuration}
 \end{table}
 
 \begin{figure}[H]

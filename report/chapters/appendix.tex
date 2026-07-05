@@ -14,10 +14,6 @@ than a formal statistical test.
     \centering
     \scriptsize
     \setlength{\tabcolsep}{4pt}
-    \caption{Per-specimen RD/TD repeat statistics for the
-    \SI{100}{\milli\meter} punch. $d_{\mathrm{RD-TD}}$ is the Euclidean
-    distance between the RD and TD mean points in the forming-limit diagram.}
-    \label{tab:rd_td_repeat_values}
     \begin{tabular}{llccccccc}
         \toprule
         Material & Specimen &
@@ -58,6 +54,8 @@ than a formal statistical test.
         D & \texttt{W200} &2 & $0.416\pm0.004$ & $0.393\pm0.013$ & 1 & $0.397$ & $0.376$ & 0.0252 \\
         \bottomrule
     \end{tabular}
+    \caption{Per-specimen RD/TD repeat statistics for the \SI{100}{\milli\meter} punch.}
+    \label{tab:rd_td_repeat_values}
 \end{sidewaystable}
 
 \chapter{Min--Stoughton Parameter Sweep}
@@ -160,13 +158,6 @@ $M=0.8$, $n=8$.
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton campaign comparison, class~A]{Major and
-    minor limit strains for the three criteria over the class~A
-    ($t=\SI{1.2}{\milli\meter}$) repeat campaign with the
-    \SI{100}{\milli\meter} punch. The biaxial \texttt{W200}
-    curvature onset is detected in only one repetition, so no standard deviation
-    is given there.}
-    \label{tab:minstoughton_campaign}
     \begin{tabular}{c c c c c c c}
         \toprule
         Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
@@ -182,16 +173,13 @@ $M=0.8$, $n=8$.
         200 & $0.382 \pm 0.010$ & $0.342$  & $0.398 \pm 0.018$ & $0.348$  & $0.382$           & $0.318$ \\
         \bottomrule
     \end{tabular}
+    \caption[Min--Stoughton campaign comparison, class~A]{Class~A limit strains from the three criteria.}
+    \label{tab:minstoughton_campaign}
 \end{table}
 
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton campaign comparison, class~B]{Major and minor limit
-    strains for the three criteria over the class~B ($t=\SI{1.5}{\milli\meter}$)
-    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
-    Table~\ref{tab:minstoughton_campaign}.}
-    \label{tab:ms_campaign_B}
     \begin{tabular}{c c c c c c c}
         \toprule
         Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
@@ -207,16 +195,13 @@ $M=0.8$, $n=8$.
         200 & $0.385 \pm 0.006$ & $0.355$  & $0.389 \pm 0.054$ & $0.347$  & $0.375 \pm 0.095$ & $0.323$ \\
         \bottomrule
     \end{tabular}
+    \caption[Min--Stoughton campaign comparison, class~B]{Class~B limit strains from the three criteria.}
+    \label{tab:ms_campaign_B}
 \end{table}
 
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton campaign comparison, class~C]{Major and minor limit
-    strains for the three criteria over the class~C ($t=\SI{2.0}{\milli\meter}$)
-    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
-    Table~\ref{tab:minstoughton_campaign}.}
-    \label{tab:ms_campaign_C}
     \begin{tabular}{c c c c c c c}
         \toprule
         Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
@@ -232,16 +217,13 @@ $M=0.8$, $n=8$.
         200 & $0.380 \pm 0.002$ & $0.355$  & $0.388 \pm 0.015$ & $0.347$  & $0.288$           & $0.278$ \\
         \bottomrule
     \end{tabular}
+    \caption[Min--Stoughton campaign comparison, class~C]{Class~C limit strains from the three criteria.}
+    \label{tab:ms_campaign_C}
 \end{table}
 
 \begin{table}[H]
     \centering
     \small
-    \caption[Min--Stoughton campaign comparison, class~D]{Major and minor limit
-    strains for the three criteria over the class~D ($t=\SI{3.0}{\milli\meter}$)
-    repeat campaign with the \SI{100}{\milli\meter} punch, in the format of
-    Table~\ref{tab:minstoughton_campaign}.}
-    \label{tab:ms_campaign_D}
     \begin{tabular}{c c c c c c c}
         \toprule
         Width & \multicolumn{2}{c}{ISO~12004-2} & \multicolumn{2}{c}{Volk--Hora} & \multicolumn{2}{c}{Min--Stoughton} \\
@@ -257,6 +239,8 @@ $M=0.8$, $n=8$.
         200 & $0.416 \pm 0.004$ & $0.393$  & $0.415 \pm 0.029$ & $0.382$  & $0.375 \pm 0.095$ & $0.342$ \\
         \bottomrule
     \end{tabular}
+    \caption[Min--Stoughton campaign comparison, class~D]{Class~D limit strains from the three criteria.}
+    \label{tab:ms_campaign_D}
 \end{table}
 
 \chapter{Simulation Pipeline}\label{app:pipeline}
@@ -450,8 +434,6 @@ focused on the general framework.
 
 \begin{table}[ht]
 \centering
-\caption{Main user-tunable parameter groups in the numerical framework.}
-\label{tab:framework_parameters}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}
 >{\raggedright\arraybackslash}p{0.34\linewidth}
 >{\raggedright\arraybackslash}p{0.33\linewidth}@{}}
@@ -467,6 +449,8 @@ Mesh control & Refinement factor, seed mode, thickness seeds & Control spatial r
 Explicit settings & Mass scaling, output frequency, CPUs & Balance cost and accuracy \\
 Post-processing & Dome radius, fracture detector, V\&H thresholds & Standardise limit extraction \\ \bottomrule[1.5pt]
 \end{tabular}
+\caption{Main user-tunable parameter groups in the numerical framework.}
+\label{tab:framework_parameters}
 \end{table}
 
 For the current scalar sensitivity study, mass scaling and mesh refinement are
@@ -478,10 +462,6 @@ inertial effects from spatial-discretisation effects.
 
 \begin{table}[ht]
 \centering
-\caption{Mass-scaling sweep for the scalar Nakazima \texttt{W100} study. The mesh
-refinement factor is kept fixed at the reference value $f_\mathrm{MR}=2$ while
-the mass-scaling target time increment is varied.}
-\label{tab:mass_scaling_sweep}
 \begin{tabular}{@{}lccccc@{}}\toprule[1.5pt]
 Run & MS1 & MS2 & MS3 & MS4 & MS5 \\ \midrule
 $\Delta t_\mathrm{MS}$ (\si{\second}) &
@@ -493,15 +473,12 @@ $1\times10^{-4}$ \\
 $f_\mathrm{MR}$ & 2 & 2 & 2 & 2 & 2 \\
 \bottomrule[1.5pt]
 \end{tabular}
+\caption{Mass-scaling sweep for the scalar Nakazima \texttt{W100} study.}
+\label{tab:mass_scaling_sweep}
 \end{table}
 
 \begin{table}[ht]
 \centering
-\caption{Mesh-refinement sweep for the scalar Nakazima \texttt{W100} study. The
-mass-scaling target is kept fixed at the reference value
-$\Delta t_\mathrm{MS}=\SI{1e-5}{\second}$ while the global mesh-refinement factor
-is varied.}
-\label{tab:mesh_refinement_sweep}
 \begin{tabular}{@{}lccc@{}}\toprule[1.5pt]
 Run & MR1 & MR2 & MR3 \\ \midrule
 $f_\mathrm{MR}$ & 1 & 2 & 3 \\
@@ -511,16 +488,12 @@ $1\times10^{-5}$ &
 $1\times10^{-5}$ \\
 \bottomrule[1.5pt]
 \end{tabular}
+\caption{Mesh-refinement sweep for the scalar Nakazima \texttt{W100} study.}
+\label{tab:mesh_refinement_sweep}
 \end{table}
 
 \begin{table}[ht]
 \centering
-\caption{Mesh-refinement confirmation sweep for the scalar Nakazima
-\texttt{W100} study, repeating the mesh-refinement sweep above at the
-mass-scaling target accepted from Table~\ref{tab:mass_scaling_sweep}
-($\Delta t_\mathrm{MS}=\SI{1e-6}{\second}$). Results are discussed in
-Section~\ref{sec:selection_numerical_parameters}.}
-\label{tab:mesh_refinement_confirm_sweep}
 \begin{tabular}{@{}lccccc@{}}\toprule[1.5pt]
 Run & MR1 & MR1.25 & MR1.41 & MR2 & MR3 \\ \midrule
 $f_\mathrm{MR}$ & 1 & 1.25 & 1.41 & 2 & 3 \\
@@ -532,6 +505,8 @@ $1\times10^{-6}$ &
 $1\times10^{-6}$ \\
 \bottomrule[1.5pt]
 \end{tabular}
+\caption{Mesh-refinement confirmation sweep for the scalar Nakazima \texttt{W100} study.}
+\label{tab:mesh_refinement_confirm_sweep}
 \end{table}
 
 \section{Numerical Framework Implementation Details}
@@ -768,10 +743,6 @@ Table~\ref{tab:aa5182_parameters} lists the parameter set.
 \begin{table}[H]
     \centering
     \small
-    \caption{Surrogate AA5182 material parameters passed to the VUMAT. The
-    Johnson Cook coefficients $C_\mathrm{JC}$ and $m_\mathrm{JC}$ are zero, so
-    the rate and temperature terms are inactive.}
-    \label{tab:aa5182_parameters}
     \begin{tabular}{@{}lll@{}}
         \toprule
         Group & Parameters & Values \\
@@ -794,6 +765,8 @@ Table~\ref{tab:aa5182_parameters} lists the parameter set.
         $1.35$, $0.70$, $0.10$, $0.10$ \\
         \bottomrule
     \end{tabular}
+    \caption{Surrogate AA5182 material parameters passed to the VUMAT.}
+    \label{tab:aa5182_parameters}
 \end{table}
 
 \chapter{User Interface}
@@ -891,15 +864,59 @@ job sorting controls.}
     \label{fig:gui_results}
 \end{figure}
 
-The single-job result panel (Figure~\ref{fig:gui_results_panel}) collects the
-main scalar plots and forming-limit diagnostics in one tabbed view.
+The single-job view uses tabbed result panels for scalar histories, strain-path
+diagnostics, onset fitting, and cluster localisation.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{img/gui_results_panel.png}
-    \caption{Single-job result panel with force--displacement, energy, strain
-path, Volk--Hora, forming-limit, cluster-location, and diagnostics tabs.}
-    \label{fig:gui_results_panel}
+    \begin{subfigure}[t]{0.95\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/gui_results_force_displacement.png}
+        \caption{Force--displacement.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.95\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/gui_results_energy.png}
+        \caption{Energy ratio.}
+    \end{subfigure}
+    \caption{Scalar result tabs.}
+    \label{fig:gui_results_scalar_tabs}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.95\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/gui_results_strain_path.png}
+        \caption{Strain path.}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}[t]{0.95\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/gui_results_path_metrics.png}
+        \caption{Path metrics.}
+    \end{subfigure}
+    \caption{Strain-path result tabs.}
+    \label{fig:gui_results_strain_tabs}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results_vh.png}
+    \caption{Volk--Hora result tab.}
+    \label{fig:gui_results_vh}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{img/gui_results_cluster_location.png}
+    \caption{Cluster-location result tab.}
+    \label{fig:gui_results_cluster_location}
 \end{figure}
 
 The same results area can also display rendered ODB movies and mesh snapshots,
